@@ -1,161 +1,146 @@
-import Link from "next/link";
-import { currentUser } from "@/lib/data";
-import { Mail, MapPin, Briefcase, Settings, ChevronRight } from "lucide-react";
+'use client';
+
+import GlowCard from '@/components/AppShell/GlowCard';
+import { Mail, MapPin, Briefcase, Settings, Save, Edit2 } from 'lucide-react';
+import { useState } from 'react';
 
 export default function ProfilePage() {
-  return <ProfileContent />;
-}
+  const [isEditing, setIsEditing] = useState(false);
 
-function ProfileContent() {
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Page Header */}
-      <div className="mb-12">
-        <h1 className="text-4xl font-bold mb-2">My Profile</h1>
-        <p className="text-gray-400">Manage your account and learning preferences</p>
-      </div>
-
-      {/* Profile Header Card */}
-      <div className="p-8 rounded-2xl bg-gray-900 border border-white/10 mb-8">
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-6">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-4xl font-bold">
-              {currentUser.avatar}
+    <div className="space-y-6">
+      {/* Hero Card */}
+      <GlowCard hero>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-indigo-500/50">
+              M
             </div>
             <div>
-              <h2 className="text-3xl font-bold mb-2">{currentUser.name}</h2>
-              <p className="text-indigo-400 font-medium mb-4">{currentUser.role}</p>
-              <button className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition">
-                Edit Profile
-              </button>
+              <h1 className="text-2xl font-bold text-white">My Profile</h1>
+              <p className="text-gray-300 text-sm">Manage your account and preferences</p>
             </div>
           </div>
-          <Link
-            href="/dashboard/profile/settings"
-            className="p-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-white/10 transition"
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className="p-3 rounded-xl bg-gray-900 border border-indigo-500/30 hover:border-indigo-500/60 transition"
           >
-            <Settings size={24} />
-          </Link>
+            {isEditing ? <Save size={20} /> : <Edit2 size={20} />}
+          </button>
         </div>
-      </div>
+      </GlowCard>
 
-      {/* Two Column Layout */}
-      <div className="grid lg:grid-cols-3 gap-8 mb-8">
-        {/* Contact & Location */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Personal Info */}
         <div className="lg:col-span-2">
-          <div className="p-6 rounded-2xl bg-gray-900 border border-white/10 mb-6">
-            <h3 className="text-xl font-bold mb-6">Contact Information</h3>
+          <GlowCard>
+            <h2 className="text-lg font-bold text-white mb-6">Personal Information</h2>
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Mail size={20} className="text-indigo-400" />
-                <div>
-                  <p className="text-sm text-gray-400">Email Address</p>
-                  <p className="text-white">{currentUser.name.toLowerCase()}@learnify.com</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <MapPin size={20} className="text-purple-400" />
-                <div>
-                  <p className="text-sm text-gray-400">Location</p>
-                  <p className="text-white">Not specified</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Learning Preferences */}
-          <div className="p-6 rounded-2xl bg-gray-900 border border-white/10">
-            <h3 className="text-xl font-bold mb-6">Learning Preferences</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-xl bg-gray-800 border border-white/5">
-                <div>
-                  <p className="font-medium">Email Notifications</p>
-                  <p className="text-sm text-gray-400">Get updates about new courses</p>
-                </div>
+              <div>
+                <label className="text-sm text-gray-400">Full Name</label>
                 <input
-                  type="checkbox"
-                  defaultChecked
-                  className="w-5 h-5 rounded"
+                  type="text"
+                  value="Mubarak Muhammad Hamisu"
+                  readOnly={!isEditing}
+                  className={`w-full mt-2 px-4 py-3 rounded-lg bg-gray-800 border border-indigo-500/20
+                    text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/60 transition
+                    ${isEditing ? 'cursor-text' : 'cursor-default'}`}
                 />
               </div>
-              <div className="flex items-center justify-between p-4 rounded-xl bg-gray-800 border border-white/5">
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="font-medium">Course Reminders</p>
-                  <p className="text-sm text-gray-400">Reminders to continue learning</p>
+                  <label className="text-sm text-gray-400">Email</label>
+                  <div className="mt-2 px-4 py-3 rounded-lg bg-gray-800 border border-indigo-500/20 text-gray-300 flex items-center gap-2">
+                    <Mail size={16} className="text-indigo-400" />
+                    mubarak@example.com
+                  </div>
                 </div>
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="w-5 h-5 rounded"
+                <div>
+                  <label className="text-sm text-gray-400">Phone</label>
+                  <input
+                    type="text"
+                    value="+1 (555) 123-4567"
+                    readOnly={!isEditing}
+                    className={`w-full mt-2 px-4 py-3 rounded-lg bg-gray-800 border border-indigo-500/20
+                      text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/60 transition
+                      ${isEditing ? 'cursor-text' : 'cursor-default'}`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400">Location</label>
+                <div className="mt-2 px-4 py-3 rounded-lg bg-gray-800 border border-indigo-500/20 text-gray-300 flex items-center gap-2">
+                  <MapPin size={16} className="text-purple-400" />
+                  San Francisco, USA
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400">Bio</label>
+                <textarea
+                  readOnly={!isEditing}
+                  className={`w-full mt-2 px-4 py-3 rounded-lg bg-gray-800 border border-indigo-500/20
+                    text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/60 transition
+                    ${isEditing ? 'cursor-text' : 'cursor-default'}`}
+                  rows={4}
+                  defaultValue="Passionate learner exploring AI and machine learning technologies."
                 />
               </div>
-              <div className="flex items-center justify-between p-4 rounded-xl bg-gray-800 border border-white/5">
-                <div>
-                  <p className="font-medium">Dark Mode</p>
-                  <p className="text-sm text-gray-400">Always enabled</p>
-                </div>
-                <div className="w-10 h-6 rounded-full bg-indigo-600 flex items-center justify-end pr-1">
-                  <div className="w-5 h-5 bg-white rounded-full" />
-                </div>
+            </div>
+          </GlowCard>
+        </div>
+
+        {/* Learning Stats */}
+        <div className="space-y-4">
+          <GlowCard>
+            <h3 className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2">
+              <Briefcase size={16} className="text-indigo-400" />
+              Learning Stats
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-sm">Courses Active</span>
+                <span className="text-white font-bold">8</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-sm">Total Hours</span>
+                <span className="text-white font-bold">42.5h</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-sm">Certificates</span>
+                <span className="text-white font-bold">3</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-sm">Completed</span>
+                <span className="text-white font-bold">5</span>
               </div>
             </div>
-          </div>
-        </div>
+          </GlowCard>
 
-        {/* Stats Sidebar */}
-        <div>
-          <div className="p-6 rounded-2xl bg-gray-900 border border-white/10">
-            <h3 className="text-xl font-bold mb-6">Your Progress</h3>
-            <div className="space-y-6">
-              {currentUser.stats.map((stat) => (
-                <div key={stat.label}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-gray-400">{stat.label}</p>
-                    <p className="font-bold text-indigo-400">{stat.val}</p>
-                  </div>
-                  <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
-                      style={{
-                        width: `${Math.min(
-                          (parseInt(stat.val) /
-                            Math.max(
-                              parseInt(currentUser.stats[0].val),
-                              parseInt(currentUser.stats[1].val),
-                              parseInt(currentUser.stats[2].val)
-                            )) *
-                            100,
-                          100
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
+          <GlowCard>
+            <h3 className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2">
+              <Settings size={16} className="text-purple-400" />
+              Preferences
+            </h3>
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" defaultChecked className="w-4 h-4" />
+                <span className="text-sm text-gray-300">Email notifications</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" defaultChecked className="w-4 h-4" />
+                <span className="text-sm text-gray-300">Course recommendations</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4" />
+                <span className="text-sm text-gray-300">Weekly digest</span>
+              </label>
             </div>
-          </div>
+          </GlowCard>
         </div>
       </div>
-
-      {/* Account Actions */}
-      <div className="p-6 rounded-2xl bg-gray-900 border border-white/10">
-        <h3 className="text-xl font-bold mb-6">Account</h3>
-        <div className="space-y-3">
-          <button className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-white/5 transition text-left">
-            <span>Change Password</span>
-            <ChevronRight size={20} className="text-gray-400" />
-          </button>
-          <button className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-white/5 transition text-left">
-            <span>Download My Data</span>
-            <ChevronRight size={20} className="text-gray-400" />
-          </button>
-          <button className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-800 hover:bg-red-900/20 border border-red-500/20 transition text-left text-red-400">
-            <span>Delete Account</span>
-            <ChevronRight size={20} />
-          </button>
-        </div>
-      </div>
-
     </div>
   );
 }
