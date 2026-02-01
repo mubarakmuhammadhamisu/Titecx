@@ -1,6 +1,4 @@
 import Link from "next/link";
-import Navbar from "@/components/ui/Navbar";
-import Footer from "@/components/ui/Footer";
 import { enrolledCourses } from "@/lib/data";
 import { 
   CheckCircle2, 
@@ -18,13 +16,7 @@ export default function ProgressTrackerPage({
 }) {
   const course = enrolledCourses[0]; // Default to first course for demo
 
-  return (
-    <main className="min-h-screen bg-gray-950 text-gray-100">
-      <Navbar />
-      <ProgressTrackerContent course={course} />
-      <Footer />
-    </main>
-  );
+  return <ProgressTrackerContent course={course} />;
 }
 
 function ProgressTrackerContent({ course }: { course: any }) {
@@ -83,7 +75,7 @@ function ProgressTrackerContent({ course }: { course: any }) {
       : 0;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-16">
+    <div className="max-w-6xl mx-auto">
       {/* Page Header */}
       <div className="mb-12">
         <h1 className="text-4xl font-bold mb-2">{course.title}</h1>
@@ -266,15 +258,6 @@ function ProgressTrackerContent({ course }: { course: any }) {
         </div>
       </div>
 
-      {/* Navigation */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/dashboard/my-courses"
-          className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition"
-        >
-          ← Back to My Courses
-        </Link>
-      </div>
     </div>
   );
 }

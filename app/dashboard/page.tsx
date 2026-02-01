@@ -1,23 +1,15 @@
 import Link from "next/link";
-import Navbar from "@/components/ui/Navbar";
-import Footer from "@/components/ui/Footer";
 import { currentUser, enrolledCourses } from "@/lib/data";
 import { courses } from "@/lib/Course";
 import { Award, BookOpen, Clock, TrendingUp } from "lucide-react";
 
 export default function DashboardPage() {
-  return (
-    <main className="min-h-screen bg-gray-950 text-gray-100">
-      <Navbar />
-      <DashboardContent />
-      <Footer />
-    </main>
-  );
+  return <DashboardContent />;
 }
 
 function DashboardContent() {
   return (
-    <div className="max-w-7xl mx-auto px-4 py-16">
+    <div className="max-w-6xl mx-auto">
       {/* Welcome Section */}
       <div className="mb-12">
         <div className="flex items-center justify-between mb-8">
@@ -130,19 +122,13 @@ function DashboardContent() {
 
       {/* Quick Actions */}
       <div className="p-8 rounded-2xl bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/20">
-        <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
-        <div className="grid sm:grid-cols-3 gap-4">
+        <h2 className="text-xl font-bold mb-4">Quick Navigation</h2>
+        <div className="grid sm:grid-cols-2 gap-4">
           <Link
-            href="/courses"
+            href="/dashboard/my-courses"
             className="p-4 rounded-xl bg-gray-900 hover:bg-gray-800 border border-white/10 transition text-center font-medium"
           >
-            Browse All Courses
-          </Link>
-          <Link
-            href="/dashboard/profile"
-            className="p-4 rounded-xl bg-gray-900 hover:bg-gray-800 border border-white/10 transition text-center font-medium"
-          >
-            View Profile
+            View My Courses
           </Link>
           <Link
             href="/dashboard/achievements"

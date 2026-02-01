@@ -1,22 +1,14 @@
 import Link from "next/link";
-import Navbar from "@/components/ui/Navbar";
-import Footer from "@/components/ui/Footer";
 import { currentUser } from "@/lib/data";
 import { Mail, MapPin, Briefcase, Settings, ChevronRight } from "lucide-react";
 
 export default function ProfilePage() {
-  return (
-    <main className="min-h-screen bg-gray-950 text-gray-100">
-      <Navbar />
-      <ProfileContent />
-      <Footer />
-    </main>
-  );
+  return <ProfileContent />;
 }
 
 function ProfileContent() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-16">
+    <div className="max-w-4xl mx-auto">
       {/* Page Header */}
       <div className="mb-12">
         <h1 className="text-4xl font-bold mb-2">My Profile</h1>
@@ -164,15 +156,6 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* Navigation Back */}
-      <div className="mt-8">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition"
-        >
-          ← Back to Dashboard
-        </Link>
-      </div>
     </div>
   );
 }

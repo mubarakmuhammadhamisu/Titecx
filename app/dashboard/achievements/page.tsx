@@ -1,16 +1,8 @@
 import Link from "next/link";
-import Navbar from "@/components/ui/Navbar";
-import Footer from "@/components/ui/Footer";
 import { Award, Download, Share2, Trophy, Star, Zap } from "lucide-react";
 
 export default function AchievementsPage() {
-  return (
-    <main className="min-h-screen bg-gray-950 text-gray-100">
-      <Navbar />
-      <AchievementsContent />
-      <Footer />
-    </main>
-  );
+  return <AchievementsContent />;
 }
 
 function AchievementsContent() {
@@ -85,7 +77,7 @@ function AchievementsContent() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-16">
+    <div className="max-w-6xl mx-auto">
       {/* Page Header */}
       <div className="mb-12">
         <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">

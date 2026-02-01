@@ -1,22 +1,14 @@
 import Link from "next/link";
-import Navbar from "@/components/ui/Navbar";
-import Footer from "@/components/ui/Footer";
 import { enrolledCourses } from "@/lib/data";
 import { BookOpen, Clock, Star, Filter } from "lucide-react";
 
 export default function MyCoursesPage() {
-  return (
-    <main className="min-h-screen bg-gray-950 text-gray-100">
-      <Navbar />
-      <MyCoursesContent />
-      <Footer />
-    </main>
-  );
+  return <MyCoursesContent />;
 }
 
 function MyCoursesContent() {
   return (
-    <div className="max-w-7xl mx-auto px-4 py-16">
+    <div className="max-w-6xl mx-auto">
       {/* Page Header */}
       <div className="mb-12">
         <h1 className="text-4xl font-bold mb-2">My Courses</h1>
