@@ -1,7 +1,7 @@
 'use client';
 
 import GlowCard from '@/components/AppShell/GlowCard';
-import { CheckCircle2, Circle, BookOpen, Quiz, Award } from 'lucide-react';
+import { CheckCircle2, Circle, BookOpen, Brain, Award } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ProgressTrackerPage({ params }: { params: { id: string } }) {
@@ -166,7 +166,7 @@ export default function ProgressTrackerPage({ params }: { params: { id: string }
 
           <GlowCard className="group cursor-pointer hover:border-purple-500/50 transition">
             <div className="flex items-center gap-3">
-              <Quiz className="text-purple-400/60 group-hover:text-purple-400 transition" size={24} />
+              <Brain className="text-purple-400/60 group-hover:text-purple-400 transition" size={24} />
               <div>
                 <h3 className="font-bold text-white text-sm">Practice Quizzes</h3>
                 <p className="text-gray-400 text-xs">8 quizzes</p>
