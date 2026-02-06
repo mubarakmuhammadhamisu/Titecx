@@ -50,17 +50,17 @@ function Hero() {
           </div>
         </div>
         <div className="relative">
-          <div className="relative aspect-video lg:aspect-square rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+          <div className="relative aspect-video lg:aspect-square rounded-3xl overflow-hidden hadow-2xl border border-white/10">
             <Image
-              src="/hero-learning.jpg"
+              src="/brainAndshelld1.png"
               alt="Learning environment"
               fill
-              className="object-cover"
+              className="object-cover w-full h-full"
               priority
             />
           </div>
           <div className="absolute -bottom-6 -left-6 bg-gray-900/90 backdrop-blur p-4 rounded-2xl border border-white/10 hidden md:block">
-            <p className="text-sm font-semibold">New Course: AI Engineering</p>
+            <p className="text-sm font-semibold">NCourse: AI Engineering</p>
           </div>
         </div>
       </div>
