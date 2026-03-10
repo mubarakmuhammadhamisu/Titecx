@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react'; // Fixed: Suspense is a named import
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { demoUsers } from '@/lib/users';
+import DemoAccounts from '@/components/ui/auth/DemoAcounts';
 
-export default function LoginPage() {
+// 1. THIS FUNCTION HANDLES EVERYTHING (Logic + Design)
+const LoginContent = () => {
   const { login, user, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -19,7 +20,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // If already logged in, go straight to dashboard
   useEffect(() => {
     if (!isLoading && user) router.replace(redirect);
   }, [user, isLoading, redirect, router]);
@@ -41,13 +41,6 @@ export default function LoginPage() {
     }
   }
 
-  // Quick-fill a demo user
-  const fillDemo = (u: typeof demoUsers[0]) => {
-    setEmail(u.email);
-    setPassword(u.password);
-    setError('');
-  };
-
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col items-center justify-center px-4">
       {/* Logo */}
@@ -59,37 +52,11 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold text-white">Welcome back</h1>
         <p className="text-gray-400 text-sm mt-1">Log in to continue learning</p>
 
-        {/* Demo accounts */}
-        <div className="mt-5 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-          <p className="text-xs font-semibold text-indigo-300 mb-3 uppercase tracking-wide">
-            Demo Accounts — click to fill
-          </p>
-          <div className="space-y-2">
-            {demoUsers.map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => fillDemo(u)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-gray-900/60 border border-indigo-500/20 hover:border-indigo-500/50 transition text-left group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                    {u.avatar}
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-200 group-hover:text-white transition">{u.name}</p>
-                    <p className="text-xs text-gray-500">{u.email}</p>
-                  </div>
-                </div>
-                <span className="text-xs text-gray-600 group-hover:text-indigo-400 transition font-mono">{u.password}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Demo accounts - Ensure the prop name setErorr matches your component! */}
+        <DemoAccounts setEmail={setEmail} setPassword={setPassword} setErorr={setError} />
 
         {/* Form */}
         <form onSubmit={handleLogin} className="mt-6 space-y-4">
-          {/* Email */}
           <div>
             <label className="text-sm font-medium text-gray-300">Email</label>
             <input
@@ -101,11 +68,10 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Password */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-sm font-medium text-gray-300">Password</label>
-              <Link href="/reset-password" className="text-xs text-indigo-400 hover:text-indigo-300 transition">
+              <Link href="/reset-password" title="Reset Password" className="text-xs text-indigo-400 hover:text-indigo-300 transition">
                 Forgot password?
               </Link>
             </div>
@@ -127,7 +93,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
               <AlertCircle size={15} className="flex-shrink-0" />
@@ -135,7 +100,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
@@ -153,5 +117,23 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+};
+
+// 2. THIS IS THE MAIN EXPORT (The Wrapper)
+export default function LoginPage() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 animate-pulse" />
+            <p className="text-gray-400 text-sm">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }

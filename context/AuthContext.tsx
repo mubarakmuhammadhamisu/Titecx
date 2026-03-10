@@ -38,7 +38,7 @@ function buildEnrolledCourses(user: SafeUser): EnrolledCourse[] {
       if (!schema) return null;
       const progress = user.enrolledProgress[slug] ?? 0;
       return {
-        id: schema.id,
+        id: Number(schema.id),
         slug: schema.slug,
         title: schema.title,
         instructor: schema.instructor,
