@@ -32,7 +32,7 @@ const PAYMENT_METHODS = [
 
 export default function CheckoutPage({ params }: { params: { slug: string } }) {
   const unwrapped = React.use(params as any) as { slug: string };
-  const { user } = useAuth();
+  const { user, enroll } = useAuth();
   const router = useRouter();
 
   const course = useMemo(
@@ -96,6 +96,7 @@ export default function CheckoutPage({ params }: { params: { slug: string } }) {
     setProcessing(true);
     // TODO: call Supabase / payment gateway here
     await new Promise((r) => setTimeout(r, 1800));
+    enroll(unwrapped.slug); // persist enrollment to localStorage
     setProcessing(false);
     setDone(true);
   };
