@@ -1,104 +1,200 @@
 'use client';
 
-import GlowCard from '@/components/AppShell/GlowCard';
-import { BookOpen, Clock, Users, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
+import GlowCard from '@/components/AppShell/GlowCard';
+import { BookOpen, Clock, Users, ChevronRight, Play, Search } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { courseSchemas } from '@/lib/Course';
+
+type Filter = 'all' | 'in-progress' | 'completed';
+const ITEMS_PER_PAGE = 6;
 
 export default function MyCoursesPage() {
-  const courses = [
-    { id: 1, title: 'Advanced Python Programming', instructor: 'John Doe', progress: 75, duration: '24h', students: 1250 },
-    { id: 2, title: 'Machine Learning Fundamentals', instructor: 'Jane Smith', progress: 45, duration: '32h', students: 890 },
-    { id: 3, title: 'Web Development with React', instructor: 'Mike Johnson', progress: 60, duration: '28h', students: 2100 },
-    { id: 4, title: 'Data Science Masterclass', instructor: 'Sarah Lee', progress: 30, duration: '40h', students: 650 },
-    { id: 5, title: 'Cloud Computing with AWS', instructor: 'David Brown', progress: 85, duration: '20h', students: 1450 },
-    { id: 6, title: 'Mobile App Development', instructor: 'Lisa Wong', progress: 55, duration: '36h', students: 920 },
+  const { user, enrolledCourses } = useAuth();
+  const [filter, setFilter] = useState<Filter>('all');
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+
+  if (!user) return null;
+
+  // Enrolled courses filtered
+  const filteredEnrolled = enrolledCourses.filter((c) => {
+    const matchFilter =
+      filter === 'all' ||
+      (filter === 'in-progress' && c.progress < 100) ||
+      (filter === 'completed' && c.progress === 100);
+    const matchSearch = c.title.toLowerCase().includes(search.toLowerCase());
+    return matchFilter && matchSearch;
+  });
+
+  const paginated = filteredEnrolled.slice(0, page * ITEMS_PER_PAGE);
+  const hasMore = paginated.length < filteredEnrolled.length;
+
+  // Available courses = full catalogue minus what user is enrolled in
+  const enrolledSlugs = new Set(enrolledCourses.map((c) => c.slug));
+  const availableCourses = courseSchemas.filter((c) => !enrolledSlugs.has(c.slug));
+
+  const filters: { label: string; value: Filter }[] = [
+    { label: 'All', value: 'all' },
+    { label: 'In Progress', value: 'in-progress' },
+    { label: 'Completed', value: 'completed' },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Hero Card */}
+    <div className="space-y-10">
+      {/* Hero */}
       <GlowCard hero>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-indigo-500/50">
-              M
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">My Courses</h1>
-              <p className="text-gray-300 text-sm">You are enrolled in {courses.length} courses</p>
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-xl text-white shadow-lg shadow-indigo-500/50">
+            {user.avatar}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">My Courses</h1>
+            <p className="text-gray-300 text-sm mt-0.5">
+              {enrolledCourses.length} enrolled · {enrolledCourses.filter((c) => c.progress === 100).length} completed
+            </p>
           </div>
         </div>
       </GlowCard>
 
-      {/* Filter Bar */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {['All', 'In Progress', 'Completed', 'Archived'].map((filter) => (
-          <button
-            key={filter}
-            className="px-4 py-2 rounded-lg whitespace-nowrap bg-gray-900 border border-indigo-500/30 hover:border-indigo-500/60 text-gray-300 hover:text-white transition text-sm font-medium"
-          >
-            {filter}
-          </button>
-        ))}
-      </div>
+      {/* ── SECTION 1: Enrolled ── */}
+      <section>
+        <h2 className="text-xl font-bold text-white mb-4">My Enrolled Courses</h2>
+        <div className="flex flex-col sm:flex-row gap-3 mb-5">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search your courses..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-gray-900 border border-indigo-500/20 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 transition"
+            />
+          </div>
+          <div className="flex gap-2">
+            {filters.map(({ label, value }) => (
+              <button
+                key={value}
+                onClick={() => { setFilter(value); setPage(1); }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition border ${
+                  filter === value
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-gray-900 border-indigo-500/20 text-gray-400 hover:text-white hover:border-indigo-500/40'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      {/* Courses Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {courses.map((course) => (
-          <Link key={course.id} href={`/dashboard/progress/${course.id}`}>
-            <GlowCard className="h-full group cursor-pointer hover:border-purple-500/50 transition">
-              {/* Course Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition">{course.title}</h3>
-                  <p className="text-gray-400 text-sm mt-1">{course.instructor}</p>
-                </div>
-                <ChevronRight className="text-indigo-400/40 group-hover:text-indigo-400 group-hover:translate-x-1 transition mt-1 flex-shrink-0" size={20} />
+        {filteredEnrolled.length === 0 ? (
+          <GlowCard className="text-center py-14">
+            <BookOpen className="mx-auto mb-4 text-gray-600" size={44} />
+            <h3 className="text-lg font-semibold text-gray-300 mb-2">No courses found</h3>
+            <p className="text-gray-500 text-sm">
+              {search ? 'Try a different search term.' : 'Browse the catalogue below to enroll.'}
+            </p>
+          </GlowCard>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginated.map((course) => (
+                <Link
+                  key={course.id}
+                  href={
+                    course.nextLessonId
+                      ? `/dashboard/courses/${course.slug}/view/${course.nextLessonId}`
+                      : `/dashboard/courses/${course.slug}`
+                  }
+                >
+                  <GlowCard className="h-full group cursor-pointer hover:border-purple-500/50 transition">
+                    <div className={`h-36 rounded-xl overflow-hidden mb-4 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
+                      <Image src={course.thumbnail} alt={course.title} fill className="object-cover" />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition bg-black/20">
+                        <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                          <Play size={18} className="text-white ml-0.5" />
+                        </div>
+                      </div>
+                      {course.progress === 100 && (
+                        <div className="absolute top-2 right-2 bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">✓ Completed</div>
+                      )}
+                    </div>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <h3 className="font-bold text-white group-hover:text-indigo-300 transition text-sm leading-snug">{course.title}</h3>
+                        <p className="text-gray-400 text-xs mt-0.5">{course.instructor}</p>
+                      </div>
+                      <ChevronRight className="text-indigo-400/30 group-hover:text-indigo-400 group-hover:translate-x-1 transition flex-shrink-0" size={18} />
+                    </div>
+                    <div className="flex gap-3 mb-3 text-xs text-gray-400">
+                      <span className="flex items-center gap-1"><Clock size={12} className="text-indigo-400/60" />{course.duration}</span>
+                      <span className="flex items-center gap-1"><Users size={12} className="text-purple-400/60" />{course.students.toLocaleString()}</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-400">Progress</span>
+                        <span className={`font-semibold ${course.progress === 100 ? 'text-emerald-400' : 'text-indigo-400'}`}>{course.progress}%</span>
+                      </div>
+                      <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${course.progress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
+                          style={{ width: `${course.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </GlowCard>
+                </Link>
+              ))}
+            </div>
+            {hasMore && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  className="px-8 py-2.5 rounded-xl bg-gray-900 border border-indigo-500/30 hover:border-indigo-500/60 text-white text-sm font-medium transition"
+                >
+                  Load More ({filteredEnrolled.length - paginated.length} remaining)
+                </button>
               </div>
+            )}
+          </>
+        )}
+      </section>
 
-              {/* Course Meta */}
-              <div className="flex gap-4 mb-4 text-xs text-gray-400">
-                <div className="flex items-center gap-1">
-                  <Clock size={14} className="text-indigo-400/60" />
-                  {course.duration}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Users size={14} className="text-purple-400/60" />
-                  {course.students}
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Progress</span>
-                  <span className="text-indigo-400 font-medium">{course.progress}%</span>
-                </div>
-                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 shadow-lg shadow-indigo-500/50 transition-all duration-300"
-                    style={{ width: `${course.progress}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Status Badge */}
-              <div className="mt-4 pt-4 border-t border-indigo-500/10">
-                <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                  course.progress === 100
-                    ? 'bg-green-500/20 text-green-400'
-                    : course.progress >= 50
-                    ? 'bg-indigo-500/20 text-indigo-400'
-                    : 'bg-purple-500/20 text-purple-400'
-                }`}>
-                  {course.progress === 100 ? 'Completed' : 'In Progress'}
-                </span>
-              </div>
-            </GlowCard>
-          </Link>
-        ))}
-      </div>
+      {/* ── SECTION 2: Available to Enroll ── */}
+      {availableCourses.length > 0 && (
+        <section>
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-white">Available Courses</h2>
+            <p className="text-gray-400 text-sm mt-0.5">Courses you haven't enrolled in yet</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {availableCourses.map((course) => (
+              <Link key={course.id} href={`/courses/${course.slug}`}>
+                <GlowCard className="h-full group cursor-pointer hover:border-indigo-500/40 transition">
+                  <div className={`h-36 rounded-xl overflow-hidden mb-4 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
+                    <Image src={course.thumbnail} alt={course.title} fill className="object-cover" />
+                    <div className="absolute top-2 left-2 bg-gray-900/70 backdrop-blur text-xs text-gray-200 px-2 py-0.5 rounded-full border border-white/10">{course.level}</div>
+                  </div>
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1 min-w-0 pr-2">
+                      <h3 className="font-bold text-white group-hover:text-indigo-300 transition text-sm leading-snug">{course.title}</h3>
+                      <p className="text-gray-400 text-xs mt-0.5 line-clamp-2">{course.shortDescription}</p>
+                    </div>
+                    <ChevronRight className="text-indigo-400/30 group-hover:text-indigo-400 group-hover:translate-x-1 transition flex-shrink-0 mt-0.5" size={18} />
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-indigo-500/10">
+                    <span className="text-xs text-gray-400 flex items-center gap-1"><Clock size={12} />{course.duration}</span>
+                    <span className="text-sm font-bold text-indigo-400">{course.price}</span>
+                  </div>
+                </GlowCard>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

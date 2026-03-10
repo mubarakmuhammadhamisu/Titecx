@@ -34,7 +34,7 @@ export default function SignupPage() {
       <form onSubmit={handleSignup} className="space-y-4">
         <AuthInput
           label="Full Name"
-          placeholder="Mubarak Muhammad"
+          placeholder="Your full name"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
