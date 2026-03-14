@@ -27,12 +27,16 @@ export default function Navbar() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-6 text-sm text-gray-300">
-          <Link href="/courses" className="hover:text-white transition">Courses</Link>
-          <Link href="/pricing" className="hover:text-white transition">Pricing</Link>
-          <Link href="/about" className="hover:text-white transition">About</Link>
+          {/* Public links — hidden once logged in */}
+          {!user && (
+            <>
+              <Link href="/courses" className="hover:text-white transition">Courses</Link>
+              <Link href="/about" className="hover:text-white transition">About</Link>
+            </>
+          )}
 
           {user ? (
-            /* Logged in — show dashboard button */
+            /* Logged in — show dashboard button only */
             <Link
               href="/dashboard"
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold shadow-lg hover:opacity-90 transition"

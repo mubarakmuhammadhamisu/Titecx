@@ -1,65 +1,26 @@
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
 export type LessonType = 'video' | 'reading' | 'quiz';
 export type LessonStatus = 'completed' | 'current' | 'locked';
 export type FilterStatus = 'all' | 'in-progress' | 'completed';
 
-export interface VideoContent {
-  videoUrl: string;
-  duration: string;
-  topics?: string[];
-}
-
-export interface ReadingContent {
-  markdownBody: string;
-  topics?: string[];
-}
-
+export interface VideoContent { videoUrl: string; duration: string; topics?: string[]; }
+export interface ReadingContent { markdownBody: string; topics?: string[]; }
 export interface QuizContent {
-  questions: Array<{
-    id: string;
-    question: string;
-    options: string[];
-    correctAnswer: number;
-  }>;
+  questions: Array<{ id: string; question: string; options: string[]; correctAnswer: number }>;
   topics?: string[];
 }
 
-export interface Lesson {
-  id: string;
-  title: string;
-  type: LessonType;
-  status: LessonStatus;
-  content: VideoContent | ReadingContent | QuizContent;
-}
-
-export interface Module {
-  id: string;
-  title: string;
-  lessons: Lesson[];
-}
+export interface Lesson { id: string; title: string; type: LessonType; status: LessonStatus; content: VideoContent | ReadingContent | QuizContent; }
+export interface Module { id: string; title: string; lessons: Lesson[]; }
 
 export interface CourseSchema {
-  id: string;
-  slug: string;
-  title: string;
-  shortDescription: string;
-  description: string;
-  level: string;
-  duration: string;
-  price: string;
-  instructor: string;
-  thumbnail: string;
-  gradientFrom: string;
-  gradientTo: string;
-  features: string[];
-  curriculum: string[];
-  modules: Module[];
+  id: string; slug: string; title: string; shortDescription: string; description: string;
+  level: string; duration: string; price: string; instructor: string;
+  thumbnail: string; gradientFrom: string; gradientTo: string;
+  features: string[]; curriculum: string[]; modules: Module[];
 }
 
 export interface EnrolledCourse {
-  id: number;
+  id: string;           // UUID from enrollments table
   slug: string;
   title: string;
   instructor: string;
@@ -70,25 +31,11 @@ export interface EnrolledCourse {
   gradientFrom: string;
   gradientTo: string;
   nextLessonId?: string;
+  completedAt?: string | null;
+  enrolledAt?: string;
 }
 
-// ─────────────────────────────────────────────
-// Enrolled courses (My Courses)
-// ─────────────────────────────────────────────
-export const enrolledCourses: EnrolledCourse[] = [
-  { id: 1, slug: 'nextjs-for-beginners-full', title: 'Next.js for Beginners', instructor: 'Learnify Team', progress: 75, duration: '6h', students: 3200, thumbnail: '/courses/nextjs.svg', gradientFrom: 'from-indigo-500/20', gradientTo: 'to-purple-500/20', nextLessonId: 'lesson_1_1' },
-  { id: 2, slug: 'react-fundamentals', title: 'React Fundamentals', instructor: 'Learnify Team', progress: 40, duration: '8h', students: 2800, thumbnail: '/courses/react.svg', gradientFrom: 'from-sky-500/20', gradientTo: 'to-indigo-500/20', nextLessonId: 'lesson_r1_1' },
-  { id: 3, slug: 'fullstack-web-development', title: 'Full-Stack Web Development', instructor: 'Learnify Team', progress: 60, duration: '18h', students: 2100, thumbnail: '/courses/webdev.svg', gradientFrom: 'from-purple-500/20', gradientTo: 'to-pink-500/20' },
-  { id: 4, slug: 'advanced-python', title: 'Advanced Python Programming', instructor: 'Learnify Team', progress: 100, duration: '24h', students: 1250, thumbnail: '/courses/python.svg', gradientFrom: 'from-amber-500/20', gradientTo: 'to-red-500/20' },
-  { id: 5, slug: 'machine-learning', title: 'Machine Learning Fundamentals', instructor: 'Learnify Team', progress: 30, duration: '32h', students: 890, thumbnail: '/courses/ml.svg', gradientFrom: 'from-emerald-500/20', gradientTo: 'to-sky-500/20' },
-  { id: 6, slug: 'cloud-aws', title: 'Cloud Computing with AWS', instructor: 'Learnify Team', progress: 85, duration: '20h', students: 1450, thumbnail: '/courses/aws.svg', gradientFrom: 'from-orange-500/20', gradientTo: 'to-yellow-500/20' },
-  { id: 7, slug: 'mobile-app-dev', title: 'Mobile App Development', instructor: 'Learnify Team', progress: 55, duration: '36h', students: 920, thumbnail: '/courses/mobile.svg', gradientFrom: 'from-teal-500/20', gradientTo: 'to-indigo-500/20' },
-  { id: 8, slug: 'data-science', title: 'Data Science Masterclass', instructor: 'Learnify Team', progress: 100, duration: '40h', students: 650, thumbnail: '/courses/datascience.svg', gradientFrom: 'from-cyan-500/20', gradientTo: 'to-emerald-500/20' },
-];
-
-// ─────────────────────────────────────────────
-// All Courses (catalogue)
-// ─────────────────────────────────────────────
+// ─── Course catalogue (local static data until admin dashboard exists) ────────
 export const courseSchemas: CourseSchema[] = [
   {
     id: 'course_nextjs_001', slug: 'nextjs-for-beginners-full', title: 'Next.js for Beginners',
@@ -147,5 +94,4 @@ export const courseSchemas: CourseSchema[] = [
   { id: 'course_ds_001', slug: 'data-science', title: 'Data Science Masterclass', shortDescription: 'Become a data scientist with Python, Pandas, and ML.', description: 'A comprehensive journey through data analysis, visualisation, and machine learning.', level: 'Advanced', duration: '40 hours', price: 'N24,999', instructor: 'Learnify Team', thumbnail: '/courses/datascience.svg', gradientFrom: 'from-cyan-500/20', gradientTo: 'to-emerald-500/20', features: ['Pandas & NumPy', 'Data visualisation', 'ML pipelines'], curriculum: ['Python for Data Science', 'Exploratory Data Analysis', 'Data Visualisation', 'Machine Learning', 'Capstone Project'], modules: [] },
 ];
 
-// Convenience alias
 export const courses = courseSchemas;

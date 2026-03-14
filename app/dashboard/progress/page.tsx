@@ -18,8 +18,10 @@ export default function ProgressPage() {
     <div className="space-y-8">
       <GlowCard hero>
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-xl text-white shadow-lg shadow-indigo-500/50">
-            {user.avatar}
+          <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-xl text-white shadow-lg shadow-indigo-500/50 flex-shrink-0">
+            {user.avatarUrl ? (
+              <Image src={user.avatarUrl} alt={user.name} width={56} height={56} className="w-full h-full object-cover" />
+            ) : user.avatar}
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">Progress Overview</h1>
@@ -59,11 +61,11 @@ export default function ProgressPage() {
         <h2 className="text-xl font-bold text-white mb-4">All Courses Progress</h2>
         <div className="space-y-3">
           {enrolledCourses.map((course) => (
-            <Link key={course.id} href={`/dashboard/progress/${course.id}`}>
+            <Link key={course.slug} href={`/dashboard/progress/${course.slug}`}>
               <GlowCard className="group cursor-pointer hover:border-indigo-500/50 transition">
                 <div className="flex items-center gap-4">
                   <div className={`w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
-                    <Image src={course.thumbnail} alt={course.title} fill className="object-cover" />
+                    <Image src={course.thumbnail} alt={course.title} fill sizes="64px" className="object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1.5">

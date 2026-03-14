@@ -4,7 +4,7 @@
 // Preserves the full URL they were trying to reach and passes it to the login page.
 // After login the user is redirected back to exactly where they wanted to go.
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 

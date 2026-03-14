@@ -28,7 +28,7 @@ export default function CoursesPage() {
             >
               {/* Thumbnail */}
               <div className={`h-44 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative overflow-hidden`}>
-                <Image src={course.thumbnail} alt={course.title} fill className="object-cover" />
+                <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover" />
                 <div className="absolute top-3 left-3 bg-gray-900/70 backdrop-blur text-xs text-gray-200 px-2 py-0.5 rounded-full border border-white/10">
                   {course.level}
                 </div>

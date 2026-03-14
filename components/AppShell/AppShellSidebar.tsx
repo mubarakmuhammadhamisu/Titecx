@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,7 +46,7 @@ export default function AppShellSidebar() {
       <AnimatePresence>
         {isMobile && isOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setIsOpen(false)} className="fixed inset-0 bg-black/60 z-30" />
+            onClick={() => setIsOpen(false)} className="fixed inset-0 bg-black/60 z-30" aria-hidden="true" />
         )}
       </AnimatePresence>
 
@@ -94,8 +95,18 @@ export default function AppShellSidebar() {
         <div className="pt-4 mt-4 border-t border-indigo-500/10 space-y-3">
           {user && (
             <div className="flex items-center gap-3 px-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                {user.avatar}
+              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white">
+                {user.avatarUrl ? (
+                  <Image
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  user.avatar
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-white truncate">{user.name.split(' ')[0]}</p>

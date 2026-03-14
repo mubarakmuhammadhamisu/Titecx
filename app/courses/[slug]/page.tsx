@@ -30,7 +30,7 @@ export default async function CourseDetailsPage({ params }: PageProps) {
             <p className="mt-2 text-sm text-gray-400">by {course.instructor}</p>
           </div>
           <div className={`w-full md:w-80 rounded-2xl overflow-hidden bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative aspect-video md:aspect-square flex-shrink-0 border border-white/10`}>
-            <Image src={course.thumbnail} alt={course.title} fill className="object-cover" />
+            <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 768px) 100vw, 320px" className="object-cover" />
           </div>
         </div>
       </section>
@@ -60,7 +60,7 @@ export default async function CourseDetailsPage({ params }: PageProps) {
 
         {/* What you'll learn */}
         <div>
-          <h2 className="text-2xl font-bold mb-4">What You'll Learn</h2>
+          <h2 className="text-2xl font-bold mb-4">What You&apos;ll Learn</h2>
           <ul className="grid sm:grid-cols-2 gap-3">
             {course.features.map((f) => (
               <li key={f} className="p-3 rounded-xl bg-gray-900 border border-white/10 text-sm text-gray-300 flex items-start gap-2">
