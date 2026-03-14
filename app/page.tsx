@@ -22,8 +22,8 @@ export default function HomePage() {
 ========================= */
 function Hero() {
   return (
-    <section className="relative overflow-hidden pt-20 pb-12 lg:pt-32 lg:pb-24">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 via-purple-600/10 to-transparent" />
+    <section className="relative overflow-hidden  pt-20  pb-12 lg:pt-14 lg:pb-24">
+      <div className="absolute inset-0 bg-linear-to-br from-indigo-600/20 via-purple-600/10 to-transparent" />
       <div className="relative max-w-7xl mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center">
         <div className="text-center lg:text-left">
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight">
@@ -36,7 +36,7 @@ function Hero() {
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
             <Link
-              href="/dashboard"
+              href="/courses"
               className="px-8 py-4 rounded-2xl bg-white text-gray-900 font-bold hover:bg-gray-100 transition-colors"
             >
               Browse Courses
@@ -50,7 +50,7 @@ function Hero() {
           </div>
         </div>
         <div className="relative">
-          <div className="relative aspect-video lg:aspect-square rounded-3xl overflow-hidden hadow-2xl border border-white/10">
+          <div className="relative aspect-video lg:aspect-square rounded-3xl overflow-hidden shadow-2xl border border-white/10">
             <Image
               src="/brainAndshelld1.png"
               alt="Learning environment"
@@ -60,7 +60,7 @@ function Hero() {
             />
           </div>
           <div className="absolute -bottom-6 -left-6 bg-gray-900/90 backdrop-blur p-4 rounded-2xl border border-white/10 hidden md:block">
-            <p className="text-sm font-semibold">NCourse: AI Engineering</p>
+            <p className="text-sm font-semibold">Course: AI Engineering</p>
           </div>
         </div>
       </div>
