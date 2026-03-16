@@ -122,7 +122,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
                 {/* Progress Bar */}
                 <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300"
+                    className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-300"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
@@ -164,7 +164,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
                                   : 'bg-gray-800/50 border-gray-700/50 hover:border-indigo-500/30'
                             }`}
                           >
-                            <div className="flex-shrink-0">
+                            <div className="shrink-0">
                               {lesson.type === 'video' ? (
                                 <Play
                                   size={16}
@@ -204,7 +204,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
                             </div>
                             <ArrowRight
                               size={16}
-                              className="flex-shrink-0 text-gray-600 group-hover:text-indigo-400 transition opacity-0 group-hover:opacity-100"
+                              className="shrink-0 text-gray-600 group-hover:text-indigo-400 transition opacity-0 group-hover:opacity-100"
                             />
                           </Link>
                         )}
@@ -230,7 +230,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
         >
           <Link
             href={`/dashboard/courses/${slug}/view/${firstLesson.id}`}
-            className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg transition shadow-lg shadow-indigo-500/20"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg transition shadow-lg shadow-indigo-500/20"
           >
             <Play size={18} />
             Start Learning

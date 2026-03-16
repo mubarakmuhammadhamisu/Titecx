@@ -9,7 +9,7 @@ export default function DashboardLoading() {
       {/* Hero card skeleton */}
       <div className="rounded-3xl bg-gray-900 border border-indigo-500/10 p-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gray-800 flex-shrink-0" />
+          <div className="w-16 h-16 rounded-full bg-gray-800 shrink-0" />
           <div className="space-y-2 flex-1">
             <div className="h-5 bg-gray-800 rounded-lg w-48" />
             <div className="h-3 bg-gray-800 rounded-lg w-32" />

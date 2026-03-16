@@ -56,11 +56,11 @@ export default function AppShellSidebar() {
         transition={{ type: 'spring', damping: 20, stiffness: 300 }}
         className="fixed left-4 top-4 bottom-4 w-64 z-40 md:relative md:static md:left-auto md:top-auto md:bottom-auto md:w-64
           bg-gray-950/60 backdrop-blur-md rounded-3xl border border-indigo-500/20
-          shadow-[0_0_40px_rgba(99,102,241,0.12)] p-6 overflow-y-auto flex flex-col flex-shrink-0"
+          shadow-[0_0_40px_rgba(99,102,241,0.12)] p-6 overflow-y-auto flex flex-col shrink-0"
       >
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-3 mb-8 group" onClick={() => isMobile && setIsOpen(false)}>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/40 group-hover:shadow-indigo-500/60 transition text-sm">
+          <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/40 group-hover:shadow-indigo-500/60 transition text-sm">
             L
           </div>
           <span className="text-lg font-bold text-white tracking-tight">Learnify</span>
@@ -79,7 +79,7 @@ export default function AppShellSidebar() {
                 >
                   {active && (
                     <motion.div layoutId="sidebar-active"
-                      className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 -z-10"
+                      className="absolute inset-0 rounded-2xl bg-linear-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 -z-10"
                       transition={{ type: 'spring', damping: 22 }} />
                   )}
                   <Icon size={18} className={active ? 'text-indigo-400' : ''} />
@@ -95,7 +95,7 @@ export default function AppShellSidebar() {
         <div className="pt-4 mt-4 border-t border-indigo-500/10 space-y-3">
           {user && (
             <div className="flex items-center gap-3 px-2">
-              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white">
+              <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white">
                 {user.avatarUrl ? (
                   <Image
                     src={user.avatarUrl}

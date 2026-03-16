@@ -192,10 +192,10 @@ function ResetPasswordContent() {
           </div>
           {pwError && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-              <AlertCircle size={15} className="flex-shrink-0" />{pwError}
+              <AlertCircle size={15} className="shrink-0" />{pwError}
             </div>
           )}
-          <button type="submit" disabled={pwLoading} className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm transition disabled:opacity-60">
+          <button type="submit" disabled={pwLoading} className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm transition disabled:opacity-60">
             {pwLoading ? 'Updating...' : 'Update Password'}
           </button>
         </form>
@@ -239,10 +239,10 @@ function ResetPasswordContent() {
         </div>
         {emailError && (
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-            <AlertCircle size={15} className="flex-shrink-0" />{emailError}
+            <AlertCircle size={15} className="shrink-0" />{emailError}
           </div>
         )}
-        <button type="submit" disabled={emailLoading} className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm transition disabled:opacity-60">
+        <button type="submit" disabled={emailLoading} className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm transition disabled:opacity-60">
           {emailLoading ? 'Sending...' : 'Send Reset Link'}
         </button>
       </form>
@@ -257,7 +257,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 animate-pulse" />
+        <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 animate-pulse" />
       </div>
     }>
       <ResetPasswordContent />

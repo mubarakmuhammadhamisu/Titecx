@@ -84,7 +84,7 @@ export default function MobileMenu() {
                   <Link
                     href="/register"
                     onClick={close}
-                    className="mt-1 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-2.5 text-center text-white font-semibold"
+                    className="mt-1 rounded-xl bg-linear-to-r from-indigo-500 to-purple-500 px-4 py-2.5 text-center text-white font-semibold"
                   >
                     Get Started
                   </Link>

@@ -41,7 +41,7 @@ function DeleteModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 space-y-2 text-sm text-red-300">
           <p className="font-semibold text-red-200 mb-1">The following will be permanently deleted:</p>
           {['Your account and login credentials', 'All enrolled courses and progress', 'All lesson completions', 'All payment records', 'Your profile, avatar, and bio'].map((item) => (
-            <div key={item} className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />{item}</div>
+            <div key={item} className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />{item}</div>
           ))}
         </div>
         <div>
@@ -143,7 +143,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-4">
               {/* Avatar with upload button */}
               <div className="relative group">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-indigo-500/50 overflow-hidden">
+                <div className="w-16 h-16 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-indigo-500/50 overflow-hidden">
                   {user.avatarUrl
                     ? <Image src={user.avatarUrl} alt="Avatar" fill sizes="64px" className="object-cover" />
                     : user.avatar}
@@ -189,7 +189,7 @@ export default function ProfilePage() {
                   <div>
                     <label className="text-xs text-gray-400 font-medium">Email</label>
                     <div className="mt-1.5 px-4 py-3 rounded-lg bg-gray-800 border border-indigo-500/10 text-gray-300 text-sm flex items-center gap-2">
-                      <Mail size={14} className="text-indigo-400 flex-shrink-0" />{user.email}
+                      <Mail size={14} className="text-indigo-400 shrink-0" />{user.email}
                     </div>
                   </div>
                   <div>
@@ -205,7 +205,7 @@ export default function ProfilePage() {
                     ? <input type="text" value={editLocation} placeholder="City, Country" onChange={(e) => setEditLocation(e.target.value)}
                         className="w-full mt-1.5 px-4 py-3 rounded-lg bg-gray-800 border border-indigo-500/40 focus:border-indigo-500/70 text-white text-sm focus:outline-none transition" />
                     : <div className="mt-1.5 px-4 py-3 rounded-lg bg-gray-800 border border-indigo-500/10 text-gray-300 text-sm flex items-center gap-2">
-                        <MapPin size={14} className="text-purple-400 flex-shrink-0" />{user.location || 'Not set'}
+                        <MapPin size={14} className="text-purple-400 shrink-0" />{user.location || 'Not set'}
                       </div>
                   }
                 </div>

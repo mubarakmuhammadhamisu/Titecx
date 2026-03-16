@@ -68,14 +68,14 @@ export default function CurriculumSidebar({
                         }`}
                       >
                         {isDone
-                          ? <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" />
-                          : <Circle size={15} className={`flex-shrink-0 ${isActive ? 'text-indigo-400' : 'text-gray-600'}`} />
+                          ? <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                          : <Circle size={15} className={`shrink-0 ${isActive ? 'text-indigo-400' : 'text-gray-600'}`} />
                         }
-                        {lesson.type === 'video' && <Video size={13} className="text-indigo-400 flex-shrink-0" />}
-                        {lesson.type === 'reading' && <BookOpen size={13} className="text-purple-400 flex-shrink-0" />}
-                        {lesson.type === 'quiz' && <Brain size={13} className="text-pink-400 flex-shrink-0" />}
+                        {lesson.type === 'video' && <Video size={13} className="text-indigo-400 shrink-0" />}
+                        {lesson.type === 'reading' && <BookOpen size={13} className="text-purple-400 shrink-0" />}
+                        {lesson.type === 'quiz' && <Brain size={13} className="text-pink-400 shrink-0" />}
                         <span className="flex-1 truncate">{lesson.title}</span>
-                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" />}
+                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />}
                       </Link>
                     );
                   })}

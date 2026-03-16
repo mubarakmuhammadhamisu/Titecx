@@ -47,7 +47,7 @@ export default function MyCoursesPage() {
       {/* Hero */}
       <GlowCard hero>
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-xl text-white shadow-lg shadow-indigo-500/50 flex-shrink-0">
+          <div className="w-14 h-14 rounded-full overflow-hidden bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-xl text-white shadow-lg shadow-indigo-500/50 shrink-0">
             {user.avatarUrl ? (
               <Image src={user.avatarUrl} alt={user.name} width={56} height={56} className="w-full h-full object-cover" />
             ) : user.avatar}
@@ -113,7 +113,7 @@ export default function MyCoursesPage() {
                   }
                 >
                   <GlowCard className="h-full group cursor-pointer hover:border-purple-500/50 transition">
-                    <div className={`h-36 rounded-xl overflow-hidden mb-4 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
+                    <div className={`h-36 rounded-xl overflow-hidden mb-4 bg-linear-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
                       <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 768px) calc(100vw - 3rem), (max-width: 1280px) calc(50vw - 3rem), 33vw" className="object-cover" />
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition bg-black/20">
                         <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
@@ -129,7 +129,7 @@ export default function MyCoursesPage() {
                         <h3 className="font-bold text-white group-hover:text-indigo-300 transition text-sm leading-snug">{course.title}</h3>
                         <p className="text-gray-400 text-xs mt-0.5">{course.instructor}</p>
                       </div>
-                      <ChevronRight className="text-indigo-400/30 group-hover:text-indigo-400 group-hover:translate-x-1 transition flex-shrink-0" size={18} />
+                      <ChevronRight className="text-indigo-400/30 group-hover:text-indigo-400 group-hover:translate-x-1 transition shrink-0" size={18} />
                     </div>
                     <div className="flex gap-3 mb-3 text-xs text-gray-400">
                       <span className="flex items-center gap-1"><Clock size={12} className="text-indigo-400/60" />{course.duration}</span>
@@ -146,7 +146,7 @@ export default function MyCoursesPage() {
                       </div>
                       <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all ${course.progress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
+                          className={`h-full rounded-full transition-all ${course.progress === 100 ? 'bg-emerald-500' : 'bg-linear-to-r from-indigo-500 to-purple-500'}`}
                           style={{ width: `${course.progress}%` }}
                         />
                       </div>
@@ -180,7 +180,7 @@ export default function MyCoursesPage() {
             {availableCourses.map((course) => (
               <Link key={course.slug} href={`/courses/${course.slug}`}>
                 <GlowCard className="h-full group cursor-pointer hover:border-indigo-500/40 transition">
-                  <div className={`h-36 rounded-xl overflow-hidden mb-4 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
+                  <div className={`h-36 rounded-xl overflow-hidden mb-4 bg-linear-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
                     <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 768px) calc(100vw - 3rem), (max-width: 1280px) calc(50vw - 3rem), 33vw" className="object-cover" />
                     <div className="absolute top-2 left-2 bg-gray-900/70 backdrop-blur text-xs text-gray-200 px-2 py-0.5 rounded-full border border-white/10">{course.level}</div>
                   </div>
@@ -189,7 +189,7 @@ export default function MyCoursesPage() {
                       <h3 className="font-bold text-white group-hover:text-indigo-300 transition text-sm leading-snug">{course.title}</h3>
                       <p className="text-gray-400 text-xs mt-0.5 line-clamp-2">{course.shortDescription}</p>
                     </div>
-                    <ChevronRight className="text-indigo-400/30 group-hover:text-indigo-400 group-hover:translate-x-1 transition flex-shrink-0 mt-0.5" size={18} />
+                    <ChevronRight className="text-indigo-400/30 group-hover:text-indigo-400 group-hover:translate-x-1 transition shrink-0 mt-0.5" size={18} />
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-indigo-500/10">
                     <span className="text-xs text-gray-400 flex items-center gap-1"><Clock size={12} />{course.duration}</span>

@@ -78,7 +78,7 @@ export default function ProgressTrackerPage({
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div
-              className={`w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br ${enrolledCourse.gradientFrom} ${enrolledCourse.gradientTo} relative`}
+              className={`w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-linear-to-br ${enrolledCourse.gradientFrom} ${enrolledCourse.gradientTo} relative`}
             >
               <Image
                 src={enrolledCourse.thumbnail}
@@ -162,7 +162,7 @@ export default function ProgressTrackerPage({
           </p>
           <div className="mt-2 h-2 bg-gray-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+              className="h-full bg-linear-to-r from-indigo-500 to-purple-500"
               style={{
                 width: modules.length
                   ? `${(completedModules / modules.length) * 100}%`
@@ -202,12 +202,12 @@ export default function ProgressTrackerPage({
                 <div className="flex items-start gap-4">
                   {module.completed ? (
                     <CheckCircle2
-                      className="text-emerald-500 flex-shrink-0 mt-0.5"
+                      className="text-emerald-500 shrink-0 mt-0.5"
                       size={22}
                     />
                   ) : (
                     <Circle
-                      className="text-gray-600 flex-shrink-0 mt-0.5"
+                      className="text-gray-600 shrink-0 mt-0.5"
                       size={22}
                     />
                   )}

@@ -32,7 +32,7 @@ export default function DashboardPage() {
       {/* Hero */}
       <GlowCard hero>
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-indigo-500/50 flex-shrink-0">
+          <div className="w-16 h-16 rounded-full overflow-hidden bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-indigo-500/50 shrink-0">
             {user.avatarUrl ? (
               <Image
                 src={user.avatarUrl}
@@ -105,7 +105,7 @@ export default function DashboardPage() {
                 }
               >
                 <GlowCard className="group cursor-pointer hover:border-indigo-500/50 transition h-full">
-                  <div className={`h-28 rounded-xl overflow-hidden mb-4 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
+                  <div className={`h-28 rounded-xl overflow-hidden mb-4 bg-linear-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
                     <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 768px) calc(100vw - 3rem), 50vw" className="object-cover opacity-80" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition bg-black/20">
                       <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
@@ -118,7 +118,7 @@ export default function DashboardPage() {
                       <h3 className="text-base font-bold text-white group-hover:text-indigo-300 transition leading-tight">{course.title}</h3>
                       <p className="text-gray-400 text-xs mt-0.5">{course.instructor}</p>
                     </div>
-                    <ChevronRight className="text-indigo-400/30 group-hover:text-indigo-400 group-hover:translate-x-1 transition flex-shrink-0" size={18} />
+                    <ChevronRight className="text-indigo-400/30 group-hover:text-indigo-400 group-hover:translate-x-1 transition shrink-0" size={18} />
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs">
@@ -126,7 +126,7 @@ export default function DashboardPage() {
                       <span className="text-indigo-400 font-semibold">{course.progress}%</span>
                     </div>
                     <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500" style={{ width: `${course.progress}%` }} />
+                      <div className="h-full bg-linear-to-r from-indigo-500 to-purple-500" style={{ width: `${course.progress}%` }} />
                     </div>
                   </div>
                 </GlowCard>
@@ -149,7 +149,7 @@ export default function DashboardPage() {
             {completedCourses.map((course) => (
               <Link key={course.id} href={`/dashboard/courses/${course.slug}`}>
                 <GlowCard className="group cursor-pointer hover:border-emerald-500/40 transition">
-                  <div className={`h-24 rounded-xl overflow-hidden mb-3 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
+                  <div className={`h-24 rounded-xl overflow-hidden mb-3 bg-linear-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
                     <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 768px) calc(100vw - 3rem), 33vw" className="object-cover opacity-70" />
                     <div className="absolute top-2 right-2 bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">✓ Done</div>
                   </div>

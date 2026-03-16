@@ -168,7 +168,7 @@ export default function AchievementsPage() {
     <div className="space-y-6">
       <GlowCard hero>
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-indigo-500/50 flex-shrink-0">
+          <div className="w-16 h-16 rounded-full overflow-hidden bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-indigo-500/50 shrink-0">
             {user.avatarUrl ? (
               <Image src={user.avatarUrl} alt={user.name} width={64} height={64} className="w-full h-full object-cover" />
             ) : user.avatar}
@@ -215,7 +215,7 @@ export default function AchievementsPage() {
               <GlowCard key={cert.id} className="group">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/50">
+                    <div className="w-12 h-12 rounded-xl bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/50">
                       <Award className="text-white" size={22} />
                     </div>
                     <div>
@@ -264,7 +264,7 @@ export default function AchievementsPage() {
             return (
               <GlowCard key={badge.id} className={`group ${badge.earned ? 'border-indigo-500/30 hover:border-indigo-500/50' : 'border-gray-700/50 opacity-50'}`}>
                 <div className="flex items-center gap-4">
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg ${badge.earned ? 'bg-gradient-to-br from-indigo-500 to-purple-500 shadow-indigo-500/50' : 'bg-gray-800'}`}>
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg ${badge.earned ? 'bg-linear-to-br from-indigo-500 to-purple-500 shadow-indigo-500/50' : 'bg-gray-800'}`}>
                     <Icon size={28} className={badge.earned ? 'text-white' : 'text-gray-500'} />
                   </div>
                   <div className="flex-1">

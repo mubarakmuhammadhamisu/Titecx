@@ -245,7 +245,7 @@ export default function VideoPlayer({ content, title, isCompleted, onVideoEnd }:
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {content.topics.map((topic, idx) => (
                 <div key={idx} className="flex items-center gap-3 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0" />
+                  <div className="w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
                   <span className="text-gray-100 text-sm">{topic}</span>
                 </div>
               ))}

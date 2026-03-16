@@ -39,7 +39,7 @@ export default function Navbar() {
             /* Logged in — show dashboard button only */
             <Link
               href="/dashboard"
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold shadow-lg hover:opacity-90 transition"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-indigo-500 to-purple-500 text-white font-semibold shadow-lg hover:opacity-90 transition"
             >
               <LayoutDashboard size={15} />
               Dashboard
@@ -50,7 +50,7 @@ export default function Navbar() {
               <Link href="/login" className="hover:text-white transition">Login</Link>
               <Link
                 href="/register"
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold shadow-lg hover:opacity-90 transition"
+                className="px-4 py-2 rounded-xl bg-linear-to-r from-indigo-500 to-purple-500 text-white font-semibold shadow-lg hover:opacity-90 transition"
               >
                 Get Started
               </Link>

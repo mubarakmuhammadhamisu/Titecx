@@ -85,7 +85,7 @@ const LoginContent = () => {
 
           {error && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-              <AlertCircle size={15} className="flex-shrink-0" />
+              <AlertCircle size={15} className="shrink-0" />
               {error}
             </div>
           )}
@@ -93,7 +93,7 @@ const LoginContent = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold text-sm transition disabled:opacity-60"
+            className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold text-sm transition disabled:opacity-60"
           >
             {loading ? 'Signing in...' : 'Log In'}
           </button>
@@ -115,7 +115,7 @@ export default function LoginPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 animate-pulse" />
+          <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 animate-pulse" />
           <p className="text-gray-400 text-sm">Loading...</p>
         </div>
       </div>

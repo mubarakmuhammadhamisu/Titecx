@@ -197,7 +197,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
     return (
       <div className="flex items-center justify-center min-h-[70vh] px-4">
         <div className="text-center max-w-md">
-          <div className="mx-auto mb-6 w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center shadow-2xl shadow-emerald-500/40">
+          <div className="mx-auto mb-6 w-24 h-24 rounded-full bg-linear-to-br from-emerald-500 to-teal-400 flex items-center justify-center shadow-2xl shadow-emerald-500/40">
             <CheckCircle2 size={44} className="text-white" />
           </div>
           <h1 className="text-3xl font-extrabold text-white mb-2">You&apos;re enrolled!</h1>
@@ -210,7 +210,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href={`/dashboard/courses/${course.slug}`}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold transition shadow-lg shadow-indigo-500/20"
+              className="px-6 py-3 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold transition shadow-lg shadow-indigo-500/20"
             >
               Start Learning →
             </Link>
@@ -274,7 +274,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                 <label className="flex items-start gap-3 cursor-pointer group mt-2">
                   <div
                     onClick={() => setAgreed(!agreed)}
-                    className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center transition flex-shrink-0 cursor-pointer ${agreed ? 'bg-indigo-600 border-indigo-500' : 'border-gray-600 group-hover:border-indigo-500/50'}`}
+                    className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center transition shrink-0 cursor-pointer ${agreed ? 'bg-indigo-600 border-indigo-500' : 'border-gray-600 group-hover:border-indigo-500/50'}`}
                   >
                     {agreed && <CheckCircle2 size={12} className="text-white" />}
                   </div>
@@ -289,7 +289,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                 <button
                   onClick={handleFreeEnroll}
                   disabled={!agreed || processing}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold transition shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-xl bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold transition shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {processing ? <RefreshCw size={18} className="animate-spin" /> : <Zap size={18} />}
                   {processing ? 'Enrolling...' : 'Enroll for Free'}
@@ -358,7 +358,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                   <label className="flex items-start gap-3 cursor-pointer group">
                     <div
                       onClick={() => setAgreed(!agreed)}
-                      className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center transition flex-shrink-0 cursor-pointer ${agreed ? 'bg-indigo-600 border-indigo-500' : 'border-gray-600 group-hover:border-indigo-500/50'}`}
+                      className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center transition shrink-0 cursor-pointer ${agreed ? 'bg-indigo-600 border-indigo-500' : 'border-gray-600 group-hover:border-indigo-500/50'}`}
                     >
                       {agreed && <CheckCircle2 size={12} className="text-white" />}
                     </div>
@@ -373,7 +373,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                   <button
                     onClick={handlePaystackPay}
                     disabled={!agreed}
-                    className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-base transition shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full py-4 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-base transition shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <Lock size={16} />
                     Pay ₦{total.toLocaleString()} — Secure Checkout
@@ -393,9 +393,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
 
             {/* Course card */}
             <div className="rounded-2xl bg-gray-900 border border-indigo-500/20 overflow-hidden">
-              <div className={`h-40 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
+              <div className={`h-40 bg-linear-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
                 <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 1024px) 100vw, 40vw" className="object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-gray-900/80 to-transparent" />
                 <div className="absolute bottom-3 left-3">
                   <span className="bg-gray-900/80 backdrop-blur text-indigo-300 text-xs font-semibold px-2 py-0.5 rounded-full border border-indigo-500/30">
                     {course.level}
@@ -429,7 +429,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                     ...course.features.slice(0, 2),
                   ].map((item) => (
                     <div key={item} className="flex items-center gap-2 text-xs text-gray-300">
-                      <CheckCircle2 size={13} className="text-emerald-400 flex-shrink-0" />
+                      <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
                       {item}
                     </div>
                   ))}
@@ -470,7 +470,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                 { icon: Zap, text: 'Instant access after payment' },
               ].map(({ icon: Icon, text }) => (
                 <div key={text} className="flex items-center gap-2.5 text-xs text-gray-400">
-                  <Icon size={14} className="text-indigo-400 flex-shrink-0" />
+                  <Icon size={14} className="text-indigo-400 shrink-0" />
                   {text}
                 </div>
               ))}

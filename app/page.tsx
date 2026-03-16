@@ -27,7 +27,7 @@ function Hero() {
       <div className="relative max-w-7xl mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center">
         <div className="text-center lg:text-left">
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight">
-            Learn Skills That{" "}
+            Learn Skills That {" "}
             <span className="text-indigo-400">Actually Matter</span>
           </h1>
           <p className="mt-6 text-xl text-gray-300">

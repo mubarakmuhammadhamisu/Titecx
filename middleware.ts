@@ -1,153 +1,143 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// middleware.ts — Server-side route protection
+// =============================================================================
+// middleware.ts — FULLY REWRITTEN using @supabase/ssr
 //
-// Runs on the EDGE before any page or API route renders.
+// WHY THIS FILE WAS REWRITTEN:
+//   The old version tried to manually find and parse the Supabase session
+//   cookie by looking for a cookie ending in "-auth-token". This broke because
+//   newer versions of @supabase/supabase-js store the session split across
+//   multiple cookies named "-auth-token.0", "-auth-token.1" etc. The old
+//   check never matched those, so the middleware always thought the user was
+//   logged out, causing an infinite 307 redirect loop between /login and
+//   /dashboard.
 //
-// Performance strategy:
-//   /dashboard/* — decode JWT locally (no network call). Token integrity is
-//                  enforced by Supabase RLS on every actual data fetch.
-//   /admin/*     — decode locally + check role. Role is cached in an httpOnly
-//                  cookie (5 min TTL) so the DB is not queried on every nav.
-// ─────────────────────────────────────────────────────────────────────────────
+//   This version uses @supabase/ssr's createServerClient which handles ALL
+//   cookie reading/writing internally — no manual parsing needed. It also
+//   automatically refreshes expired tokens so users are never incorrectly
+//   kicked out.
+// =============================================================================
 
+import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
-const PROTECTED  = ['/dashboard'];
-const ADMIN_ONLY = ['/admin'];
-
-// ── JWT helpers ───────────────────────────────────────────────────────────────
-
-interface JwtPayload { sub?: string; exp?: number; [key: string]: unknown }
-
-/**
- * Decode a JWT payload without signature verification.
- * Safe for route-protection use: any real data query still goes through
- * Supabase RLS which validates the same token server-side.
- */
-function decodeJwtPayload(token: string): JwtPayload | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    // base64url → base64 → JSON
-    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    const json = atob(b64);
-    return JSON.parse(json) as JwtPayload;
-  } catch {
-    return null;
-  }
-}
-
-function isTokenExpired(payload: JwtPayload): boolean {
-  if (!payload.exp) return true;
-  return Math.floor(Date.now() / 1000) >= payload.exp;
-}
-
-// ── Main handler ──────────────────────────────────────────────────────────────
-
-export async function middleware(req: NextRequest): Promise<NextResponse> {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const needsAuth  = PROTECTED.some((p)  => pathname.startsWith(p));
-  const needsAdmin = ADMIN_ONLY.some((p) => pathname.startsWith(p));
+  // ---------------------------------------------------------------------------
+  // STEP 1 — Create a response object FIRST, before anything else.
+  //
+  // We create it here so the Supabase cookie callbacks below can write
+  // refreshed session cookies into it. If we created the response AFTER
+  // calling Supabase, the fresh cookies would have nowhere to go.
+  // ---------------------------------------------------------------------------
+  let res = NextResponse.next({ request: req });
 
-  if (!needsAuth && !needsAdmin) return NextResponse.next();
+  // ---------------------------------------------------------------------------
+  // STEP 2 — Create a Supabase client that works in the Edge Runtime.
+  //
+  // createServerClient needs two cookie callbacks:
+  //
+  //   getAll — called by Supabase to READ the current session from cookies.
+  //            We just return every cookie from the incoming request.
+  //
+  //   setAll — called by Supabase when it needs to WRITE cookies back
+  //            (e.g. when it silently refreshes an expiring access token).
+  //            We write them into both the request (so the rest of this
+  //            handler can see them) and the response (so the browser gets them).
+  //
+  // This two-way cookie adapter is exactly what was missing before.
+  // Both the browser (createBrowserClient in lib/supabase.ts) and this
+  // middleware (createServerClient) now use the SAME cookie format from
+  // @supabase/ssr, so they can always read each other's sessions.
+  // ---------------------------------------------------------------------------
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_Publishable_KEY!,
+    {
+      cookies: {
+        // Read all cookies from the incoming request
+        getAll() {
+          return req.cookies.getAll();
+        },
 
-  const token = extractToken(req);
-  if (!token) return toLogin(req);
-
-  // ── Local JWT decode (zero network cost) ─────────────────────────────────
-  const payload = decodeJwtPayload(token);
-  if (!payload?.sub || isTokenExpired(payload)) return toLogin(req);
-
-  const userId = payload.sub;
-
-  // ── Admin routes: role check with short-lived cookie cache ────────────────
-  if (needsAdmin) {
-    const cachedRole = req.cookies.get('_lrn_role')?.value;
-
-    // Happy-path: cached as admin — no DB query needed
-    if (cachedRole === 'admin') {
-      const res = NextResponse.next();
-      res.headers.set('x-user-id', userId);
-      return res;
+        // Write updated/refreshed cookies back out
+        setAll(cookiesToSet) {
+          // Write into the request first (current handler sees them)
+          cookiesToSet.forEach(({ name, value }) =>
+            req.cookies.set(name, value)
+          );
+          // Recreate the response with the updated request
+          res = NextResponse.next({ request: req });
+          // Write into the response (browser receives them)
+          cookiesToSet.forEach(({ name, value, options }) =>
+            res.cookies.set(name, value, options)
+          );
+        },
+      },
     }
+  );
 
-    // Cached as non-admin
-    if (cachedRole === 'member') {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
-    }
+  // ---------------------------------------------------------------------------
+  // STEP 3 — Verify the user's session with Supabase's servers.
+  //
+  // IMPORTANT: We use getUser() NOT getSession().
+  //
+  //   getSession() only reads the local cookie and trusts whatever is in it.
+  //   If someone manually forged a cookie, getSession() would believe them.
+  //
+  //   getUser() sends the token to Supabase's servers to verify it is real
+  //   and has not been tampered with. It also silently refreshes the access
+  //   token if it is about to expire (using the refresh token), then calls
+  //   setAll above to save the new token. This is why users no longer get
+  //   kicked out after 1 hour even though their session is still valid.
+  // ---------------------------------------------------------------------------
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    // No cache — query the DB once, then cache the result for 5 minutes
-    const admin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
-    const { data } = await admin
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .maybeSingle();
+  // ---------------------------------------------------------------------------
+  // STEP 4 — Protect routes.
+  //
+  // If the user is not logged in and tries to reach /dashboard or /admin,
+  // redirect them to /login and remember where they were going (?redirect=...)
+  // so they land in the right place after logging in.
+  // ---------------------------------------------------------------------------
+  const isDashboard = pathname.startsWith('/dashboard');
+  const isAdmin     = pathname.startsWith('/admin');
 
-    const role = (data as { role?: string } | null)?.role ?? 'member';
-    const ROLE_CACHE_SECONDS = 300; // 5 minutes
-
-    if (role !== 'admin') {
-      const res = NextResponse.redirect(new URL('/dashboard', req.url));
-      res.cookies.set('_lrn_role', 'member', {
-        maxAge: ROLE_CACHE_SECONDS, httpOnly: true, sameSite: 'lax', path: '/',
-      });
-      return res;
-    }
-
-    const res = NextResponse.next();
-    res.headers.set('x-user-id', userId);
-    res.cookies.set('_lrn_role', 'admin', {
-      maxAge: ROLE_CACHE_SECONDS, httpOnly: true, sameSite: 'lax', path: '/',
-    });
-    return res;
+  if ((isDashboard || isAdmin) && !user) {
+    const loginUrl = req.nextUrl.clone();
+    loginUrl.pathname = '/login';
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // ── Dashboard routes: local decode was sufficient ─────────────────────────
-  const res = NextResponse.next();
-  res.headers.set('x-user-id', userId);
+  // ---------------------------------------------------------------------------
+  // STEP 5 — Return the response.
+  //
+  // Always return `res` (not NextResponse.next()) so that any refreshed
+  // session cookies that Supabase wrote in setAll() above are actually
+  // sent back to the browser. If you returned NextResponse.next() here
+  // instead of `res`, the refreshed cookies would be lost.
+  // ---------------------------------------------------------------------------
   return res;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function toLogin(req: NextRequest): NextResponse {
-  const url = new URL('/login', req.url);
-  url.searchParams.set('redirect', req.nextUrl.pathname);
-  return NextResponse.redirect(url);
-}
-
-/**
- * Extract the Supabase access token from:
- *   1. Authorization: Bearer <token>  (API calls / server-side fetch)
- *   2. sb-<ref>-auth-token cookie     (browser navigation)
- */
-function extractToken(req: NextRequest): string | null {
-  const auth = req.headers.get('authorization') ?? '';
-  if (auth.startsWith('Bearer ')) return auth.slice(7);
-
-  for (const cookie of req.cookies.getAll()) {
-    if (!cookie.name.startsWith('sb-') || !cookie.name.endsWith('-auth-token')) continue;
-    try {
-      const val = decodeURIComponent(cookie.value);
-      const parsed: unknown = JSON.parse(val);
-      if (Array.isArray(parsed) && typeof parsed[0] === 'string' && parsed[0].length > 20) {
-        return parsed[0] as string;
-      }
-      if (typeof parsed === 'string' && parsed.length > 20) return parsed;
-    } catch {
-      if (cookie.value.length > 20) return cookie.value;
-    }
-  }
-
-  return null;
-}
-
+// -----------------------------------------------------------------------------
+// Matcher — which routes this middleware runs on.
+//
+// The old matcher only ran on /dashboard and /admin. That was wrong.
+// @supabase/ssr needs the middleware to run on EVERY route (except static
+// files) so it can refresh the session token on every request. If the token
+// only refreshes when you visit /dashboard, it can go stale on other pages.
+//
+// The pattern below means: run on everything EXCEPT:
+//   - _next/static  (Next.js compiled JS/CSS files)
+//   - _next/image   (Next.js image optimisation)
+//   - favicon.ico
+//   - any file with an image extension (svg, png, jpg, etc.)
+// -----------------------------------------------------------------------------
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };
