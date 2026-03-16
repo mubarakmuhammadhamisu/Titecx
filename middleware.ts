@@ -23,31 +23,14 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // ---------------------------------------------------------------------------
-  // STEP 1 — Create a response object FIRST, before anything else.
-  //
-  // We create it here so the Supabase cookie callbacks below can write
-  // refreshed session cookies into it. If we created the response AFTER
-  // calling Supabase, the fresh cookies would have nowhere to go.
+  // STEP 1 — Create a response object FIRST, before anything else.  
   // ---------------------------------------------------------------------------
   let res = NextResponse.next({ request: req });
 
   // ---------------------------------------------------------------------------
   // STEP 2 — Create a Supabase client that works in the Edge Runtime.
   //
-  // createServerClient needs two cookie callbacks:
-  //
-  //   getAll — called by Supabase to READ the current session from cookies.
-  //            We just return every cookie from the incoming request.
-  //
-  //   setAll — called by Supabase when it needs to WRITE cookies back
-  //            (e.g. when it silently refreshes an expiring access token).
-  //            We write them into both the request (so the rest of this
-  //            handler can see them) and the response (so the browser gets them).
-  //
-  // This two-way cookie adapter is exactly what was missing before.
-  // Both the browser (createBrowserClient in lib/supabase.ts) and this
-  // middleware (createServerClient) now use the SAME cookie format from
-  // @supabase/ssr, so they can always read each other's sessions.
+  
   // ---------------------------------------------------------------------------
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -78,17 +61,6 @@ export async function middleware(req: NextRequest) {
 
   // ---------------------------------------------------------------------------
   // STEP 3 — Verify the user's session with Supabase's servers.
-  //
-  // IMPORTANT: We use getUser() NOT getSession().
-  //
-  //   getSession() only reads the local cookie and trusts whatever is in it.
-  //   If someone manually forged a cookie, getSession() would believe them.
-  //
-  //   getUser() sends the token to Supabase's servers to verify it is real
-  //   and has not been tampered with. It also silently refreshes the access
-  //   token if it is about to expire (using the refresh token), then calls
-  //   setAll above to save the new token. This is why users no longer get
-  //   kicked out after 1 hour even though their session is still valid.
   // ---------------------------------------------------------------------------
   const {
     data: { user },
@@ -96,10 +68,6 @@ export async function middleware(req: NextRequest) {
 
   // ---------------------------------------------------------------------------
   // STEP 4 — Protect routes.
-  //
-  // If the user is not logged in and tries to reach /dashboard or /admin,
-  // redirect them to /login and remember where they were going (?redirect=...)
-  // so they land in the right place after logging in.
   // ---------------------------------------------------------------------------
   const isDashboard = pathname.startsWith('/dashboard');
   const isAdmin     = pathname.startsWith('/admin');
@@ -114,10 +82,6 @@ export async function middleware(req: NextRequest) {
   // ---------------------------------------------------------------------------
   // STEP 5 — Return the response.
   //
-  // Always return `res` (not NextResponse.next()) so that any refreshed
-  // session cookies that Supabase wrote in setAll() above are actually
-  // sent back to the browser. If you returned NextResponse.next() here
-  // instead of `res`, the refreshed cookies would be lost.
   // ---------------------------------------------------------------------------
   return res;
 }
