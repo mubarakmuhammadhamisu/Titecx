@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+// Image is used for course thumbnails and optionally for the user avatar
 import GlowCard from '@/components/AppShell/GlowCard';
 import { BookOpen, Award, Clock, TrendingUp, ChevronRight, Play } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -14,7 +15,10 @@ export default function DashboardPage() {
   const completedCourses = enrolledCourses.filter((c) => c.progress === 100).slice(0, 3);
 
   const totalHours = enrolledCourses.reduce((acc, c) => {
-    const h = parseFloat(c.duration.replace('h', ''));
+    // Robust parser: handles "6h", "6.5h", "6 hours", "1 hour", etc.
+    // Extracts the first numeric value from the string — returns 0 on no match.
+    const match = c.duration.match(/(\d+(?:\.\d+)?)/);
+    const h = match ? parseFloat(match[1]) : 0;
     return acc + Math.round((c.progress / 100) * h * 10) / 10;
   }, 0);
 
@@ -28,8 +32,18 @@ export default function DashboardPage() {
       {/* Hero */}
       <GlowCard hero>
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-indigo-500/50">
-            {user.avatar}
+          <div className="w-16 h-16 rounded-full overflow-hidden bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-indigo-500/50 shrink-0">
+            {user.avatarUrl ? (
+              <Image
+                src={user.avatarUrl}
+                alt={user.name}
+                width={64}
+                height={64}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              user.avatar
+            )}
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">Welcome back, {user.name.split(' ')[0]} 👋</h1>
@@ -91,8 +105,8 @@ export default function DashboardPage() {
                 }
               >
                 <GlowCard className="group cursor-pointer hover:border-indigo-500/50 transition h-full">
-                  <div className={`h-28 rounded-xl overflow-hidden mb-4 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
-                    <Image src={course.thumbnail} alt={course.title} fill className="object-cover opacity-80" />
+                  <div className={`h-28 rounded-xl overflow-hidden mb-4 bg-linear-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
+                    <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 768px) calc(100vw - 3rem), 50vw" className="object-cover opacity-80" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition bg-black/20">
                       <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
                         <Play size={18} className="text-white ml-0.5" />
@@ -104,7 +118,7 @@ export default function DashboardPage() {
                       <h3 className="text-base font-bold text-white group-hover:text-indigo-300 transition leading-tight">{course.title}</h3>
                       <p className="text-gray-400 text-xs mt-0.5">{course.instructor}</p>
                     </div>
-                    <ChevronRight className="text-indigo-400/30 group-hover:text-indigo-400 group-hover:translate-x-1 transition flex-shrink-0" size={18} />
+                    <ChevronRight className="text-indigo-400/30 group-hover:text-indigo-400 group-hover:translate-x-1 transition shrink-0" size={18} />
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs">
@@ -112,7 +126,7 @@ export default function DashboardPage() {
                       <span className="text-indigo-400 font-semibold">{course.progress}%</span>
                     </div>
                     <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500" style={{ width: `${course.progress}%` }} />
+                      <div className="h-full bg-linear-to-r from-indigo-500 to-purple-500" style={{ width: `${course.progress}%` }} />
                     </div>
                   </div>
                 </GlowCard>
@@ -135,8 +149,8 @@ export default function DashboardPage() {
             {completedCourses.map((course) => (
               <Link key={course.id} href={`/dashboard/courses/${course.slug}`}>
                 <GlowCard className="group cursor-pointer hover:border-emerald-500/40 transition">
-                  <div className={`h-24 rounded-xl overflow-hidden mb-3 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
-                    <Image src={course.thumbnail} alt={course.title} fill className="object-cover opacity-70" />
+                  <div className={`h-24 rounded-xl overflow-hidden mb-3 bg-linear-to-br ${course.gradientFrom} ${course.gradientTo} relative`}>
+                    <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 768px) calc(100vw - 3rem), 33vw" className="object-cover opacity-70" />
                     <div className="absolute top-2 right-2 bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">✓ Done</div>
                   </div>
                   <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition">{course.title}</h3>

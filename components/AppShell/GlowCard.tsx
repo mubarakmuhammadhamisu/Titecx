@@ -16,7 +16,7 @@ export default function GlowCard({
   if (hero) {
     return (
       <div
-        className={`relative rounded-2xl overflow-hidden bg-gradient-to-r from-indigo-500/30 to-purple-500/30
+        className={`relative rounded-2xl overflow-hidden bg-linear-to-r from-indigo-500/30 to-purple-500/30
           border border-indigo-500/50 p-8 shadow-[0_0_40px_rgba(99,102,241,0.25)]
           ${className}`}
       >
@@ -38,7 +38,7 @@ export default function GlowCard({
       {/* Gradient border effect */}
       <div
         className="absolute inset-0 rounded-2xl pointer-events-none
-          bg-gradient-to-r from-indigo-500/0 via-indigo-500/0 to-purple-500/0
+          bg-linear-to-r from-indigo-500/0 via-indigo-500/0 to-purple-500/0
           opacity-0 group-hover:opacity-100 transition-opacity"
       />
       {children}

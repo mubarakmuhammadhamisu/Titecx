@@ -149,7 +149,7 @@ The Universal Course Player is a high-performance, data-driven learning platform
 ```
 
 ## Theme Integration
-- Uses Learnify's existing theme (bg-gray-950, text-gray-100)
+- Uses Titecx's existing theme (bg-gray-950, text-gray-100)
 - Indigo/Purple accent colors
 - GlowCard component for consistent styling
 - Lucide React icons throughout
@@ -172,4 +172,4 @@ The Universal Course Player is a high-performance, data-driven learning platform
 6. Test that next button enables after marking complete (reading)
 
 ---
-**Built for Learnify - High-performance Learning Platform**
+**Built for Titecx - High-performance Learning Platform**

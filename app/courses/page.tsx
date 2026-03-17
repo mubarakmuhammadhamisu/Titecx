@@ -27,8 +27,8 @@ export default function CoursesPage() {
               className="group rounded-2xl bg-gray-900 border border-white/10 overflow-hidden hover:border-indigo-500/40 transition"
             >
               {/* Thumbnail */}
-              <div className={`h-44 bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative overflow-hidden`}>
-                <Image src={course.thumbnail} alt={course.title} fill className="object-cover" />
+              <div className={`h-44 bg-linear-to-br ${course.gradientFrom} ${course.gradientTo} relative overflow-hidden`}>
+                <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover" />
                 <div className="absolute top-3 left-3 bg-gray-900/70 backdrop-blur text-xs text-gray-200 px-2 py-0.5 rounded-full border border-white/10">
                   {course.level}
                 </div>

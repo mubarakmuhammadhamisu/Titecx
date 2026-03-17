@@ -19,14 +19,14 @@ import {
 export default function ProgressTrackerPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const unwrapped = React.use(params as any) as { id: string };
-  const { user, enrolledCourses } = useAuth();
+  const unwrapped = React.use(params);
+  const { user, enrolledCourses, completedLessonIds } = useAuth();
   if (!user) return null;
 
   const enrolledCourse = enrolledCourses.find(
-    (c) => String(c.id) === unwrapped.id,
+    (c) => c.slug === unwrapped.id,
   );
   const schema = enrolledCourse
     ? courseSchemas.find((c) => c.slug === enrolledCourse.slug)
@@ -52,10 +52,10 @@ export default function ProgressTrackerPage({
         name: mod.title,
         lessons: mod.lessons.map((l) => ({
           name: l.title,
-          completed: l.status === "completed",
+          completed: completedLessonIds.has(l.id),
           id: l.id,
         })),
-        completed: mod.lessons.every((l) => l.status === "completed"),
+        completed: mod.lessons.every((l) => completedLessonIds.has(l.id)),
       }))
     : schema.curriculum.map((item, idx) => ({
         id: String(idx),
@@ -78,12 +78,13 @@ export default function ProgressTrackerPage({
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div
-              className={`w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br ${enrolledCourse.gradientFrom} ${enrolledCourse.gradientTo} relative`}
+              className={`w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-linear-to-br ${enrolledCourse.gradientFrom} ${enrolledCourse.gradientTo} relative`}
             >
               <Image
                 src={enrolledCourse.thumbnail}
                 alt={enrolledCourse.title}
                 fill
+                sizes="64px"
                 className="object-cover"
               />
             </div>
@@ -161,7 +162,7 @@ export default function ProgressTrackerPage({
           </p>
           <div className="mt-2 h-2 bg-gray-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+              className="h-full bg-linear-to-r from-indigo-500 to-purple-500"
               style={{
                 width: modules.length
                   ? `${(completedModules / modules.length) * 100}%`
@@ -201,12 +202,12 @@ export default function ProgressTrackerPage({
                 <div className="flex items-start gap-4">
                   {module.completed ? (
                     <CheckCircle2
-                      className="text-emerald-500 flex-shrink-0 mt-0.5"
+                      className="text-emerald-500 shrink-0 mt-0.5"
                       size={22}
                     />
                   ) : (
                     <Circle
-                      className="text-gray-600 flex-shrink-0 mt-0.5"
+                      className="text-gray-600 shrink-0 mt-0.5"
                       size={22}
                     />
                   )}
@@ -262,45 +263,48 @@ export default function ProgressTrackerPage({
           Resources & Support
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            {
-              Icon: BookOpen,
-              label: "Study Materials",
-              sub: `${schema.curriculum.length * 2} resources`,
-              hover: "hover:border-indigo-500/50",
-            },
-            {
-              Icon: Brain,
-              label: "Practice Quizzes",
-              sub: `${schema.modules.length || 3} quizzes`,
-              hover: "hover:border-purple-500/50",
-            },
-            {
-              Icon: Award,
-              label: "Certificate",
-              sub:
-                enrolledCourse.progress === 100
-                  ? "Ready to download"
-                  : "Earn on completion",
-              hover: "hover:border-indigo-500/50",
-            },
-          ].map(({ Icon, label, sub, hover }) => (
-            <GlowCard
-              key={label}
-              className={`group cursor-pointer ${hover} transition`}
-            >
-              <div className="flex items-center gap-3">
-                <Icon
-                  className="text-indigo-400/60 group-hover:text-indigo-400 transition"
-                  size={22}
-                />
-                <div>
-                  <h3 className="font-bold text-white text-sm">{label}</h3>
-                  <p className="text-gray-400 text-xs">{sub}</p>
-                </div>
+          {/* Study Materials — lesson count from real modules, not fabricated */}
+          <GlowCard className="group cursor-pointer hover:border-indigo-500/50 transition">
+            <div className="flex items-center gap-3">
+              <BookOpen className="text-indigo-400/60 group-hover:text-indigo-400 transition" size={22} />
+              <div>
+                <h3 className="font-bold text-white text-sm">Study Materials</h3>
+                <p className="text-gray-400 text-xs">
+                  {schema.modules.length > 0
+                    ? `${schema.modules.reduce((acc, m) => acc + m.lessons.length, 0)} lessons`
+                    : 'Coming Soon'}
+                </p>
               </div>
-            </GlowCard>
-          ))}
+            </div>
+          </GlowCard>
+
+          {/* Practice Quizzes — only count lessons where type === 'quiz' */}
+          <GlowCard className="group cursor-pointer hover:border-purple-500/50 transition">
+            <div className="flex items-center gap-3">
+              <Brain className="text-indigo-400/60 group-hover:text-indigo-400 transition" size={22} />
+              <div>
+                <h3 className="font-bold text-white text-sm">Practice Quizzes</h3>
+                <p className="text-gray-400 text-xs">
+                  {schema.modules.flatMap((m) => m.lessons).filter((l) => l.type === 'quiz').length > 0
+                    ? `${schema.modules.flatMap((m) => m.lessons).filter((l) => l.type === 'quiz').length} quizzes`
+                    : 'Coming Soon'}
+                </p>
+              </div>
+            </div>
+          </GlowCard>
+
+          {/* Certificate */}
+          <GlowCard className="group cursor-pointer hover:border-indigo-500/50 transition">
+            <div className="flex items-center gap-3">
+              <Award className="text-indigo-400/60 group-hover:text-indigo-400 transition" size={22} />
+              <div>
+                <h3 className="font-bold text-white text-sm">Certificate</h3>
+                <p className="text-gray-400 text-xs">
+                  {enrolledCourse.progress === 100 ? 'Ready to download' : 'Earn on completion'}
+                </p>
+              </div>
+            </div>
+          </GlowCard>
         </div>
       </div>
     </div>

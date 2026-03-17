@@ -22,8 +22,8 @@ export default function CoursePreview() {
             href={`/courses/${c.slug}`}
             className="group block rounded-2xl bg-gray-900 border border-white/10 overflow-hidden hover:border-indigo-500/40 transition"
           >
-            <div className={`h-40 bg-gradient-to-br ${c.gradientFrom} ${c.gradientTo} relative overflow-hidden`}>
-              <Image src={c.thumbnail} alt={c.title} fill className="object-cover group-hover:scale-105 transition duration-300" />
+            <div className={`h-40 bg-linear-to-br ${c.gradientFrom} ${c.gradientTo} relative overflow-hidden`}>
+              <Image src={c.thumbnail} alt={c.title} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover group-hover:scale-105 transition duration-300" />
               <div className="absolute top-2 left-2 bg-gray-900/70 backdrop-blur text-xs text-gray-200 px-2 py-0.5 rounded-full border border-white/10">
                 {c.level}
               </div>

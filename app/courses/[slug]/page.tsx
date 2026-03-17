@@ -19,7 +19,7 @@ export default async function CourseDetailsPage({ params }: PageProps) {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 via-purple-600/10 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-br from-indigo-600/20 via-purple-600/10 to-transparent" />
         <div className="relative max-w-5xl mx-auto px-4 py-20 flex flex-col md:flex-row gap-10 items-start">
           <div className="flex-1">
             <span className="inline-block px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-medium mb-4">
@@ -29,8 +29,8 @@ export default async function CourseDetailsPage({ params }: PageProps) {
             <p className="mt-4 text-lg text-gray-300">{course.shortDescription}</p>
             <p className="mt-2 text-sm text-gray-400">by {course.instructor}</p>
           </div>
-          <div className={`w-full md:w-80 rounded-2xl overflow-hidden bg-gradient-to-br ${course.gradientFrom} ${course.gradientTo} relative aspect-video md:aspect-square flex-shrink-0 border border-white/10`}>
-            <Image src={course.thumbnail} alt={course.title} fill className="object-cover" />
+          <div className={`w-full md:w-80 rounded-2xl overflow-hidden bg-linear-to-br ${course.gradientFrom} ${course.gradientTo} relative aspect-video md:aspect-square shrink-0 border border-white/10`}>
+            <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 768px) 100vw, 320px" className="object-cover" />
           </div>
         </div>
       </section>
@@ -60,7 +60,7 @@ export default async function CourseDetailsPage({ params }: PageProps) {
 
         {/* What you'll learn */}
         <div>
-          <h2 className="text-2xl font-bold mb-4">What You'll Learn</h2>
+          <h2 className="text-2xl font-bold mb-4">What You&apos;ll Learn</h2>
           <ul className="grid sm:grid-cols-2 gap-3">
             {course.features.map((f) => (
               <li key={f} className="p-3 rounded-xl bg-gray-900 border border-white/10 text-sm text-gray-300 flex items-start gap-2">
@@ -76,7 +76,7 @@ export default async function CourseDetailsPage({ params }: PageProps) {
           <ol className="space-y-2">
             {course.curriculum.map((item, i) => (
               <li key={item} className="p-3 rounded-xl bg-gray-900 border border-white/10 text-sm text-gray-300 flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
                 {item}
               </li>
             ))}

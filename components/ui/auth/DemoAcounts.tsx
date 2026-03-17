@@ -1,4 +1,4 @@
-import { demoUsers } from "@/lib/users";
+/*import { demoUsers } from "@/lib/users";
 
 interface props {
   setEmail: (email: string) => void;
@@ -27,7 +27,7 @@ export default function DemoAcouunts({ setEmail, setPassword, setErorr }:props) 
             className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-gray-900/60 border border-indigo-500/20 hover:border-indigo-500/50 transition text-left group"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+              <div className="w-7 h-7 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white shrink-0">
                 {u.avatar}
               </div>
               <div>
@@ -45,4 +45,4 @@ export default function DemoAcouunts({ setEmail, setPassword, setErorr }:props) 
       </div>
     </div>
   );
-}
+}*/

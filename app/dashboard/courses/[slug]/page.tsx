@@ -64,15 +64,32 @@ export default function CourseOverviewPage({ params }: PageProps) {
         </div>
       </motion.div>
 
-      {/* Modules */}
+      {/* Modules — or Coming Soon for courses without content yet */}
+      {course.modules.length === 0 ? (
+        <div className="rounded-2xl bg-gray-900 border border-indigo-500/20 p-12 text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto">
+            <BookOpen size={28} className="text-indigo-400" />
+          </div>
+          <h2 className="text-xl font-bold text-white">Content Coming Soon</h2>
+          <p className="text-gray-400 text-sm max-w-sm mx-auto leading-relaxed">
+            We&apos;re preparing the lessons for this course. You&apos;re enrolled and will get instant access
+            as soon as they&apos;re published.
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-medium">
+            <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+            In preparation
+          </div>
+        </div>
+      ) : (
       <div className="space-y-6">
         {course.modules.map((module, moduleIdx) => {
           const completedInModule = module.lessons.filter(
             (l) => l.status === 'completed'
           ).length;
-          const progressPercent = Math.round(
-            (completedInModule / module.lessons.length) * 100
-          );
+          // Guard against division by zero for modules with no lessons yet
+          const progressPercent = module.lessons.length > 0
+            ? Math.round((completedInModule / module.lessons.length) * 100)
+            : 0;
 
           return (
             <motion.div
@@ -105,7 +122,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
                 {/* Progress Bar */}
                 <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300"
+                    className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-300"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
@@ -147,7 +164,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
                                   : 'bg-gray-800/50 border-gray-700/50 hover:border-indigo-500/30'
                             }`}
                           >
-                            <div className="flex-shrink-0">
+                            <div className="shrink-0">
                               {lesson.type === 'video' ? (
                                 <Play
                                   size={16}
@@ -187,7 +204,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
                             </div>
                             <ArrowRight
                               size={16}
-                              className="flex-shrink-0 text-gray-600 group-hover:text-indigo-400 transition opacity-0 group-hover:opacity-100"
+                              className="shrink-0 text-gray-600 group-hover:text-indigo-400 transition opacity-0 group-hover:opacity-100"
                             />
                           </Link>
                         )}
@@ -201,6 +218,8 @@ export default function CourseOverviewPage({ params }: PageProps) {
         })}
       </div>
 
+      )} {/* end modules/coming-soon */}
+
       {/* CTA */}
       {firstLesson && (
         <motion.div
@@ -211,7 +230,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
         >
           <Link
             href={`/dashboard/courses/${slug}/view/${firstLesson.id}`}
-            className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg transition shadow-lg shadow-indigo-500/20"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg transition shadow-lg shadow-indigo-500/20"
           >
             <Play size={18} />
             Start Learning
