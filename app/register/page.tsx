@@ -56,7 +56,7 @@ const RegisterContent = () => {
     return (
       <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col items-center justify-center px-4">
         <Link href="/" className="text-2xl font-extrabold text-white mb-8 hover:text-indigo-300 transition">
-          Titecx
+          TITECX
         </Link>
         <div className="w-full max-w-md bg-gray-900 rounded-2xl border border-emerald-500/30 shadow-[0_0_40px_rgba(99,102,241,0.1)] p-8 text-center">
           <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
@@ -83,7 +83,7 @@ const RegisterContent = () => {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col items-center justify-center px-4">
       <Link href="/" className="text-2xl font-extrabold text-white mb-8 hover:text-indigo-300 transition">
-        Titecx
+        TITECX
       </Link>
 
       <div className="w-full max-w-md bg-gray-900 rounded-2xl border border-indigo-500/20 shadow-[0_0_40px_rgba(99,102,241,0.1)] p-8">

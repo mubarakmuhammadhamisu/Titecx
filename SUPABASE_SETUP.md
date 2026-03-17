@@ -1,4 +1,4 @@
-# Supabase Setup Guide for Titecx
+# Supabase Setup Guide for TITECX
 
 Run these SQL commands in your Supabase project under:
 **SQL Editor → New Query → paste → Run**
@@ -148,7 +148,7 @@ but turn it back on before going live.
 ## Step 6 — Set your site URL
 
 Go to **Authentication → URL Configuration** and set:
-- **Site URL**: your production domain (e.g. `https://Titecx.com`)
+- **Site URL**: your production domain (e.g. `https://TITECX.com`)
 - **Redirect URLs**: add `http://localhost:3000/**` for local testing
 
 This is needed for password reset emails to redirect correctly.

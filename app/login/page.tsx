@@ -39,7 +39,7 @@ const LoginContent = () => {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col items-center justify-center px-4">
       <Link href="/" className="text-2xl font-extrabold text-white mb-8 hover:text-indigo-300 transition">
-        Titecx
+        TITECX
       </Link>
 
       <div className="w-full max-w-md bg-gray-900 rounded-2xl border border-indigo-500/20 shadow-[0_0_40px_rgba(99,102,241,0.1)] p-8">
