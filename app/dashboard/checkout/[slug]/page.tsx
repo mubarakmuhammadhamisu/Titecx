@@ -172,14 +172,14 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
               alert(
                 `Enrollment failed: ${data.error ?? 'Unknown error'}.\n` +
                 `Keep your reference number: ${response.reference}\n` +
-                `Email support@Titecx.com and we will fix it.`
+                `Email support@TITECX.com and we will fix it.`
               );
             }
           })
           .catch(() => {
             alert(
               `Network error. Keep your reference number: ${response.reference}\n` +
-              `Email support@Titecx.com and we will fix it.`
+              `Email support@TITECX.com and we will fix it.`
             );
           })
           .finally(() => setProcessing(false));

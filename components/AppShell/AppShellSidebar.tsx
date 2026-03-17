@@ -63,7 +63,7 @@ export default function AppShellSidebar() {
           <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/40 group-hover:shadow-indigo-500/60 transition text-sm">
             L
           </div>
-          <span className="text-lg font-bold text-white tracking-tight">Titecx</span>
+          <span className="text-lg font-bold text-white tracking-tight">TITECX</span>
         </Link>
 
         {/* Nav */}

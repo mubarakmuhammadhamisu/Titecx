@@ -19,24 +19,24 @@ export default function TermsPage() {
 
       <section className="max-w-4xl mx-auto px-4 pb-32 space-y-10">
         <LegalSection title="1. Acceptance of Terms">
-          By accessing and using Titecx, you agree to be bound by these Terms of Service and all applicable laws. If you do not agree with any of these terms, you are prohibited from using or accessing this platform.
+          By accessing and using TITECX, you agree to be bound by these Terms of Service and all applicable laws. If you do not agree with any of these terms, you are prohibited from using or accessing this platform.
         </LegalSection>
 
         <LegalSection title="2. Description of Service">
-          Titecx provides high-quality online educational courses designed to teach real-world skills. Access to specific courses requires purchase. Courses are subject to availability and we reserve the right to modify, update, or discontinue course content at any time.
+          TITECX provides high-quality online educational courses designed to teach real-world skills. Access to specific courses requires purchase. Courses are subject to availability and we reserve the right to modify, update, or discontinue course content at any time.
         </LegalSection>
 
         <LegalSection title="3. User Accounts">
-          You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately of any unauthorised use of your account. Titecx is not liable for any loss resulting from unauthorised access to your account.
+          You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately of any unauthorised use of your account. TITECX is not liable for any loss resulting from unauthorised access to your account.
         </LegalSection>
 
         <LegalSection title="4. Payments, Refunds, and Digital Product Policy">
-          All payments are processed securely through Paystack. By completing a purchase on Titecx, you acknowledge and agree to the following refund policy:{" "}
+          All payments are processed securely through Paystack. By completing a purchase on TITECX, you acknowledge and agree to the following refund policy:{" "}
           <br /><br />
-          <strong className="text-white">Digital Product Nature:</strong> All courses sold on Titecx are digital products delivered immediately upon payment confirmation. Because access to course content is granted instantly, purchases are generally non-refundable once the course has been accessed or any lesson has been started.{" "}
+          <strong className="text-white">Digital Product Nature:</strong> All courses sold on TITECX are digital products delivered immediately upon payment confirmation. Because access to course content is granted instantly, purchases are generally non-refundable once the course has been accessed or any lesson has been started.{" "}
           <br /><br />
           <strong className="text-white">Eligibility for Refund:</strong> A refund may be granted only if (a) you request it within 24 hours of purchase, and (b) you have not accessed, streamed, or downloaded any part of the course content. Refund requests made after 24 hours or after content has been accessed will not be eligible.{" "}
-          <strong className="text-white">How to Request:</strong> To request a refund within the eligible window, email <span className="text-indigo-400">support@Titecx.com</span> with your full name, registered email, and the Paystack payment reference number. We will process eligible refunds within 5–10 business days back to your original payment method.{" "}
+          <strong className="text-white">How to Request:</strong> To request a refund within the eligible window, email <span className="text-indigo-400">support@TITECX.com</span> with your full name, registered email, and the Paystack payment reference number. We will process eligible refunds within 5–10 business days back to your original payment method.{" "}
           <br /><br />
           <strong className="text-white">Technical Issues:</strong> If you are unable to access content due to a verified technical fault on our platform, contact support within 7 days of purchase. We will investigate and, where the fault is confirmed, offer a full refund or equivalent course credit at our discretion.{" "}
           <br /><br />
@@ -44,7 +44,7 @@ export default function TermsPage() {
         </LegalSection>
 
         <LegalSection title="5. Intellectual Property">
-          All course content — including videos, text, images, and code — is the exclusive property of Titecx and its instructors. You may not reproduce, distribute, or create derivative works without explicit written permission.
+          All course content — including videos, text, images, and code — is the exclusive property of TITECX and its instructors. You may not reproduce, distribute, or create derivative works without explicit written permission.
         </LegalSection>
 
         <LegalSection title="6. User Conduct">
@@ -52,7 +52,7 @@ export default function TermsPage() {
         </LegalSection>
 
         <LegalSection title="7. Limitation of Liability">
-          Titecx is provided on an "as is" basis. We make no warranties regarding the accuracy or completeness of course content. To the maximum extent permitted by law, Titecx shall not be liable for any indirect, incidental, or consequential damages.
+          TITECX is provided on an "as is" basis. We make no warranties regarding the accuracy or completeness of course content. To the maximum extent permitted by law, TITECX shall not be liable for any indirect, incidental, or consequential damages.
         </LegalSection>
 
         <LegalSection title="8. Changes to Terms">
@@ -60,7 +60,7 @@ export default function TermsPage() {
         </LegalSection>
 
         <LegalSection title="9. Contact">
-          If you have any questions about these Terms or wish to submit a refund request, please email us at <span className="text-indigo-400">support@Titecx.com</span>. We aim to respond to all enquiries within 2 business days.
+          If you have any questions about these Terms or wish to submit a refund request, please email us at <span className="text-indigo-400">support@TITECX.com</span>. We aim to respond to all enquiries within 2 business days.
         </LegalSection>
       </section>
 

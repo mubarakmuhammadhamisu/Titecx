@@ -6,7 +6,7 @@ export default function Footer() {
     <footer className="border-t border-white/10 py-12 px-4 text-gray-400">
       <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8 mb-12">
         <div className="col-span-2">
-          <h3 className="text-white font-bold text-xl mb-4">Titecx</h3>
+          <h3 className="text-white font-bold text-xl mb-4">TITECX</h3>
           <p className="max-w-xs">Empowering learners with real-world skills through expert-led courses.</p>
         </div>
         <div>
@@ -27,7 +27,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="text-center text-sm border-t border-white/5 pt-8">
-        © {new Date().getFullYear()} Titecx. All rights reserved.
+        © {new Date().getFullYear()} TITECX. All rights reserved.
       </div>
     </footer>
   );

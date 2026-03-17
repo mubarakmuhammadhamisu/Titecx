@@ -20,7 +20,7 @@ export default function AchievementsPage() {
     id: idx + 1,
     slug: c.slug,
     title: c.title,
-    issuer: 'Titecx Academy',
+    issuer: 'TITECX Academy',
     date: (c.completedAt ?? c.enrolledAt)
       ? new Date((c.completedAt ?? c.enrolledAt)!).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
       : 'Recent',
@@ -80,7 +80,7 @@ export default function AchievementsPage() {
 </head>
 <body>
   <div class="cert">
-    <div class="brand">Titecx Academy</div>
+    <div class="brand">TITECX Academy</div>
     <div class="divider"></div>
     <div class="heading">Certificate of Completion</div>
     <div class="heading" style="font-size:11px">This certifies that</div>
