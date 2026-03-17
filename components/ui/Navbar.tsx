@@ -22,7 +22,7 @@ export default function Navbar() {
           href={user ? '/dashboard' : '/'}
           className="text-xl font-bold text-white hover:text-indigo-300 transition"
         >
-          Learnify
+          Titecx
         </Link>
 
         {/* Desktop nav */}

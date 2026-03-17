@@ -12,7 +12,7 @@ export default function AboutPage() {
         <div className="absolute inset-0 bg-linear-to-br from-indigo-600/20 via-purple-600/10 to-transparent" />
         <div className="relative max-w-4xl mx-auto px-4 py-24 text-center">
           <h1 className="text-4xl md:text-5xl font-extrabold">
-            About <span className="text-indigo-400">Learnify</span>
+            About <span className="text-indigo-400">Titecx</span>
           </h1>
           <p className="mt-6 text-gray-300 text-lg">
             A learning platform built to help people gain real, practical skills
@@ -25,7 +25,7 @@ export default function AboutPage() {
       <section className="max-w-5xl mx-auto px-4 py-20">
         <h2 className="text-2xl font-bold mb-4">Our Mission</h2>
         <p className="text-gray-400 leading-relaxed">
-          Learnify was created to remove confusion from learning. We focus on
+          Titecx was created to remove confusion from learning. We focus on
           structured, practical courses that help learners understand concepts
           deeply, apply them confidently, and grow at their own pace.
         </p>
@@ -33,7 +33,7 @@ export default function AboutPage() {
 
       {/* WHO IT'S FOR */}
       <section className="max-w-5xl mx-auto px-4 py-20 border-t border-white/10">
-        <h2 className="text-2xl font-bold mb-8">Who Learnify Is For</h2>
+        <h2 className="text-2xl font-bold mb-8">Who Titecx Is For</h2>
         <div className="grid sm:grid-cols-2 gap-6">
           {[
             "Beginners starting from scratch",
