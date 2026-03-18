@@ -45,7 +45,7 @@ const LoginContent = () => {
   // form's onSubmit handle Enter naturally.
   function focusNext(
     e: React.KeyboardEvent<HTMLInputElement>,
-    nextRef: React.RefObject<HTMLInputElement>
+    nextRef: React.RefObject<HTMLInputElement | null>
   ) {
     if (e.key === 'Enter') {
       e.preventDefault(); // stop form submission
