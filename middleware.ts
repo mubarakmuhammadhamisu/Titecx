@@ -67,10 +67,18 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   // ---------------------------------------------------------------------------
-  // STEP 4 — Protect routes.
+  // STEP 4 — Protect routes and redirect logged-in users away from root.
   // ---------------------------------------------------------------------------
   const isDashboard = pathname.startsWith('/dashboard');
   const isAdmin     = pathname.startsWith('/admin');
+  const isRoot      = pathname === '/';
+
+  // Logged-in user visiting the homepage — send them straight to the dashboard
+  // before the page renders. This eliminates the flicker where the marketing
+  // page briefly appears before a client-side redirect kicks in.
+  if (isRoot && user) {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
 
   if ((isDashboard || isAdmin) && !user) {
     const loginUrl = req.nextUrl.clone();

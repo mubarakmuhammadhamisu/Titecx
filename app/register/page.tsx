@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -25,13 +25,21 @@ const RegisterContent = () => {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') ?? '/dashboard';
 
-  const [name, setName]         = useState('');
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [showPw, setShowPw]     = useState(false);
-  const [error, setError]       = useState('');
-  const [success, setSuccess]   = useState(false);
-  const [loading, setLoading]   = useState(false);
+  const [name, setName]                   = useState('');
+  const [email, setEmail]                 = useState('');
+  const [password, setPassword]           = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPw, setShowPw]               = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [error, setError]                 = useState('');
+  const [success, setSuccess]             = useState(false);
+  const [loading, setLoading]             = useState(false);
+
+  // Refs for Enter-key focus chaining:
+  // Name → Email → Password → Confirm Password → (Enter submits)
+  const emailRef          = useRef<HTMLInputElement>(null);
+  const passwordRef       = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isLoading && user) router.replace(redirect);
@@ -39,12 +47,40 @@ const RegisterContent = () => {
 
   const strength = getStrength(password);
 
+  // Confirm password match indicator — only shown once the user starts typing
+  const confirmMismatch = confirmPassword.length > 0 && confirmPassword !== password;
+  const confirmMatch    = confirmPassword.length > 0 && confirmPassword === password;
+
+  // Move focus to the next field on Enter instead of submitting.
+  // Only called on non-final fields.
+  function focusNext(
+    e: React.KeyboardEvent<HTMLInputElement>,
+    nextRef: React.RefObject<HTMLInputElement>
+  ) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      nextRef.current?.focus();
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    if (!name.trim())        { setError('Please enter your full name.'); return; }
-    if (!email)              { setError('Please enter your email.'); return; }
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+
+    // Client-side validation — in this order so the user gets the most
+    // actionable error first
+    if (!name.trim())          { setError('Please enter your full name.'); return; }
+    if (!email)                { setError('Please enter your email.'); return; }
+    if (password.length < 8)   { setError('Password must be at least 8 characters.'); return; }
+    if (!confirmPassword)      { setError('Please confirm your password.'); return; }
+
+    // Confirm password is validated CLIENT-SIDE only — only the real password
+    // is sent to Supabase. This field never touches the server.
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
     setLoading(true);
     const result = await register(name.trim(), email, password);
     setLoading(false);
@@ -92,7 +128,7 @@ const RegisterContent = () => {
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
 
-          {/* Full Name */}
+          {/* Full Name — Enter moves to Email */}
           <div>
             <label className="text-sm font-medium text-gray-300">Full Name</label>
             <input
@@ -100,31 +136,36 @@ const RegisterContent = () => {
               placeholder="Your full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => focusNext(e, emailRef)}
               className="mt-1.5 w-full px-4 py-3 rounded-lg bg-gray-800 border border-indigo-500/20 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500/60 transition"
             />
           </div>
 
-          {/* Email */}
+          {/* Email — Enter moves to Password */}
           <div>
             <label className="text-sm font-medium text-gray-300">Email</label>
             <input
+              ref={emailRef}
               type="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => focusNext(e, passwordRef)}
               className="mt-1.5 w-full px-4 py-3 rounded-lg bg-gray-800 border border-indigo-500/20 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500/60 transition"
             />
           </div>
 
-          {/* Password + strength meter */}
+          {/* Password — Enter moves to Confirm Password */}
           <div>
             <label className="text-sm font-medium text-gray-300">Password</label>
             <div className="relative mt-1.5">
               <input
+                ref={passwordRef}
                 type={showPw ? 'text' : 'password'}
                 placeholder="At least 8 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => focusNext(e, confirmPasswordRef)}
                 className="w-full px-4 py-3 pr-10 rounded-lg bg-gray-800 border border-indigo-500/20 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500/60 transition"
               />
               <button
@@ -135,6 +176,7 @@ const RegisterContent = () => {
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            {/* Strength meter */}
             {password && (
               <div className="mt-2 space-y-1">
                 <div className="flex gap-1">
@@ -151,6 +193,44 @@ const RegisterContent = () => {
                   {STRENGTH_LABELS[strength]}
                 </p>
               </div>
+            )}
+          </div>
+
+          {/* Confirm Password — last field, Enter submits */}
+          <div>
+            <label className="text-sm font-medium text-gray-300">Confirm Password</label>
+            <div className="relative mt-1.5">
+              <input
+                ref={confirmPasswordRef}
+                type={showConfirmPw ? 'text' : 'password'}
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                // No onKeyDown — Enter on this final field submits the form
+                className={`w-full px-4 py-3 pr-10 rounded-lg bg-gray-800 border text-white text-sm placeholder-gray-500 focus:outline-none transition ${
+                  confirmMismatch
+                    ? 'border-red-500/60 focus:border-red-500'
+                    : confirmMatch
+                    ? 'border-emerald-500/60 focus:border-emerald-500'
+                    : 'border-indigo-500/20 focus:border-indigo-500/60'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPw(!showConfirmPw)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition"
+              >
+                {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {/* Real-time feedback below the confirm field */}
+            {confirmMismatch && (
+              <p className="text-xs text-red-400 mt-1">Passwords do not match</p>
+            )}
+            {confirmMatch && (
+              <p className="text-xs text-emerald-400 mt-1 flex items-center gap-1">
+                <CheckCircle2 size={11} /> Passwords match
+              </p>
             )}
           </div>
 
