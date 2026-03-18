@@ -121,9 +121,7 @@ export default function AppShellSidebar() {
             <LogOut size={16} />
             Log out
           </button>
-          <Link href="/" className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-400 transition px-2">
-            ← Back to site
-          </Link>
+         
         </div>
       </motion.aside>
     </>
