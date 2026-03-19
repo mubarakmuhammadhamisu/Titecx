@@ -127,6 +127,10 @@ create policy "Users can insert own completions"
 
 create policy "Users can delete own completions"
   on lesson_completions for delete using (auth.uid() = user_id);
+
+-- UPDATE policy is required for upsert (INSERT ... ON CONFLICT DO UPDATE)
+create policy "Users can update own completions"
+  on lesson_completions for update using (auth.uid() = user_id);
 ```
 
 ---
@@ -365,6 +369,54 @@ create policy "Users can update own avatar"
 1. Go to **Paystack Dashboard** → Settings → API Keys & Webhooks
 2. Under **Webhook URL**, enter: `https://yourdomain.com/api/paystack/webhook`
 3. Under **Callback URL**, enter: `https://yourdomain.com/api/paystack/callback`
+
+---
+
+---
+
+## ⚠️ Critical — Run these checks if progress is not saving
+
+If you see any of the following symptoms:
+- Progress resets to 0% after a page refresh
+- Hours Learned and Avg Progress show 0 on the dashboard
+- "Course Complete" button never activates even after finishing all lessons
+- Curriculum shows wrong completed lesson count
+
+The cause is almost always a **missing RLS policy** in Supabase.
+Go to **Supabase → Table Editor → Authentication → Policies** and confirm
+that ALL of these policies exist. If any are missing, run the SQL below.
+
+### Verify these 3 policies exist on the `enrollments` table
+
+| Policy name | Operation |
+|---|---|
+| Users can view own enrollments | SELECT |
+| Users can insert own enrollments | INSERT |
+| Users can update own enrollments | UPDATE ← most commonly missing |
+| Users can delete own enrollments | DELETE |
+
+If the UPDATE policy is missing, run this now:
+
+```sql
+create policy "Users can update own enrollments"
+  on enrollments for update using (auth.uid() = user_id);
+```
+
+### Verify these 4 policies exist on the `lesson_completions` table
+
+| Policy name | Operation |
+|---|---|
+| Users can view own completions | SELECT |
+| Users can insert own completions | INSERT |
+| Users can update own completions | UPDATE ← required for upsert to work |
+| Users can delete own completions | DELETE |
+
+If either the INSERT or UPDATE policy is missing, run this:
+
+```sql
+create policy "Users can update own completions"
+  on lesson_completions for update using (auth.uid() = user_id);
+```
 
 ---
 
