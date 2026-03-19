@@ -9,7 +9,7 @@ interface CurriculumSidebarProps {
   modules: Module[];
   currentLessonId: string;
   courseSlug: string;
-  completedLessonIds: Set<string>;  // passed from lesson page
+  completedLessonIds: Set<string>;
 }
 
 export default function CurriculumSidebar({
@@ -23,6 +23,14 @@ export default function CurriculumSidebar({
     setExpanded(s);
   };
 
+  const allLessonIdsInCourse = new Set(
+    modules.flatMap((m) => m.lessons.map((l) => l.id))
+  );
+  const completedInThisCourse = [...completedLessonIds].filter((id) =>
+    allLessonIdsInCourse.has(id)
+  ).length;
+  const totalInThisCourse = allLessonIdsInCourse.size;
+
   const completedInModule = (lessons: { id: string }[]) =>
     lessons.filter((l) => completedLessonIds.has(l.id)).length;
 
@@ -31,13 +39,13 @@ export default function CurriculumSidebar({
       <div className="px-4 py-3 border-b border-indigo-500/20 bg-gray-950">
         <h3 className="text-sm font-semibold text-white">Curriculum</h3>
         <p className="text-xs text-gray-500 mt-0.5">
-          {completedLessonIds.size} of {modules.flatMap((m) => m.lessons).length} lessons done
+          {completedInThisCourse} of {totalInThisCourse} lessons done
         </p>
       </div>
 
       <div className="overflow-y-auto flex-1 space-y-1 p-2">
         {modules.map((module) => {
-          const done = completedInModule(module.lessons);
+          const done  = completedInModule(module.lessons);
           const total = module.lessons.length;
           return (
             <div key={module.id}>
@@ -45,7 +53,10 @@ export default function CurriculumSidebar({
                 onClick={() => toggle(module.id)}
                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-800 rounded-lg transition text-left group"
               >
-                <ChevronDown size={16} className={`text-indigo-400 transition-transform ${expanded.has(module.id) ? '' : '-rotate-90'}`} />
+                <ChevronDown
+                  size={16}
+                  className={`text-indigo-400 transition-transform ${expanded.has(module.id) ? '' : '-rotate-90'}`}
+                />
                 <span className="text-sm font-medium text-gray-200 group-hover:text-white transition flex-1">
                   {module.title}
                 </span>
@@ -56,7 +67,7 @@ export default function CurriculumSidebar({
                 <div className="ml-6 space-y-1">
                   {module.lessons.map((lesson) => {
                     const isActive = lesson.id === currentLessonId;
-                    const isDone = completedLessonIds.has(lesson.id);
+                    const isDone   = completedLessonIds.has(lesson.id);
                     return (
                       <Link
                         key={lesson.id}
@@ -71,9 +82,9 @@ export default function CurriculumSidebar({
                           ? <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
                           : <Circle size={15} className={`shrink-0 ${isActive ? 'text-indigo-400' : 'text-gray-600'}`} />
                         }
-                        {lesson.type === 'video' && <Video size={13} className="text-indigo-400 shrink-0" />}
+                        {lesson.type === 'video'   && <Video    size={13} className="text-indigo-400 shrink-0" />}
                         {lesson.type === 'reading' && <BookOpen size={13} className="text-purple-400 shrink-0" />}
-                        {lesson.type === 'quiz' && <Brain size={13} className="text-pink-400 shrink-0" />}
+                        {lesson.type === 'quiz'    && <Brain    size={13} className="text-pink-400   shrink-0" />}
                         <span className="flex-1 truncate">{lesson.title}</span>
                         {isActive && <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />}
                       </Link>
