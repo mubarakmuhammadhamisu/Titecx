@@ -4,8 +4,27 @@ import { getAllCourses } from '@/lib/courses';
 import { Clock } from 'lucide-react';
 
 export default async function CoursePreview() {
-  const courses = await getAllCourses();
+
+  let courses = [];
+  try{
+    courses = await getAllCourses();  
+  }catch (error){
+      console.error("Failed to fetch courses:", error);
+
+    // Return a fallback UI instead of crashing
+    return (
+      <div className="py-20 text-center border border-red-900/20 bg-red-900/10 rounded-xl">
+        <p className="text-red-400">Unable to load courses. Please refresh the page.</p>
+      </div>
+    );
+    }
+
+    if (courses.length === 0) {
+    return <div>No courses found.</div>;
+  }
+
   const featured = courses.slice(0, 6);
+  
 
   return (
     <section className="max-w-7xl mx-auto px-4 py-20">
