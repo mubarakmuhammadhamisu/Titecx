@@ -49,17 +49,10 @@ export default function CourseOverviewPage({ params }: PageProps) {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <button 
                     onClick={() => window.history.back()}
-                    className="flex items-center justify-center gap-2 px-8 py-4 bg-white/5 border border-white/10 rounded-2xl font-bold hover:bg-white/10 transition-all"
+                    className="flex items-center justify-center gap-2 px-8 py-4 bg-linear-to-r from-[#6366F1] to-[#A855F7] rounded-2xl font-bold hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
                   >
                     <ArrowLeft size={20} /> Go Back
                   </button>
-                  
-                  <Link 
-                    href="/dashboard"
-                    className="flex items-center justify-center gap-2 px-8 py-4 bg-linear-to-r from-[#6366F1] to-[#A855F7] rounded-2xl font-bold hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
-                  >
-                    <Home size={20} /> Return to Dashboard
-                  </Link>
                 </div>
               </div>
       
