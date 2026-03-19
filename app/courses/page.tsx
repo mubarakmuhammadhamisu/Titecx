@@ -2,9 +2,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '@/components/ui/Navbar';
 import Footer from '@/components/ui/Footer';
-import { courses } from '@/lib/Course';
+import { getAllCourses } from '@/lib/courses';
 
-export default function CoursesPage() {
+export default async function CoursesPage() {
+  const courses = await getAllCourses();
+
   return (
     <main className="min-h-screen bg-gray-950 text-gray-100">
       <Navbar />
@@ -26,7 +28,6 @@ export default function CoursesPage() {
               href={`/courses/${course.slug}`}
               className="group rounded-2xl bg-gray-900 border border-white/10 overflow-hidden hover:border-indigo-500/40 transition"
             >
-              {/* Thumbnail */}
               <div className={`h-44 bg-linear-to-br ${course.gradientFrom} ${course.gradientTo} relative overflow-hidden`}>
                 <Image src={course.thumbnail} alt={course.title} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover" />
                 <div className="absolute top-3 left-3 bg-gray-900/70 backdrop-blur text-xs text-gray-200 px-2 py-0.5 rounded-full border border-white/10">
@@ -36,7 +37,6 @@ export default function CoursesPage() {
                   {course.price}
                 </div>
               </div>
-
               <div className="p-5">
                 <h3 className="font-semibold text-lg group-hover:text-indigo-400 transition">{course.title}</h3>
                 <p className="mt-2 text-sm text-gray-400 line-clamp-2">{course.shortDescription}</p>

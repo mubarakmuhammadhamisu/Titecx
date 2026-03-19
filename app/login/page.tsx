@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -12,11 +12,15 @@ const LoginContent = () => {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') ?? '/dashboard';
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail]     = useState('');
   const [password, setPassword] = useState('');
-  const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState('');
+  const [showPw, setShowPw]   = useState(false);
+  const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Refs for Enter-key focus chaining.
+  // Email → Password → (Enter submits — password is the last field)
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isLoading && user) router.replace(redirect);
@@ -36,6 +40,19 @@ const LoginContent = () => {
     }
   }
 
+  // Move focus to the next field on Enter instead of submitting.
+  // Called only on non-final fields — final field (password) lets the
+  // form's onSubmit handle Enter naturally.
+  function focusNext(
+    e: React.KeyboardEvent<HTMLInputElement>,
+    nextRef: React.RefObject<HTMLInputElement | null>
+  ) {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // stop form submission
+      nextRef.current?.focus();
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col items-center justify-center px-4">
       <Link href="/" className="text-2xl font-extrabold text-white mb-8 hover:text-indigo-300 transition">
@@ -47,6 +64,8 @@ const LoginContent = () => {
         <p className="text-gray-400 text-sm mt-1">Log in to continue learning</p>
 
         <form onSubmit={handleLogin} className="mt-6 space-y-4">
+
+          {/* Email — Enter moves focus to Password */}
           <div>
             <label className="text-sm font-medium text-gray-300">Email</label>
             <input
@@ -54,10 +73,12 @@ const LoginContent = () => {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => focusNext(e, passwordRef)}
               className="mt-1.5 w-full px-4 py-3 rounded-lg bg-gray-800 border border-indigo-500/20 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500/60 transition"
             />
           </div>
 
+          {/* Password — last field, Enter submits the form */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-sm font-medium text-gray-300">Password</label>
@@ -67,6 +88,7 @@ const LoginContent = () => {
             </div>
             <div className="relative">
               <input
+                ref={passwordRef}
                 type={showPw ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={password}
@@ -100,7 +122,7 @@ const LoginContent = () => {
         </form>
 
         <p className="text-sm text-gray-400 text-center mt-5">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link href="/register" className="text-indigo-400 hover:text-indigo-300 transition font-medium">
             Sign up
           </Link>

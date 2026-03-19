@@ -6,13 +6,12 @@ import Link from 'next/link';
 import GlowCard from '@/components/AppShell/GlowCard';
 import { BookOpen, Clock, Users, ChevronRight, Play, Search } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { courseSchemas } from '@/lib/Course';
 
 type Filter = 'all' | 'in-progress' | 'completed';
 const ITEMS_PER_PAGE = 6;
 
 export default function MyCoursesPage() {
-  const { user, enrolledCourses } = useAuth();
+  const { user, enrolledCourses, courses } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -34,7 +33,7 @@ export default function MyCoursesPage() {
 
   // Available courses = full catalogue minus what user is enrolled in
   const enrolledSlugs = new Set(enrolledCourses.map((c) => c.slug));
-  const availableCourses = courseSchemas.filter((c) => !enrolledSlugs.has(c.slug));
+  const availableCourses = courses.filter((c) => !enrolledSlugs.has(c.slug));
 
   const filters: { label: string; value: Filter }[] = [
     { label: 'All', value: 'all' },

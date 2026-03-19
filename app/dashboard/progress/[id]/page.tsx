@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import GlowCard from "@/components/AppShell/GlowCard";
 import { useAuth } from "@/context/AuthContext";
-import { courseSchemas } from "@/lib/Course";
 import {
   CheckCircle2,
   Circle,
@@ -22,14 +21,14 @@ export default function ProgressTrackerPage({
   params: Promise<{ id: string }>;
 }) {
   const unwrapped = React.use(params);
-  const { user, enrolledCourses, completedLessonIds } = useAuth();
+  const { user, enrolledCourses, completedLessonIds, courses } = useAuth();
   if (!user) return null;
 
   const enrolledCourse = enrolledCourses.find(
     (c) => c.slug === unwrapped.id,
   );
   const schema = enrolledCourse
-    ? courseSchemas.find((c) => c.slug === enrolledCourse.slug)
+    ? courses.find((c) => c.slug === enrolledCourse.slug)
     : null;
 
   if (!enrolledCourse || !schema) {

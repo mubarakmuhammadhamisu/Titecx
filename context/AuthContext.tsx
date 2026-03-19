@@ -1,27 +1,41 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, EnrollmentRow, LessonCompletionRow, uploadAvatar } from '@/lib/supabase';
-import { courseSchemas, EnrolledCourse } from '@/lib/Course';
+import type { CourseSchema, EnrolledCourse, Module } from '@/lib/Course';
+
+// ── DB row shape for courses ──────────────────────────────────────────────────
+interface CourseRow {
+  id: string; slug: string; title: string; short_description: string;
+  description: string; level: string; duration: string; price: string;
+  instructor: string; thumbnail: string; gradient_from: string; gradient_to: string;
+  features: string[]; curriculum: string[]; modules: Module[]; is_published: boolean;
+}
+
+function rowToCourse(row: CourseRow): CourseSchema {
+  return {
+    id: row.id, slug: row.slug, title: row.title,
+    shortDescription: row.short_description, description: row.description,
+    level: row.level, duration: row.duration, price: row.price,
+    instructor: row.instructor, thumbnail: row.thumbnail,
+    gradientFrom: row.gradient_from, gradientTo: row.gradient_to,
+    features: row.features ?? [], curriculum: row.curriculum ?? [], modules: row.modules ?? [],
+  };
+}
 
 export interface AppUser {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  avatarUrl: string | null;
-  role: string;
-  location: string;
-  bio: string;
-  phone: string;
+  id: string; name: string; email: string; avatar: string;
+  avatarUrl: string | null; role: string; location: string;
+  bio: string; phone: string;
   preferences: { email_notifications: boolean; course_recommendations: boolean; weekly_digest: boolean };
 }
 
 interface AuthContextValue {
   user: AppUser | null;
+  courses: CourseSchema[];
   enrolledCourses: EnrolledCourse[];
-  completedLessonIds: Set<string>;   // all lesson IDs the user has completed
+  completedLessonIds: Set<string>;
   isEnrolled: (slug: string) => boolean;
   isLessonCompleted: (lessonId: string) => boolean;
   isLoading: boolean;
@@ -39,17 +53,17 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// ── Build EnrolledCourse[] from DB rows ──────────────────────────────────────
+// ── Build EnrolledCourse[] from DB rows ───────────────────────────────────────
 function buildEnrolledCourses(
   enrollments: EnrollmentRow[],
-  completions: LessonCompletionRow[]
+  completions: LessonCompletionRow[],
+  courseList: CourseSchema[],       // now passed in, not read from a static file
 ): EnrolledCourse[] {
   return enrollments
     .map((row) => {
-      const schema = courseSchemas.find((c) => c.slug === row.course_slug);
+      const schema = courseList.find((c) => c.slug === row.course_slug);
       if (!schema) return null;
 
-      // Figure out the first incomplete lesson to resume from
       const allLessons = schema.modules.flatMap((m) => m.lessons);
       const completedInCourse = new Set(
         completions.filter((c) => c.course_slug === row.course_slug).map((c) => c.lesson_id)
@@ -57,64 +71,63 @@ function buildEnrolledCourses(
       const nextLesson = allLessons.find((l) => !completedInCourse.has(l.id));
 
       return {
-        id: row.id,
-        slug: schema.slug,
-        title: schema.title,
-        instructor: schema.instructor,
+        id: row.id, slug: schema.slug, title: schema.title, instructor: schema.instructor,
         progress: row.progress,
         duration: schema.duration.replace(' hours', 'h').replace(' hour', 'h'),
-        students: 0,
-        thumbnail: schema.thumbnail,
-        gradientFrom: schema.gradientFrom,
-        gradientTo: schema.gradientTo,
-        nextLessonId: nextLesson?.id,
-        completedAt: row.completed_at,
-        enrolledAt: row.enrolled_at,
+        students: 0, thumbnail: schema.thumbnail,
+        gradientFrom: schema.gradientFrom, gradientTo: schema.gradientTo,
+        nextLessonId: nextLesson?.id, completedAt: row.completed_at, enrolledAt: row.enrolled_at,
       } as EnrolledCourse;
     })
     .filter(Boolean) as EnrolledCourse[];
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AppUser | null>(null);
+  const [user, setUser]                       = useState<AppUser | null>(null);
+  const [courses, setCourses]                 = useState<CourseSchema[]>([]);
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading]             = useState(true);
   const router = useRouter();
-  // Track which userId we last loaded so TOKEN_REFRESHED doesn't trigger 3 extra
-  // Supabase queries every time the tab is focused or the JWT is silently renewed.
   const loadedUserIdRef = useRef<string | null>(null);
 
-  async function loadUserData(userId: string) {
-    const [{ data: profile }, { data: enrollments }, { data: completions }] = await Promise.all([
+  const loadUserData = useCallback(async (userId: string) => {
+    // Fetch profile, enrollments, completions, and courses all in one round trip
+    const [
+      { data: profile },
+      { data: enrollments },
+      { data: completions },
+      { data: coursesData },
+    ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('enrollments').select('*').eq('user_id', userId),
       supabase.from('lesson_completions').select('*').eq('user_id', userId),
+      supabase.from('courses').select('*').eq('is_published', true).order('created_at', { ascending: true }),
     ]);
+
+    const courseList: CourseSchema[] = coursesData
+      ? (coursesData as CourseRow[]).map(rowToCourse)
+      : [];
+
+    setCourses(courseList);
 
     if (profile) {
       setUser({
-        id: profile.id,
-        name: profile.name,
-        email: profile.email,
-        avatar: profile.avatar,
-        avatarUrl: profile.avatar_url ?? null,
-        role: profile.role,
-        location: profile.location ?? '',
-        bio: profile.bio ?? '',
-        phone: profile.phone ?? '',
+        id: profile.id, name: profile.name, email: profile.email,
+        avatar: profile.avatar, avatarUrl: profile.avatar_url ?? null,
+        role: profile.role, location: profile.location ?? '',
+        bio: profile.bio ?? '', phone: profile.phone ?? '',
         preferences: profile.preferences ?? {
-          email_notifications: true,
-          course_recommendations: true,
-          weekly_digest: false,
+          email_notifications: true, course_recommendations: true, weekly_digest: false,
         },
       });
     }
 
     const comp = completions ?? [];
     setCompletedLessonIds(new Set(comp.map((c: LessonCompletionRow) => c.lesson_id)));
-    setEnrolledCourses(buildEnrolledCourses(enrollments ?? [], comp));
-  }
+    setEnrolledCourses(buildEnrolledCourses(enrollments ?? [], comp, courseList));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // setters from useState are stable; supabase is a module-level singleton
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -127,26 +140,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!session?.user) {
-        // Signed out — clear everything
         loadedUserIdRef.current = null;
-        setUser(null);
-        setEnrolledCourses([]);
-        setCompletedLessonIds(new Set());
+        setUser(null); setEnrolledCourses([]); setCompletedLessonIds(new Set()); setCourses([]);
         return;
       }
-      // TOKEN_REFRESHED and USER_UPDATED fire frequently (tab focus, silent renewal).
-      // If we already have data for this exact user, skip the 3-query reload.
       if (loadedUserIdRef.current === session.user.id) return;
       loadedUserIdRef.current = session.user.id;
       await loadUserData(session.user.id);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [loadUserData]);
 
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return{ error: error.message /*'Invalid email or password. Please try again.'*/ };
+    if (error) return { error: error.message };
     return {};
   };
 
@@ -170,20 +178,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await supabase.auth.signOut();
-    setUser(null); setEnrolledCourses([]); setCompletedLessonIds(new Set());
+    setUser(null); setEnrolledCourses([]); setCompletedLessonIds(new Set()); setCourses([]);
     router.push('/login');
   };
 
-  // Updates LOCAL state only after the /api/enroll server route confirms enrollment.
-  // DB writes are handled exclusively by the API to keep enrollment data trustworthy.
   const enroll = (slug: string) => {
     if (!user || enrolledCourses.some((c) => c.slug === slug)) return;
-    const schema = courseSchemas.find((c) => c.slug === slug);
-    if (!schema) return; // course not found in catalogue — do nothing
+    const schema = courses.find((c) => c.slug === slug); // reads from context state
+    if (!schema) return;
     const allLessons = schema.modules.flatMap((m) => m.lessons);
     setEnrolledCourses((prev) => [...prev, {
-      id: crypto.randomUUID(), // temporary local id — DB id arrives on next loadUserData
-      slug: schema.slug, title: schema.title,
+      id: crypto.randomUUID(), slug: schema.slug, title: schema.title,
       instructor: schema.instructor, progress: 0,
       duration: schema.duration.replace(' hours', 'h').replace(' hour', 'h'),
       students: 0, thumbnail: schema.thumbnail,
@@ -192,18 +197,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } as EnrolledCourse]);
   };
 
-  // Called when user finishes a video or clicks "Mark as Complete" on a reading
   const markLessonComplete = async (courseSlug: string, lessonId: string) => {
     if (!user) return;
-    if (completedLessonIds.has(lessonId)) return; // already done
+    if (completedLessonIds.has(lessonId)) return;
 
-    // 1. Insert completion row (ignore duplicate errors gracefully)
     await supabase.from('lesson_completions').upsert({
       user_id: user.id, course_slug: courseSlug, lesson_id: lessonId,
     }, { onConflict: 'user_id,course_slug,lesson_id' });
 
-    // 2. Recalculate course progress
-    const schema = courseSchemas.find((c) => c.slug === courseSlug);
+    const schema = courses.find((c) => c.slug === courseSlug); // reads from context state
     if (schema) {
       const totalLessons = schema.modules.flatMap((m) => m.lessons).length;
       const newCompleted = new Set([...completedLessonIds, lessonId]);
@@ -214,16 +216,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? Math.round((completedInCourse / totalLessons) * 100)
         : 0;
 
-      // 3. Update progress in enrollments table
       await supabase.from('enrollments')
-        .update({
-          progress: newProgress,
-          completed_at: newProgress === 100 ? new Date().toISOString() : null,
-        })
+        .update({ progress: newProgress, completed_at: newProgress === 100 ? new Date().toISOString() : null })
         .eq('user_id', user.id)
         .eq('course_slug', courseSlug);
 
-      // 4. Update local state immediately so UI reflects without a reload
       setCompletedLessonIds(newCompleted);
       setEnrolledCourses((prev) =>
         prev.map((c) => {
@@ -256,7 +253,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return { error: 'Not logged in.' };
     const { url, error } = await uploadAvatar(user.id, file);
     if (error || !url) return { error: error ?? 'Upload failed.' };
-    // Save URL to profile row
     await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
     setUser((prev) => prev ? { ...prev, avatarUrl: url } : prev);
     return {};
@@ -281,17 +277,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     if (!res.ok) return { error: 'Failed to delete account. Please contact support.' };
     await supabase.auth.signOut();
-    setUser(null); setEnrolledCourses([]); setCompletedLessonIds(new Set());
+    setUser(null); setEnrolledCourses([]); setCompletedLessonIds(new Set()); setCourses([]);
     router.push('/');
     return {};
   };
 
-  const isEnrolled = (slug: string) => enrolledCourses.some((c) => c.slug === slug);
+  const isEnrolled    = (slug: string)     => enrolledCourses.some((c) => c.slug === slug);
   const isLessonCompleted = (lessonId: string) => completedLessonIds.has(lessonId);
 
   return (
     <AuthContext.Provider value={{
-      user, enrolledCourses, completedLessonIds, isEnrolled, isLessonCompleted, isLoading,
+      user, courses, enrolledCourses, completedLessonIds,
+      isEnrolled, isLessonCompleted, isLoading,
       login, register, logout, enroll, markLessonComplete,
       updateProfile, updatePreferences, updateAvatar, updatePassword, deleteAccount,
     }}>

@@ -3,7 +3,7 @@
 import React, { use, useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { courseSchemas } from '@/lib/Course';
+
 import { useAuth } from '@/context/AuthContext';
 import {
   ShieldCheck,
@@ -86,11 +86,11 @@ async function enrollWithTimeout(
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
   const unwrapped = use(params);
-  const { user, enroll } = useAuth();
+  const { user, enroll, courses } = useAuth();
 
   const course = useMemo(
-    () => courseSchemas.find((c) => c.slug === unwrapped.slug),
-    [unwrapped.slug]
+    () => courses.find((c) => c.slug === unwrapped.slug),
+    [courses, unwrapped.slug]
   );
 
   const [coupon, setCoupon] = useState('');

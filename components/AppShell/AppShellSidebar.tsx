@@ -54,7 +54,7 @@ export default function AppShellSidebar() {
         initial={isMobile ? { x: -280 } : false}
         animate={isMobile ? (isOpen ? { x: 0 } : { x: -280 }) : { x: 0 }}
         transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-        className="fixed left-4 top-4 bottom-4 w-64 z-40 md:relative md:static md:left-auto md:top-auto md:bottom-auto md:w-64
+        className="fixed left-4 top-4 bottom-4 w-64 z-40 md:relative md:left-auto md:top-auto md:bottom-auto md:w-64
           bg-gray-950/60 backdrop-blur-md rounded-3xl border border-indigo-500/20
           shadow-[0_0_40px_rgba(99,102,241,0.12)] p-6 overflow-y-auto flex flex-col shrink-0"
       >
@@ -121,9 +121,7 @@ export default function AppShellSidebar() {
             <LogOut size={16} />
             Log out
           </button>
-          <Link href="/" className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-400 transition px-2">
-            ← Back to site
-          </Link>
+         
         </div>
       </motion.aside>
     </>

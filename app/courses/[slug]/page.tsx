@@ -1,17 +1,19 @@
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '@/components/ui/Navbar';
 import Footer from '@/components/ui/Footer';
-import { courses } from '@/lib/Course';
+import { getCourseBySlug } from '@/lib/courses';
 import EnrollButton from '@/components/ui/EnrollButton';
 
 type PageProps = { params: Promise<{ slug: string }> };
 
 export default async function CourseDetailsPage({ params }: PageProps) {
   const { slug } = await params;
-  const course = courses.find((c) => c.slug === slug);
-  if (!course) notFound();
+  const course = await getCourseBySlug(slug);
+
+  // return notFound() — the `return` makes TypeScript correctly narrow
+  // `course` from `CourseSchema | null` to `CourseSchema` after this line.
+  if (!course) return notFound();
 
   return (
     <main className="min-h-screen bg-gray-950 text-gray-100">
@@ -47,7 +49,6 @@ export default async function CourseDetailsPage({ params }: PageProps) {
           <div className="p-6 rounded-2xl bg-gray-900 border border-white/10">
             <h3 className="font-semibold text-white mb-3">Price</h3>
             <p className="text-4xl font-extrabold text-indigo-400">{course.price}</p>
-            {/* Client component handles auth-aware redirect */}
             <EnrollButton slug={course.slug} price={course.price} />
           </div>
         </div>
