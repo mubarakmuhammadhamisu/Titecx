@@ -31,7 +31,7 @@ function Hero() {
             <span className="text-indigo-400">Actually Matter</span>
           </h1>
           <p className="mt-6 text-xl text-gray-300">
-            High-quality courses built for real-world skills. Join 10,000+
+            High-quality courses built for real-world skills. Join our growing community+
             students today.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
