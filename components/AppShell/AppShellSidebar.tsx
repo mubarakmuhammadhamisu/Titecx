@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Home, BookOpen, User, BarChart3, Award, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { profile } from 'console';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
@@ -61,7 +62,7 @@ export default function AppShellSidebar() {
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-3 mb-8 group" onClick={() => isMobile && setIsOpen(false)}>
           <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/40 group-hover:shadow-indigo-500/60 transition text-sm">
-            L
+            <Image src={"/TITECX.png"} alt='Titecx logo' width={10} height={10} className=" rounded-full w-full h-full object-cover"/>
           </div>
           <span className="text-lg font-bold text-white tracking-tight">TITECX</span>
         </Link>
@@ -94,7 +95,7 @@ export default function AppShellSidebar() {
         {/* User footer */}
         <div className="pt-4 mt-4 border-t border-indigo-500/10 space-y-3">
           {user && (
-            <div className="flex items-center gap-3 px-2">
+            <Link href={"dashboard/profile"} className="flex items-center gap-3 px-2">
               <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white">
                 {user.avatarUrl ? (
                   <Image
@@ -112,7 +113,7 @@ export default function AppShellSidebar() {
                 <p className="text-xs font-semibold text-white truncate">{user.name.split(' ')[0]}</p>
                 <p className="text-xs text-gray-500 truncate">{user.email}</p>
               </div>
-            </div>
+            </Link>
           )}
           <button
             onClick={logout}
