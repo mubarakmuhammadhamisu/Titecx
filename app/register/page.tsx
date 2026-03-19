@@ -55,7 +55,7 @@ const RegisterContent = () => {
   // Only called on non-final fields.
   function focusNext(
     e: React.KeyboardEvent<HTMLInputElement>,
-    nextRef: React.RefObject<HTMLInputElement>
+    nextRef: React.RefObject<HTMLInputElement | null>
   ) {
     if (e.key === 'Enter') {
       e.preventDefault();

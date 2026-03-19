@@ -73,14 +73,20 @@ export async function POST(req: NextRequest) {
 
   // ── Free course path ──────────────────────────────────────────────────────
   if (isFree) {
-    // Validate server-side that the course is actually free.
+    // Validate server-side that the course exists and is actually free.
     // Prevents someone POST-ing { isFree: true } against a paid course slug.
-    const { courseSchemas } = await import('@/lib/Course');
-    const courseSchema = courseSchemas.find((c) => c.slug === courseSlug);
-    if (!courseSchema) {
+    // Now queries Supabase instead of the old static file.
+    const { data: courseData } = await supabase
+      .from('courses')
+      .select('price')
+      .eq('slug', courseSlug)
+      .eq('is_published', true)
+      .maybeSingle();
+
+    if (!courseData) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
-    if (courseSchema.price !== 'Free') {
+    if (courseData.price !== 'Free') {
       return NextResponse.json({ error: 'Course is not free' }, { status: 400 });
     }
 

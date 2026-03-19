@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { courseSchemas } from '@/lib/Course';
 import VideoPlayer from '@/components/CoursePlayer/VideoPlayer';
 import Reader from '@/components/CoursePlayer/Reader';
 import CurriculumSidebar from '@/components/CoursePlayer/CurriculumSidebar';
@@ -13,9 +12,9 @@ interface PageProps { params: Promise<{ slug: string; lessonId: string }> }
 
 export default function CourseLessonPage({ params }: PageProps) {
   const { slug, lessonId } = React.use(params);
-  const { completedLessonIds, markLessonComplete } = useAuth();
+  const { completedLessonIds, markLessonComplete, courses } = useAuth();
 
-  const course = useMemo(() => courseSchemas.find((c) => c.slug === slug), [slug]);
+  const course = useMemo(() => courses.find((c) => c.slug === slug), [courses, slug]);
   const lesson = useMemo(() => {
     if (!course) return null;
     for (const mod of course.modules) {

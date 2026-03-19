@@ -1,9 +1,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { courses } from '@/lib/Course';
+import { getAllCourses } from '@/lib/courses';
 import { Clock } from 'lucide-react';
 
-export default function CoursePreview() {
+export default async function CoursePreview() {
+  const courses = await getAllCourses();
   const featured = courses.slice(0, 6);
 
   return (
