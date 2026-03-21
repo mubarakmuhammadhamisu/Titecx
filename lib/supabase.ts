@@ -62,8 +62,13 @@ export interface PaymentRow {
 
 // ── Avatar upload helper ─────────────────────────────────────────────────────
 // Uploads a file to the "avatars" Supabase Storage bucket.
-// Returns the public URL of the uploaded image.
-export async function uploadAvatar(userId: string, file: File): Promise<{ url?: string; error?: string }> {
+// Returns the public URL AND the storage path.
+// The path is returned so the caller can delete the file from Storage if the
+// subsequent profiles DB write fails (rollback pattern in updateAvatar).
+export async function uploadAvatar(
+  userId: string,
+  file: File,
+): Promise<{ url?: string; path?: string; error?: string }> {
   const ext = file.name.split('.').pop();
   const path = `${userId}/avatar.${ext}`;
 
@@ -75,5 +80,5 @@ export async function uploadAvatar(userId: string, file: File): Promise<{ url?: 
 
   const { data } = supabase.storage.from('avatars').getPublicUrl(path);
   // Add a cache-bust param so the browser doesn't serve the old image
-  return { url: `${data.publicUrl}?t=${Date.now()}` };
+  return { url: `${data.publicUrl}?t=${Date.now()}`, path };
 }

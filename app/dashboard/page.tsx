@@ -4,12 +4,36 @@ import Link from 'next/link';
 import Image from 'next/image';
 // Image is used for course thumbnails and optionally for the user avatar
 import GlowCard from '@/components/AppShell/GlowCard';
-import { BookOpen, Award, Clock, TrendingUp, ChevronRight, Play } from 'lucide-react';
+import { BookOpen, Award, Clock, TrendingUp, ChevronRight, Play, RefreshCw, WifiOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function DashboardPage() {
-  const { user, enrolledCourses } = useAuth();
+  const { user, enrolledCourses, loadError } = useAuth();
   if (!user) return null;
+
+  // ── Data load failed — show a friendly error instead of misleading zeros ──
+  if (loadError) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
+        <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+          <WifiOff size={28} className="text-red-400" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-white mb-2">Could not load your dashboard</h2>
+          <p className="text-gray-400 text-sm max-w-xs mx-auto leading-relaxed">
+            There was a problem connecting to the server. Your data is safe — this is usually a temporary issue.
+          </p>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition"
+        >
+          <RefreshCw size={16} />
+          Reload Page
+        </button>
+      </div>
+    );
+  }
 
   const activeCourses = enrolledCourses.filter((c) => c.progress < 100).slice(0, 4);
   const completedCourses = enrolledCourses.filter((c) => c.progress === 100).slice(0, 3);

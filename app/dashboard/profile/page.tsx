@@ -84,6 +84,8 @@ export default function ProfilePage() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const [avatarError, setAvatarError]     = useState('');
+  const [prefError, setPrefError]         = useState('');
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   if (!user) return null;
@@ -111,10 +113,19 @@ export default function ProfilePage() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { alert('Image must be under 2MB'); return; }
+    setAvatarError('');
+    // Validate client-side before uploading — no need for alert()
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError('Image must be under 2MB.');
+      return;
+    }
     setAvatarLoading(true);
-    await updateAvatar(file);
+    const result = await updateAvatar(file);
     setAvatarLoading(false);
+    if (result?.error) {
+      // updateAvatar already rolled back the Storage file on DB failure
+      setAvatarError(result.error);
+    }
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -129,7 +140,14 @@ export default function ProfilePage() {
   };
 
   const handlePrefChange = async (key: keyof typeof user.preferences, value: boolean) => {
-    await updatePreferences({ ...user.preferences, [key]: value });
+    setPrefError('');
+    const result = await updatePreferences({ ...user.preferences, [key]: value });
+    if (result?.error) {
+      // updatePreferences only calls setUser on success, so the checkbox
+      // is still showing the old value — no visual revert needed.
+      // We just need to tell the user why their click had no effect.
+      setPrefError('Settings could not be saved. Please check your connection.');
+    }
   };
 
   return (
@@ -170,6 +188,7 @@ export default function ProfilePage() {
           {saveSuccess && <div className="mt-4 flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg"><CheckCircle2 size={15} />Profile saved!</div>}
           {saveError && <div className="mt-4 text-sm text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">{saveError}</div>}
           {avatarLoading && <div className="mt-3 text-xs text-indigo-400">Uploading avatar...</div>}
+          {avatarError && <div className="mt-3 text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">{avatarError}</div>}
         </GlowCard>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -300,6 +319,11 @@ export default function ProfilePage() {
                   </label>
                 ))}
               </div>
+              {prefError && (
+                <p className="mt-3 text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
+                  {prefError}
+                </p>
+              )}
             </GlowCard>
 
             {/* Danger Zone */}
