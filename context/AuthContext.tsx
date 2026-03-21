@@ -287,44 +287,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const schema = courses.find((c) => c.slug === courseSlug);
-    if (schema) {
-      const totalLessons = schema.modules.flatMap((m) => m.lessons).length;
-      const newCompleted = new Set([...completedLessonIds, lessonId]);
-      const completedInCourse = schema.modules
-        .flatMap((m) => m.lessons)
-        .filter((l) => newCompleted.has(l.id)).length;
-      const newProgress = totalLessons > 0
-        ? Math.round((completedInCourse / totalLessons) * 100)
-        : 0;
 
-      // ── Write 2: update progress percentage on the enrollment row ──────────
-      const { error: progressError } = await supabase.from('enrollments')
-        .update({ progress: newProgress, completed_at: newProgress === 100 ? new Date().toISOString() : null })
-        .eq('user_id', user.id)
-        .eq('course_slug', courseSlug);
-
-      if (progressError) {
-        // The lesson IS saved (write 1 succeeded) but the progress % failed.
-        // Update completedLessonIds so the checkmark shows correctly, but do
-        // NOT update the progress bar — it would be a lie about what is in DB.
-        console.error('[markLessonComplete] enrollments update failed:', progressError.message);
-        setCompletedLessonIds(newCompleted);
-        setProgressSaveError('Failed to save progress. Please check your connection.');
-        setTimeout(() => setProgressSaveError(null), 5000);
-        return;
-      }
-
-      // ── Both writes confirmed — now it is safe to update the UI ───────────
-      setCompletedLessonIds(newCompleted);
-      setEnrolledCourses((prev) =>
-        prev.map((c) => {
-          if (c.slug !== courseSlug) return c;
-          const allLessons = schema.modules.flatMap((m) => m.lessons);
-          const nextLesson = allLessons.find((l) => !newCompleted.has(l.id));
-          return { ...c, progress: newProgress, nextLessonId: nextLesson?.id };
-        })
+    // ── Guard: schema not found ────────────────────────────────────────────────
+    // Write 1 already saved the lesson to the DB. If the course schema is not in
+    // the courses[] array (e.g. the course was unpublished after the user enrolled,
+    // or courses haven't finished loading), we cannot calculate totalLessons for
+    // Write 2. Update the checkmark (lesson IS saved) but skip the progress bar
+    // update and inform the user — rather than silently doing nothing.
+    if (!schema) {
+      console.warn(
+        '[markLessonComplete] course schema not found for slug:', courseSlug,
+        '— lesson saved, progress % not updated.'
       );
+      const newCompleted = new Set([...completedLessonIds, lessonId]);
+      setCompletedLessonIds(newCompleted);
+      setProgressSaveError('Lesson saved but progress could not be updated. Please reload.');
+      setTimeout(() => setProgressSaveError(null), 5000);
+      return;
     }
+
+    const totalLessons = schema.modules.flatMap((m) => m.lessons).length;
+    const newCompleted = new Set([...completedLessonIds, lessonId]);
+    const completedInCourse = schema.modules
+      .flatMap((m) => m.lessons)
+      .filter((l) => newCompleted.has(l.id)).length;
+    const newProgress = totalLessons > 0
+      ? Math.round((completedInCourse / totalLessons) * 100)
+      : 0;
+
+    // ── Write 2: update progress percentage on the enrollment row ──────────
+    const { error: progressError } = await supabase.from('enrollments')
+      .update({ progress: newProgress, completed_at: newProgress === 100 ? new Date().toISOString() : null })
+      .eq('user_id', user.id)
+      .eq('course_slug', courseSlug);
+
+    if (progressError) {
+      // The lesson IS saved (write 1 succeeded) but the progress % failed.
+      // Update completedLessonIds so the checkmark shows correctly, but do
+      // NOT update the progress bar — it would be a lie about what is in DB.
+      console.error('[markLessonComplete] enrollments update failed:', progressError.message);
+      setCompletedLessonIds(newCompleted);
+      setProgressSaveError('Failed to save progress. Please check your connection.');
+      setTimeout(() => setProgressSaveError(null), 5000);
+      return;
+    }
+
+    // ── Both writes confirmed — now it is safe to update the UI ───────────
+    setCompletedLessonIds(newCompleted);
+    setEnrolledCourses((prev) =>
+      prev.map((c) => {
+        if (c.slug !== courseSlug) return c;
+        const allLessons = schema.modules.flatMap((m) => m.lessons);
+        const nextLesson = allLessons.find((l) => !newCompleted.has(l.id));
+        return { ...c, progress: newProgress, nextLessonId: nextLesson?.id };
+      })
+    );
   };
 
   const updateProfile = async (data: Partial<Pick<AppUser, 'name' | 'phone' | 'bio' | 'location'>>) => {
