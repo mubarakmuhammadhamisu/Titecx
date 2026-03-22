@@ -6,12 +6,14 @@ import { useState } from 'react';
 import GlowCard from '@/components/AppShell/GlowCard';
 import { Award, Share2, Download, Star, Trophy, Zap, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import DashboardError from '@/components/ui/DashboardError';
 
 export default function AchievementsPage() {
-  const { user, enrolledCourses } = useAuth();
+  const { user, enrolledCourses, loadError } = useAuth();
   // Track which cert's share button was just clicked so we can show a tick
   const [copiedId, setCopiedId] = useState<number | null>(null);
   if (!user) return null;
+  if (loadError) return <DashboardError />;
 
   const completed = enrolledCourses.filter((c) => c.progress === 100);
 

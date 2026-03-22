@@ -43,17 +43,33 @@ function ResetPasswordContent() {
   // Detect recovery flow from EITHER query param OR hash fragment.
   // Supabase's behaviour differs across versions and email clients.
   const [isRecoveryFlow, setIsRecoveryFlow] = useState(false);
+  // true when the recovery token exists in the URL but is expired or already used.
+  // Supabase only validates the token when auth.updateUser() is called, but we
+  // can detect expiry earlier by checking whether a valid session exists after
+  // Supabase processes the token in the URL hash.
+  const [tokenExpired, setTokenExpired] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get('type') === 'recovery') {
-      setIsRecoveryFlow(true);
-      return;
-    }
-    // Hash fragment is only available in the browser, not during SSR
-    const hash = typeof window !== 'undefined' ? window.location.hash : '';
-    if (hash.includes('type=recovery')) {
-      setIsRecoveryFlow(true);
-    }
+    const checkRecovery = async () => {
+      const fromQuery = searchParams.get('type') === 'recovery';
+      const hash = typeof window !== 'undefined' ? window.location.hash : '';
+      const fromHash = hash.includes('type=recovery');
+
+      if (!fromQuery && !fromHash) return;
+
+      // Token exists in URL — check whether Supabase established a valid session
+      // from it. getSession() returns the session that Supabase auto-created when
+      // it processed the hash fragment. If session is null here, the token was
+      // expired, already used, or malformed.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsRecoveryFlow(true);
+      } else {
+        setTokenExpired(true);
+      }
+    };
+
+    checkRecovery();
   }, [searchParams]);
 
   // ── Case 1: Request reset email ──────────────────────────────────────────
@@ -120,6 +136,35 @@ function ResetPasswordContent() {
       </div>
     </div>
   );
+
+  // ── Case: reset link is expired or already used ───────────────────────────
+  if (tokenExpired) {
+    return (
+      <Card>
+        <div className="text-center">
+          <div className="w-14 h-14 rounded-full bg-yellow-500/10 border border-yellow-500/20
+                          flex items-center justify-center mx-auto mb-4">
+            <AlertCircle size={28} className="text-yellow-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Link expired</h1>
+          <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+            This password reset link has expired or has already been used.
+            Links are valid for 1 hour. Request a new one below.
+          </p>
+          <button
+            onClick={() => setTokenExpired(false)}
+            className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600
+                       text-white font-semibold text-sm transition hover:opacity-90"
+          >
+            Request a New Link
+          </button>
+          <Link href="/login" className="block mt-4 text-sm text-gray-500 hover:text-gray-300 transition">
+            ← Back to login
+          </Link>
+        </div>
+      </Card>
+    );
+  }
 
   // ── Case 2: password updated successfully ─────────────────────────────────
   if (isRecoveryFlow && pwDone) {

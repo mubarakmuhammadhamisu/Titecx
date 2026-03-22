@@ -11,7 +11,6 @@ export default function DashboardPage() {
   const { user, enrolledCourses, loadError } = useAuth();
   if (!user) return null;
 
-  // ── Data load failed — show a friendly error instead of misleading zeros ──
   if (loadError) {
     return (
       <div className="w-full flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
