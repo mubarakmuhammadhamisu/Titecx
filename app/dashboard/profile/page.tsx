@@ -92,7 +92,11 @@ export default function ProfilePage() {
 
   const completed = enrolledCourses.filter((c) => c.progress === 100).length;
   const totalHours = enrolledCourses.reduce((acc, c) => {
-    const h = parseFloat(c.duration.replace('h', ''));
+    // Robust parser matching dashboard/page.tsx — handles "6h", "6.5h", "6 hours", "1 hour".
+    // Extracts the first numeric value from the string; returns 0 if nothing matches.
+    // The old .replace('h','') produced NaN for formats like "6 hours".
+    const match = c.duration.match(/(\d+(?:\.\d+)?)/);
+    const h = match ? parseFloat(match[1]) : 0;
     return acc + Math.round((c.progress / 100) * h * 10) / 10;
   }, 0);
 

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import DashboardError from '@/components/ui/DashboardError';
 import GlowCard from '@/components/AppShell/GlowCard';
 import { BookOpen, Clock, Users, ChevronRight, Play, Search } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -11,12 +12,13 @@ type Filter = 'all' | 'in-progress' | 'completed';
 const ITEMS_PER_PAGE = 6;
 
 export default function MyCoursesPage() {
-  const { user, enrolledCourses, courses } = useAuth();
+  const { user, enrolledCourses, courses, loadError } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
 
   if (!user) return null;
+  if (loadError) return <DashboardError />;
 
   // Enrolled courses filtered
   const filteredEnrolled = enrolledCourses.filter((c) => {

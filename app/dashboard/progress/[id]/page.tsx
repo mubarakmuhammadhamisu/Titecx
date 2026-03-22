@@ -14,6 +14,7 @@ import {
   Clock,
   Play,
 } from "lucide-react";
+import DashboardError from "@/components/ui/DashboardError";
 
 export default function ProgressTrackerPage({
   params,
@@ -21,8 +22,9 @@ export default function ProgressTrackerPage({
   params: Promise<{ id: string }>;
 }) {
   const unwrapped = React.use(params);
-  const { user, enrolledCourses, completedLessonIds, courses } = useAuth();
+  const { user, enrolledCourses, completedLessonIds, courses, loadError } = useAuth();
   if (!user) return null;
+  if (loadError) return <DashboardError />;
 
   const enrolledCourse = enrolledCourses.find(
     (c) => c.slug === unwrapped.id,

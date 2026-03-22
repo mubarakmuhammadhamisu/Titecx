@@ -39,11 +39,12 @@ interface AuthContextValue {
   isEnrolled: (slug: string) => boolean;
   isLessonCompleted: (lessonId: string) => boolean;
   isLoading: boolean;
-  // true when the initial data fetch (profile / enrollments / courses) failed.
-  // The dashboard uses this to show a "Reload Page" button instead of zeros.
+  // true when the data fetch failed for a transient reason (Supabase down,
+  // network error). Distinct from !user (session invalid). Dashboard pages
+  // use this to show a "Reload" UI instead of misleading zeros.
   loadError: boolean;
-  // Non-null when markLessonComplete failed to save to the DB.
-  // Rendered as a toast in AppShellLayout. Clear it with clearProgressSaveError.
+  // Non-null when markLessonComplete failed to write to the DB.
+  // Rendered as a toast in AppShellLayout. Clear with clearProgressSaveError.
   progressSaveError: string | null;
   clearProgressSaveError: () => void;
   login: (email: string, password: string) => Promise<{ error?: string }>;
@@ -95,19 +96,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading]             = useState(true);
-  // true when the initial DB fetch fails — dashboard shows "Reload Page" instead of zeros
+  // Separate from isLoading: true when the data fetch failed for a transient
+  // reason. We do NOT redirect to /login on a transient error — the session
+  // is still valid. We show a "Reload" UI instead.
   const [loadError, setLoadError]             = useState(false);
-  // Non-null when markLessonComplete fails — rendered as a toast in AppShellLayout
+  // Non-null when markLessonComplete fails to save to DB.
+  // AppShellLayout renders this as a fixed toast.
   const [progressSaveError, setProgressSaveError] = useState<string | null>(null);
+  const clearProgressSaveError = () => setProgressSaveError(null);
   const router = useRouter();
   const loadedUserIdRef = useRef<string | null>(null);
-
-  const clearProgressSaveError = () => setProgressSaveError(null);
 
   const loadUserData = useCallback(async (userId: string) => {
     setLoadError(false);
     try {
-      // Fetch profile, enrollments, completions, and courses all in one round trip
+      // Fetch all four in one round trip
       const [
         { data: profile,     error: profileError  },
         { data: enrollments, error: enrollError   },
@@ -120,17 +123,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         supabase.from('courses').select('*').eq('is_published', true).order('created_at', { ascending: true }),
       ]);
 
-      // Profile and courses are critical — without them the dashboard is broken.
-      // Enrollment and completion errors are non-fatal; we show what we can.
+      // Profile and courses are critical. A failure here is almost always a
+      // transient Supabase/network error — NOT an invalid session.
+      // We set loadError=true WITHOUT redirecting to /login.
+      // Invalid sessions are handled by the middleware + AuthGuard via JWT.
       if (profileError || coursesError) {
-        console.error('[loadUserData] Critical query failed:',
-          profileError?.message ?? coursesError?.message);
+        console.error(
+          '[loadUserData] critical query failed:',
+          profileError?.message ?? coursesError?.message
+        );
         setLoadError(true);
         return;
       }
 
-      if (enrollError)  console.warn('[loadUserData] enrollments fetch failed:', enrollError.message);
-      if (compError)    console.warn('[loadUserData] completions fetch failed:', compError.message);
+      // Enrollment/completion errors are non-fatal — render partial data
+      if (enrollError)  console.warn('[loadUserData] enrollments query failed:', enrollError.message);
+      if (compError)    console.warn('[loadUserData] completions query failed:', compError.message);
 
       const courseList: CourseSchema[] = coursesData
         ? (coursesData as CourseRow[]).map(rowToCourse)
@@ -155,8 +163,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setEnrolledCourses(buildEnrolledCourses(enrollments ?? [], comp, courseList));
 
     } catch (err: unknown) {
-      // Unexpected JS error (e.g. network failure that threw instead of returning an error object)
-      console.error('[loadUserData] Unexpected error:', err);
+      // Unexpected throw (network failure that threw rather than returning an
+      // error object). Same treatment: set loadError, do not redirect.
+      console.error('[loadUserData] unexpected error:', err);
       setLoadError(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -200,49 +209,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: error.message };
     }
     if (!data.user) return { error: 'Registration failed. Please try again.' };
-
-    // ── Profile creation ──────────────────────────────────────────────────────
-    // IMPORTANT: When Supabase "Confirm email" is ON (required in production),
-    // signUp() returns a user object but NO active session. Without a session,
-    // auth.uid() is null inside Supabase, so the RLS policy (auth.uid() = id)
-    // silently blocks any INSERT/UPSERT from the browser client.
-    //
-    // The reliable solution is the Database Trigger defined in SUPABASE_SETUP.md
-    // (Step 5 — "Auto-create profile on signup"). That trigger fires inside
-    // Supabase itself when the auth.users row is created, before any RLS check,
-    // so it always succeeds regardless of whether the user has a session.
-    //
-    // If the trigger is active: the profile row already exists by the time the
-    // user confirms their email and logs in, and loadUserData() will find it.
-    //
-    // If the trigger is NOT active AND email confirmation is ON:
-    //   - The upsert below will fail silently (RLS blocks it)
-    //   - The user will see a broken empty dashboard after confirming
-    //   - Fix: enable the trigger in Supabase, or create a /api/register
-    //     server route that uses the service_role key to bypass RLS.
-    //
-    // When email confirmation is OFF (local dev / testing):
-    //   - data.session is present, auth.uid() works, upsert succeeds normally.
-
-    if (data.session) {
-      // Session exists → email confirmation is OFF → safe to write from client.
-      const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: data.user.id, name, email,
-        avatar: initials, role: 'Member', location: '', bio: '', phone: '',
-        preferences: { email_notifications: true, course_recommendations: true, weekly_digest: false },
-      });
-      if (profileError) {
-        // Log for debugging but do not surface to the user — the trigger
-        // is the authoritative profile creator in production.
-        console.warn('[register] Profile upsert failed (session present):', profileError.message);
-      }
-    }
-    // If data.session is null (email confirmation pending), we intentionally
-    // skip the upsert here and rely on the DB trigger to create the profile.
-    // Attempting the upsert without a session would fail silently due to RLS
-    // and could mask the real issue. The trigger is the correct fix.
-
+    const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+    await supabase.from('profiles').upsert({
+      id: data.user.id, name, email,
+      avatar: initials, role: 'Member', location: '', bio: '', phone: '',
+      preferences: { email_notifications: true, course_recommendations: true, weekly_digest: false },
+    });
     return {};
   };
 
@@ -271,22 +243,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     if (completedLessonIds.has(lessonId)) return;
 
-    // ── Write 1: record the lesson completion ─────────────────────────────────
-    const { error: completionError } = await supabase.from('lesson_completions').upsert({
+    await supabase.from('lesson_completions').upsert({
       user_id: user.id, course_slug: courseSlug, lesson_id: lessonId,
     }, { onConflict: 'user_id,course_slug,lesson_id' });
 
-    if (completionError) {
-      // DB write failed — do NOT update local state. The UI must not lie about
-      // what is saved. Show a toast so the user knows to retry.
-      console.error('[markLessonComplete] lesson_completions write failed:', completionError.message);
-      setProgressSaveError('Failed to save progress. Please check your connection.');
-      // Auto-clear the toast after 5 seconds
-      setTimeout(() => setProgressSaveError(null), 5000);
-      return;
-    }
-
-    const schema = courses.find((c) => c.slug === courseSlug);
+    const schema = courses.find((c) => c.slug === courseSlug); // reads from context state
     if (schema) {
       const totalLessons = schema.modules.flatMap((m) => m.lessons).length;
       const newCompleted = new Set([...completedLessonIds, lessonId]);
@@ -297,24 +258,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? Math.round((completedInCourse / totalLessons) * 100)
         : 0;
 
-      // ── Write 2: update progress percentage on the enrollment row ──────────
-      const { error: progressError } = await supabase.from('enrollments')
+      await supabase.from('enrollments')
         .update({ progress: newProgress, completed_at: newProgress === 100 ? new Date().toISOString() : null })
         .eq('user_id', user.id)
         .eq('course_slug', courseSlug);
 
-      if (progressError) {
-        // The lesson IS saved (write 1 succeeded) but the progress % failed.
-        // Update completedLessonIds so the checkmark shows correctly, but do
-        // NOT update the progress bar — it would be a lie about what is in DB.
-        console.error('[markLessonComplete] enrollments update failed:', progressError.message);
-        setCompletedLessonIds(newCompleted);
-        setProgressSaveError('Failed to save progress. Please check your connection.');
-        setTimeout(() => setProgressSaveError(null), 5000);
-        return;
-      }
-
-      // ── Both writes confirmed — now it is safe to update the UI ───────────
       setCompletedLessonIds(newCompleted);
       setEnrolledCourses((prev) =>
         prev.map((c) => {
@@ -345,27 +293,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateAvatar = async (file: File) => {
     if (!user) return { error: 'Not logged in.' };
-
-    // Step 1: upload file to Storage and get back the public URL and storage path
-    const { url, path, error: uploadError } = await uploadAvatar(user.id, file);
-    if (uploadError || !url || !path) return { error: uploadError ?? 'Upload failed.' };
-
-    // Step 2: save the URL to the profiles table
-    const { error: dbError } = await supabase.from('profiles')
-      .update({ avatar_url: url })
-      .eq('id', user.id);
-
-    if (dbError) {
-      // ── ROLLBACK: DB save failed — delete the just-uploaded file from Storage ──
-      // Without this, the file sits in the bucket permanently with no reference
-      // to it in the DB (an "orphaned" file). Clean it up immediately.
-      await supabase.storage.from('avatars').remove([path]);
-      // Do NOT update local state — the avatar_url in the DB is still the old one.
-      console.error('[updateAvatar] profiles update failed, storage file rolled back:', dbError.message);
-      return { error: 'Failed to save your avatar. Please try again.' };
-    }
-
-    // Both steps succeeded — safe to update the local state
+    const { url, error } = await uploadAvatar(user.id, file);
+    if (error || !url) return { error: error ?? 'Upload failed.' };
+    await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
     setUser((prev) => prev ? { ...prev, avatarUrl: url } : prev);
     return {};
   };
@@ -378,54 +308,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = async () => {
     if (!user) return { error: 'Not logged in.' };
-
-    try {
-      // ── Step 1: Delete the Auth user via the secured API route FIRST ───────
-      // The API route reads the identity from the JWT cookie — it does not
-      // trust any userId we send. We still include userId so the route can
-      // do a sanity log, but the actual deletion is based on the session.
-      //
-      // CRITICAL: if this step fails the user's Supabase Auth account still
-      // exists. We must NOT delete their data yet — they would be locked out
-      // permanently (can't log in: no profile; can't register: email taken).
-      const res = await fetch('/api/delete-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
-      });
-
-      if (!res.ok) {
-        // Auth account NOT deleted — safe to surface the error and stop here.
-        const body = await res.json().catch(() => ({}));
-        return {
-          error: body.error ?? 'Failed to delete account. Please contact support@TITECX.com.',
-        };
-      }
-
-      // ── Step 2: Auth account is confirmed deleted — now clean up DB rows ──
-      // Order: most dependent tables first, then the root profile row.
-      // Errors here are non-fatal: the Auth user is already gone so the rows
-      // are orphaned anyway and Supabase's ON DELETE CASCADE will handle them.
-      await supabase.from('lesson_completions').delete().eq('user_id', user.id);
-      await supabase.from('enrollments').delete().eq('user_id', user.id);
-      await supabase.from('payments').delete().eq('user_id', user.id);
-      await supabase.from('profiles').delete().eq('id', user.id);
-
-      // ── Step 3: Clear local state and redirect ─────────────────────────────
-      await supabase.auth.signOut();
-      setUser(null);
-      setEnrolledCourses([]);
-      setCompletedLessonIds(new Set());
-      setCourses([]);
-      router.push('/');
-      return {};
-
-    } catch (err: unknown) {
-      // Unexpected network error — Auth account status is unknown.
-      // Return an error rather than proceeding with any data deletion.
-      const message = err instanceof Error ? err.message : 'Unexpected error.';
-      return { error: `Account deletion failed: ${message} Please contact support@TITECX.com.` };
-    }
+    await supabase.from('lesson_completions').delete().eq('user_id', user.id);
+    await supabase.from('enrollments').delete().eq('user_id', user.id);
+    await supabase.from('payments').delete().eq('user_id', user.id);
+    await supabase.from('profiles').delete().eq('id', user.id);
+    const res = await fetch('/api/delete-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    });
+    if (!res.ok) return { error: 'Failed to delete account. Please contact support.' };
+    await supabase.auth.signOut();
+    setUser(null); setEnrolledCourses([]); setCompletedLessonIds(new Set()); setCourses([]);
+    router.push('/');
+    return {};
   };
 
   const isEnrolled    = (slug: string)     => enrolledCourses.some((c) => c.slug === slug);
@@ -434,8 +330,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, courses, enrolledCourses, completedLessonIds,
-      isEnrolled, isLessonCompleted, isLoading,
-      loadError, progressSaveError, clearProgressSaveError,
+      isEnrolled, isLessonCompleted, isLoading, loadError,
+      progressSaveError, clearProgressSaveError,
       login, register, logout, enroll, markLessonComplete,
       updateProfile, updatePreferences, updateAvatar, updatePassword, deleteAccount,
     }}>

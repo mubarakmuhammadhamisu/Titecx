@@ -5,10 +5,12 @@ import Image from 'next/image';
 import GlowCard from '@/components/AppShell/GlowCard';
 import { useAuth } from '@/context/AuthContext';
 import { TrendingUp, Clock, ChevronRight } from 'lucide-react';
+import DashboardError from '@/components/ui/DashboardError';
 
 export default function ProgressPage() {
-  const { user, enrolledCourses } = useAuth();
+  const { user, enrolledCourses, loadError } = useAuth();
   if (!user) return null;
+  if (loadError) return <DashboardError />;
 
   const totalProgress = enrolledCourses.length
     ? Math.round(enrolledCourses.reduce((acc, c) => acc + c.progress, 0) / enrolledCourses.length)
