@@ -162,14 +162,28 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
   const total = numericPrice - discount;
   const totalKobo = total * 100;
 
-  const applyCoupon = () => {
+  const applyCoupon = async () => {
     setCouponError('');
-    const encoded = btoa(coupon.toUpperCase().trim());
-    if (encoded === 'TEVBUk4xMA==') {
-      setCouponApplied(true);
-    } else {
-      setCouponError('Invalid coupon code.');
-      setCouponApplied(false);
+    if (!coupon.trim()) { setCouponError('Please enter a coupon code.'); return; }
+
+    // Validate server-side — the real coupon code lives in a server-only
+    // env var (COUPON_CODE) and is never sent to the browser. This replaces
+    // the old btoa() comparison which exposed the code in the client bundle.
+    try {
+      const res = await fetch('/api/validate-coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coupon }),
+      });
+      const data = await res.json() as { valid: boolean };
+      if (data.valid) {
+        setCouponApplied(true);
+      } else {
+        setCouponError('Invalid coupon code.');
+        setCouponApplied(false);
+      }
+    } catch {
+      setCouponError('Could not validate coupon. Please try again.');
     }
   };
 
