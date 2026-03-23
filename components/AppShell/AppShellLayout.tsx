@@ -41,7 +41,8 @@ export default function AppShellLayout({ children }: AppShellLayoutProps) {
           className="fixed bottom-6 right-6 z-50 flex items-start gap-3
                      px-4 py-3 rounded-xl max-w-sm
                      bg-gray-900 border border-red-500/40
-                     shadow-2xl shadow-red-500/10 text-sm text-red-300"
+                     shadow-2xl shadow-red-500/10 text-sm text-red-300
+                     toast-animate"
         >
           <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
           <span className="flex-1 leading-snug">{progressSaveError}</span>

@@ -61,6 +61,45 @@ export default function AboutPage() {
         </p>
       </section>
 
+      {/* CONTACT */}
+      <section className="max-w-5xl mx-auto px-4 py-20 border-t border-white/10">
+        <h2 className="text-2xl font-bold mb-4">Get in Touch</h2>
+        <p className="text-gray-400 leading-relaxed mb-8">
+          Have a question about a course, a billing issue, or just want to say hello?
+          We respond to every message within 2 business days.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-6">
+          <div className="p-6 rounded-2xl bg-gray-900 border border-white/10 space-y-2">
+            <p className="text-sm font-semibold text-indigo-400 uppercase tracking-wide">
+              General Support
+            </p>
+            <a
+              href="mailto:support@TITECX.com"
+              className="text-white font-medium hover:text-indigo-300 transition break-all"
+            >
+              support@TITECX.com
+            </a>
+            <p className="text-gray-500 text-sm">
+              Course access, enrollment issues, refund requests.
+            </p>
+          </div>
+          <div className="p-6 rounded-2xl bg-gray-900 border border-white/10 space-y-2">
+            <p className="text-sm font-semibold text-indigo-400 uppercase tracking-wide">
+              Data & Privacy
+            </p>
+            <a
+              href="mailto:privacy@TITECX.com"
+              className="text-white font-medium hover:text-indigo-300 transition break-all"
+            >
+              privacy@TITECX.com
+            </a>
+            <p className="text-gray-500 text-sm">
+              Data deletion requests, NDPR enquiries.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-24 text-center border-t border-white/10">
         <h2 className="text-3xl font-bold">Start Learning With Confidence</h2>
