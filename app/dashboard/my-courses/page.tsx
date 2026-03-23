@@ -1,21 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import DashboardError from '@/components/ui/DashboardError';
 import GlowCard from '@/components/AppShell/GlowCard';
-import { BookOpen, Clock, Users, ChevronRight, Play, Search } from 'lucide-react';
+import { BookOpen, Clock, Users, ChevronRight, Play, Search, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 type Filter = 'all' | 'in-progress' | 'completed';
 const ITEMS_PER_PAGE = 6;
+
+// Human-readable messages for each paystack_error code set by /api/paystack/callback
+const PAYSTACK_ERROR_MESSAGES: Record<string, string> = {
+  no_reference:          'Payment reference was missing. Please try again.',
+  server_error:          'A server error occurred during payment processing. Please contact support.',
+  verify_failed:         'We could not verify your payment with Paystack. If money was deducted, contact support.',
+  payment_not_successful:'Your payment did not complete successfully. No money was charged.',
+  missing_data:          'Payment data was incomplete. Please try enrolling again.',
+  enrollment_failed:     'Your payment was received but enrollment failed. Please contact support with your payment reference.',
+};
 
 export default function MyCoursesPage() {
   const { user, enrolledCourses, courses, loadError } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  // Read paystack_error from URL without useSearchParams (avoids Suspense requirement)
+  const [paystackError, setPaystackError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('paystack_error');
+    if (code) {
+      setPaystackError(PAYSTACK_ERROR_MESSAGES[code] ?? 'A payment error occurred. Please contact support.');
+      // Remove the query param from the URL so it doesn't persist on refresh
+      const url = new URL(window.location.href);
+      url.searchParams.delete('paystack_error');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
 
   if (!user) return null;
   if (loadError) return <DashboardError />;
@@ -45,6 +69,24 @@ export default function MyCoursesPage() {
 
   return (
     <div className="space-y-10">
+      {/* Paystack error banner — shown when callback route redirects with an error code */}
+      {paystackError && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-red-500/10
+                        border border-red-500/30 text-red-300 text-sm">
+          <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-semibold text-red-200 mb-0.5">Payment issue</p>
+            <p>{paystackError}</p>
+          </div>
+          <button
+            onClick={() => setPaystackError(null)}
+            className="text-red-400/60 hover:text-red-300 transition text-lg leading-none shrink-0"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
       {/* Hero */}
       <GlowCard hero>
         <div className="flex items-center gap-4">
