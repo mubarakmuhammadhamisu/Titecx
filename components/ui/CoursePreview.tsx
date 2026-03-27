@@ -37,7 +37,6 @@ export default async function CoursePreview() {
         </div>
       </section>
     );
-    return <div>No courses found.</div>;90
   }
 
   const featured = courses.slice(0, 6);
