@@ -72,11 +72,19 @@ export async function middleware(req: NextRequest) {
   const isDashboard = pathname.startsWith('/dashboard');
   const isAdmin     = pathname.startsWith('/admin');
   const isRoot      = pathname === '/';
+  // Auth pages — redirect logged-in users to dashboard so they can't
+  // accidentally submit a second login or see the register form while signed in.
+  const isAuthPage  = pathname === '/login' || pathname === '/register';
 
   // Logged-in user visiting the homepage — send them straight to the dashboard
   // before the page renders. This eliminates the flicker where the marketing
   // page briefly appears before a client-side redirect kicks in.
   if (isRoot && user) {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
+
+  // Logged-in user visiting /login or /register — redirect to dashboard
+  if (isAuthPage && user) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 

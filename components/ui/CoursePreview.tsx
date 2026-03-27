@@ -20,7 +20,23 @@ export default async function CoursePreview() {
     }
 
     if (courses.length === 0) {
-    return <div>No courses found.</div>;90
+    return (
+      <section className="max-w-7xl mx-auto px-4 py-20">
+        <div className="rounded-2xl bg-gray-900 border border-indigo-500/20 py-16 text-center space-y-4">
+          <p className="text-2xl font-bold text-white">No courses yet</p>
+          <p className="text-gray-400 text-sm max-w-xs mx-auto leading-relaxed">
+            We&apos;re adding new courses soon. Check back shortly or join the waitlist.
+          </p>
+          <a
+            href="mailto:support@TITECX.com?subject=Course Waitlist"
+            className="inline-block mt-2 px-6 py-3 rounded-xl bg-indigo-600
+                       hover:bg-indigo-700 text-white font-semibold text-sm transition"
+          >
+            Join the Waitlist
+          </a>
+        </div>
+      </section>
+    );
   }
 
   const featured = courses.slice(0, 6);
