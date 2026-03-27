@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from 'next/link'
 import { getAllCourses } from '@/lib/courses';
 import { Clock } from 'lucide-react';
 

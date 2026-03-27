@@ -196,7 +196,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
     try {
       const data = await enrollWithTimeout({
         courseSlug: course.slug,
-        userId: user.id,
         isFree: true,
       });
 
@@ -268,7 +267,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
         enrollWithTimeout({
           reference: response.reference,
           courseSlug: course.slug,
-          userId: user.id,
           amountKobo: totalKobo,
         })
           .then((data) => {

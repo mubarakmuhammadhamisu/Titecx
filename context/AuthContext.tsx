@@ -172,10 +172,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []); // setters from useState are stable; supabase is a module-level singleton
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        loadedUserIdRef.current = session.user.id;
-        await loadUserData(session.user.id);
+    // getUser() validates the JWT with Supabase's servers on every call.
+    // getSession() only reads from local storage/cookies without server
+    // validation — a stale or tampered token would be accepted as valid.
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        loadedUserIdRef.current = user.id;
+        await loadUserData(user.id);
       }
       setIsLoading(false);
     });
@@ -391,15 +394,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = async () => {
     if (!user) return { error: 'Not logged in.' };
-    await supabase.from('lesson_completions').delete().eq('user_id', user.id);
-    await supabase.from('enrollments').delete().eq('user_id', user.id);
-    await supabase.from('payments').delete().eq('user_id', user.id);
-    await supabase.from('profiles').delete().eq('id', user.id);
-    const res = await fetch('/api/delete-account', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id }),
-    });
+    // All data deletion (lesson_completions, enrollments, payments, profiles)
+    // now happens server-side in /api/delete-account using the service role key.
+    // Previously these ran client-side BEFORE the API confirmed the auth
+    // account was deleted — if the API failed the user's data was already gone.
+    const res = await fetch('/api/delete-account', { method: 'POST' });
     if (!res.ok) return { error: 'Failed to delete account. Please contact support.' };
     await supabase.auth.signOut();
     setUser(null); setEnrolledCourses([]); setCompletedLessonIds(new Set()); setCourses([]);

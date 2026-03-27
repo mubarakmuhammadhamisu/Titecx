@@ -69,6 +69,17 @@ export async function uploadAvatar(
   userId: string,
   file: File,
 ): Promise<{ url?: string; path?: string; error?: string }> {
+  // Validate type and size before hitting Storage — prevents XSS via SVG
+  // upload and protects against oversized payloads.
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return { error: 'Only JPG, PNG, WebP, or GIF images are allowed.' };
+  }
+  if (file.size > MAX_SIZE) {
+    return { error: 'Image must be under 5 MB.' };
+  }
+
   const ext = file.name.split('.').pop();
   const path = `${userId}/avatar.${ext}`;
 

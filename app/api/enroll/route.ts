@@ -18,6 +18,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 function getAdminClient() {
   return createClient(
@@ -27,9 +29,25 @@ function getAdminClient() {
 }
 
 export async function POST(req: NextRequest) {
+  // ── Step 0: Verify session — never trust userId from the request body ────
+  // Read the authenticated user from the JWT cookie (same pattern as
+  // /api/delete-account). An unauthenticated caller or a caller passing
+  // someone else's userId in the body is rejected here before anything else.
+  const cookieStore = await cookies();
+  const sessionClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_Publishable_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
+  );
+  const { data: { user }, error: authError } = await sessionClient.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // userId is now always the authenticated caller — cannot be spoofed by body
+  const userId = user.id;
+
   let body: {
     courseSlug: string;
-    userId: string;
     isFree?: boolean;
     reference?: string;
     amountKobo?: number;
@@ -40,24 +58,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { courseSlug, userId, isFree, reference, amountKobo } = body;
+  const { courseSlug, isFree, reference, amountKobo } = body;
 
-  if (!courseSlug || !userId) {
+  if (!courseSlug) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
   const supabase = getAdminClient();
-
-  // ── Guard: verify user actually exists before doing anything ─────────────
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User not found' }, { status: 401 });
-  }
 
   // ── Idempotency: already enrolled? ───────────────────────────────────────
   const { data: existingEnrollment } = await supabase
@@ -132,13 +139,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Payment not confirmed' }, { status: 402 });
   }
 
-  // 2. Log payment (upsert is idempotent if webhook already logged it)
+  // ── Guard: reference must be for THIS course, not a different one ─────────
+  // Prevents reusing a paid reference from Course A to enroll in Course B.
+  const paystackCourseSlug = verifyData.data.metadata?.course_slug as string | undefined;
+  if (paystackCourseSlug && paystackCourseSlug !== courseSlug) {
+    console.warn('[enroll] Reference course_slug mismatch:', paystackCourseSlug, '!=', courseSlug);
+    return NextResponse.json({ error: 'Reference is for a different course' }, { status: 400 });
+  }
+
+  // ── Guard: paid amount must be >= expected course price ───────────────────
+  // Prevents paying ₦1 and getting enrolled via a tampered client amount.
+  const { data: courseForPrice } = await supabase
+    .from('courses')
+    .select('price')
+    .eq('slug', courseSlug)
+    .eq('is_published', true)
+    .maybeSingle();
+  const expectedKobo = Number(courseForPrice?.price?.replace(/[^\d]/g, '') ?? 0) * 100;
+  if (expectedKobo > 0 && verifyData.data.amount < expectedKobo) {
+    console.warn('[enroll] Underpayment detected:', verifyData.data.amount, '<', expectedKobo);
+    return NextResponse.json({ error: 'Payment amount is less than course price' }, { status: 400 });
+  }
+
+  // 2. Log payment — use the amount Paystack confirmed, never the body amount
   await supabase.from('payments').upsert(
     {
       user_id: userId,
       course_slug: courseSlug,
       paystack_reference: reference,
-      amount_kobo: amountKobo ?? 0,
+      amount_kobo: verifyData.data.amount,
       status: 'success',
     },
     { onConflict: 'paystack_reference' },
@@ -166,5 +195,6 @@ interface PaystackVerifyResponse {
     reference: string;
     amount: number;
     customer: { email: string };
+    metadata?: Record<string, unknown>;
   };
 }
