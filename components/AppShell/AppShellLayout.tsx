@@ -12,10 +12,10 @@ interface AppShellLayoutProps {
 export default function AppShellLayout({ children }: AppShellLayoutProps) {
   const { progressSaveError, clearProgressSaveError } = useAuth();
 
-  // Dismiss the toast when the user navigates away to a new page
+  // Clear the toast when the user navigates away to a new page
   useEffect(() => {
     return () => clearProgressSaveError();
-  // clearProgressSaveError is a stable function reference — no dep needed
+  // clearProgressSaveError is a stable function reference — safe to omit from deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -29,16 +29,20 @@ export default function AppShellLayout({ children }: AppShellLayoutProps) {
         </main>
       </div>
 
-      {/* ── Progress save error toast ─────────────────────────────────────────
-          Shown when markLessonComplete fails to write to the DB.
-          Floats fixed at the bottom-right so it never covers course content.
-          Auto-dismissed after 5 s (set in AuthContext), or manually via X.   */}
+      {/* ── Progress save error toast ───────────────────────────────────────
+          Shown when markLessonComplete DB writes fail.
+          Fixed bottom-right so it never obscures lesson content.
+          Auto-dismissed after 5 s (managed by toastTimerRef in AuthContext).
+          The timer is a single ref — completing multiple lessons quickly
+          resets it each time rather than stacking multiple timers.        */}
       {progressSaveError && (
         <div
           role="alert"
-          className="fixed bottom-6 right-6 z-50 flex items-start gap-3 px-4 py-3 rounded-xl
-                     bg-gray-900 border border-red-500/40 shadow-2xl shadow-red-500/10
-                     text-sm text-red-300 max-w-sm animate-in fade-in slide-in-from-bottom-2 duration-300"
+          className="fixed bottom-6 right-6 z-50 flex items-start gap-3
+                     px-4 py-3 rounded-xl max-w-sm
+                     bg-gray-900 border border-red-500/40
+                     shadow-2xl shadow-red-500/10 text-sm text-red-300
+                     toast-animate"
         >
           <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
           <span className="flex-1 leading-snug">{progressSaveError}</span>

@@ -128,6 +128,38 @@ export default function VideoPlayer({ content, title, isCompleted, onVideoEnd }:
   const [modalOpen, setModalOpen] = useState(false);
   const iframeId = useId('yt');
   const modalIframeId = useId('yt_modal');
+
+  // Guard: empty or missing videoUrl — show a placeholder instead of a broken iframe.
+  // This happens when a course is enrolled but its content hasn't been added yet.
+  if (!content.videoUrl || content.videoUrl.trim() === '') {
+    return (
+      <GlowCard className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold text-white leading-snug">{title}</h2>
+          {isCompleted && (
+            <span className="flex items-center gap-1.5 text-emerald-400 text-sm font-medium bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full whitespace-nowrap">
+              <CheckCircle2 size={14} /> Completed
+            </span>
+          )}
+        </div>
+        <div
+          className="relative w-full rounded-xl overflow-hidden border border-indigo-500/20 bg-gray-800 flex items-center justify-center"
+          style={{ aspectRatio: '16/9' }}
+        >
+          <div className="text-center space-y-2 px-6">
+            <div className="w-12 h-12 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto">
+              <svg viewBox="0 0 24 24" className="w-6 h-6 text-indigo-400 fill-current ml-0.5">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            </div>
+            <p className="text-white font-semibold text-sm">Video coming soon</p>
+            <p className="text-gray-400 text-xs">This lesson&apos;s video is being prepared.</p>
+          </div>
+        </div>
+      </GlowCard>
+    );
+  }
+
   const embedUrl = buildEmbedUrl(content.videoUrl);
 
   const handleEnd = useCallback(() => {
