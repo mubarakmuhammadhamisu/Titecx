@@ -65,13 +65,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Step 3: Delete the authenticated user — NOT the body userId ─────────
-    // We deliberately ignore any userId from the request body.
-    // The only user that gets deleted is the one who owns the current session.
+    // ── Step 3: Delete all user data rows, then the auth account ────────────
+    // Previously the client deleted these rows using the anon key before calling
+    // this route. That was wrong: (a) data could be wiped before the auth
+    // deletion was confirmed, leaving an orphaned auth account with no data,
+    // and (b) it relied on client-side RLS DELETE policies being correct.
+    // Using the service role key here is safe because we already verified the
+    // session in Step 1 — this is the authenticated user's own data.
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
+
+    await adminClient.from('lesson_completions').delete().eq('user_id', user.id);
+    await adminClient.from('enrollments').delete().eq('user_id', user.id);
+    await adminClient.from('payments').delete().eq('user_id', user.id);
+    await adminClient.from('profiles').delete().eq('id', user.id);
 
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id);
 

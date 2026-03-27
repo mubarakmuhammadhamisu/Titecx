@@ -172,10 +172,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []); // setters from useState are stable; supabase is a module-level singleton
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        loadedUserIdRef.current = session.user.id;
-        await loadUserData(session.user.id);
+    // getUser() validates the JWT with Supabase's servers on every call.
+    // getSession() only reads from local storage/cookies without server
+    // validation — a stale or tampered token would be accepted as valid.
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        loadedUserIdRef.current = user.id;
+        await loadUserData(user.id);
       }
       setIsLoading(false);
     });
@@ -239,40 +242,123 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } as EnrolledCourse]);
   };
 
+  // Ref to hold the active toast auto-dismiss timer.
+  // Using a ref (not state) means clearing/resetting it never triggers a re-render.
+  // Without this, completing two lessons quickly creates two timers — the first
+  // fires 5 s after click 1, dismissing the toast that was set by click 2.
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Show the progress error toast and (re)start a single 5-second dismiss timer.
+  const showProgressError = (msg: string) => {
+    setProgressSaveError(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
+      setProgressSaveError(null);
+      toastTimerRef.current = null;
+    }, 5000);
+  };
+
   const markLessonComplete = async (courseSlug: string, lessonId: string) => {
     if (!user) return;
     if (completedLessonIds.has(lessonId)) return;
 
-    await supabase.from('lesson_completions').upsert({
-      user_id: user.id, course_slug: courseSlug, lesson_id: lessonId,
-    }, { onConflict: 'user_id,course_slug,lesson_id' });
+    const schema = courses.find((c) => c.slug === courseSlug);
 
-    const schema = courses.find((c) => c.slug === courseSlug); // reads from context state
-    if (schema) {
+    // ── Optimistic update ────────────────────────────────────────────────────
+    // Update the UI immediately so the user gets instant feedback.
+    // We compute the new state once and reuse it across both the optimistic
+    // update and the rollback, avoiding any state drift.
+    const optimisticCompleted = new Set([...completedLessonIds, lessonId]);
+
+    const optimisticProgress = (() => {
+      if (!schema || schema.modules.length === 0) return null; // cannot compute
       const totalLessons = schema.modules.flatMap((m) => m.lessons).length;
-      const newCompleted = new Set([...completedLessonIds, lessonId]);
-      const completedInCourse = schema.modules
+      const completedCount = schema.modules
         .flatMap((m) => m.lessons)
-        .filter((l) => newCompleted.has(l.id)).length;
-      const newProgress = totalLessons > 0
-        ? Math.round((completedInCourse / totalLessons) * 100)
-        : 0;
+        .filter((l) => optimisticCompleted.has(l.id)).length;
+      return totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+    })();
 
-      await supabase.from('enrollments')
-        .update({ progress: newProgress, completed_at: newProgress === 100 ? new Date().toISOString() : null })
-        .eq('user_id', user.id)
-        .eq('course_slug', courseSlug);
-
-      setCompletedLessonIds(newCompleted);
+    // Apply optimistic state — checkmark and progress bar update instantly
+    setCompletedLessonIds(optimisticCompleted);
+    if (schema && optimisticProgress !== null) {
       setEnrolledCourses((prev) =>
         prev.map((c) => {
           if (c.slug !== courseSlug) return c;
           const allLessons = schema.modules.flatMap((m) => m.lessons);
-          const nextLesson = allLessons.find((l) => !newCompleted.has(l.id));
-          return { ...c, progress: newProgress, nextLessonId: nextLesson?.id };
+          const nextLesson = allLessons.find((l) => !optimisticCompleted.has(l.id));
+          return { ...c, progress: optimisticProgress, nextLessonId: nextLesson?.id };
         })
       );
     }
+
+    // ── Write 1: record lesson completion ────────────────────────────────────
+    const { error: completionError } = await supabase.from('lesson_completions').upsert(
+      { user_id: user.id, course_slug: courseSlug, lesson_id: lessonId },
+      { onConflict: 'user_id,course_slug,lesson_id' }
+    );
+
+    if (completionError) {
+      // Write 1 failed — roll back both the checkmark and the progress bar.
+      // The lesson is NOT saved; the UI must reflect that.
+      console.error('[markLessonComplete] lesson_completions write failed:', completionError.message);
+      setCompletedLessonIds(completedLessonIds); // restore original set
+      if (schema && optimisticProgress !== null) {
+        setEnrolledCourses((prev) =>
+          prev.map((c) => {
+            if (c.slug !== courseSlug) return c;
+            // Restore original nextLessonId using the pre-optimistic completedLessonIds
+            const allLessons = schema.modules.flatMap((m) => m.lessons);
+            const nextLesson = allLessons.find((l) => !completedLessonIds.has(l.id));
+            // progress is read from the enrollment row — restore using original completed count
+            const originalCount = schema.modules
+              .flatMap((m) => m.lessons)
+              .filter((l) => completedLessonIds.has(l.id)).length;
+            const totalLessons = schema.modules.flatMap((m) => m.lessons).length;
+            const originalProgress = totalLessons > 0
+              ? Math.round((originalCount / totalLessons) * 100) : 0;
+            return { ...c, progress: originalProgress, nextLessonId: nextLesson?.id };
+          })
+        );
+      }
+      showProgressError('Failed to save progress. Please check your connection.');
+      return;
+    }
+
+    // ── Write 2: update enrollment progress % ───────────────────────────────
+    if (schema && optimisticProgress !== null) {
+      const { error: progressError } = await supabase.from('enrollments')
+        .update({
+          progress: optimisticProgress,
+          completed_at: optimisticProgress === 100 ? new Date().toISOString() : null,
+        })
+        .eq('user_id', user.id)
+        .eq('course_slug', courseSlug);
+
+      if (progressError) {
+        // Write 1 succeeded — lesson IS saved. Keep the checkmark (it's true).
+        // Write 2 failed — the progress % in DB is stale.
+        // Roll back the progress bar only; do NOT remove the checkmark.
+        console.error('[markLessonComplete] enrollments update failed:', progressError.message);
+        setEnrolledCourses((prev) =>
+          prev.map((c) => {
+            if (c.slug !== courseSlug) return c;
+            const allLessons = schema.modules.flatMap((m) => m.lessons);
+            const nextLesson = allLessons.find((l) => !optimisticCompleted.has(l.id));
+            const originalCount = schema.modules
+              .flatMap((m) => m.lessons)
+              .filter((l) => completedLessonIds.has(l.id)).length;
+            const totalLessons = schema.modules.flatMap((m) => m.lessons).length;
+            const originalProgress = totalLessons > 0
+              ? Math.round((originalCount / totalLessons) * 100) : 0;
+            return { ...c, progress: originalProgress, nextLessonId: nextLesson?.id };
+          })
+        );
+        showProgressError('Lesson saved but progress % could not update. Please reload.');
+      }
+    }
+
+    // Both writes succeeded — UI is already correct from the optimistic update.
   };
 
   const updateProfile = async (data: Partial<Pick<AppUser, 'name' | 'phone' | 'bio' | 'location'>>) => {
@@ -308,15 +394,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = async () => {
     if (!user) return { error: 'Not logged in.' };
-    await supabase.from('lesson_completions').delete().eq('user_id', user.id);
-    await supabase.from('enrollments').delete().eq('user_id', user.id);
-    await supabase.from('payments').delete().eq('user_id', user.id);
-    await supabase.from('profiles').delete().eq('id', user.id);
-    const res = await fetch('/api/delete-account', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id }),
-    });
+    // All data deletion (lesson_completions, enrollments, payments, profiles)
+    // now happens server-side in /api/delete-account using the service role key.
+    // Previously these ran client-side BEFORE the API confirmed the auth
+    // account was deleted — if the API failed the user's data was already gone.
+    const res = await fetch('/api/delete-account', { method: 'POST' });
     if (!res.ok) return { error: 'Failed to delete account. Please contact support.' };
     await supabase.auth.signOut();
     setUser(null); setEnrolledCourses([]); setCompletedLessonIds(new Set()); setCourses([]);

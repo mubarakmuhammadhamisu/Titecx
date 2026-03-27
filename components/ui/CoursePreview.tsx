@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from 'next/link'
 import { getAllCourses } from '@/lib/courses';
 import { Clock } from 'lucide-react';
 
@@ -20,7 +20,7 @@ export default async function CoursePreview() {
     }
 
     if (courses.length === 0) {
-    return <div>No courses found.</div>;
+    return <div>No courses found.</div>;90
   }
 
   const featured = courses.slice(0, 6);
