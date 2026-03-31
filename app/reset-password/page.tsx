@@ -58,11 +58,11 @@ function ResetPasswordContent() {
       if (!fromQuery && !fromHash) return;
 
       // Token exists in URL — check whether Supabase established a valid session
-      // from it. getSession() returns the session that Supabase auto-created when
-      // it processed the hash fragment. If session is null here, the token was
-      // expired, already used, or malformed.
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      // from it. getUser() validates the token with Supabase's servers, so an
+      // expired or already-used token correctly returns null here instead of
+      // being accepted from the local cache.
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
         setIsRecoveryFlow(true);
       } else {
         setTokenExpired(true);

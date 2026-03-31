@@ -88,8 +88,10 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (!profile) {
-    console.error('[webhook] No profile found for email:', email);
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    console.error('[webhook] No profile found for email — acknowledged to stop Paystack retries');
+    // Return 200: Paystack retries any non-2xx every hour for 24 hours.
+    // This event cannot be actioned (no profile), so acknowledge it silently.
+    return NextResponse.json({ received: true, error: 'user_not_found' });
   }
 
   // Log the payment first
@@ -114,7 +116,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
   }
 
-  console.log(`[webhook] Enrolled ${email} in ${courseSlug} via webhook (ref: ${reference})`);
+  const maskedEmail = email.split('@').map((p, i) => i === 0 ? p.slice(0, 2) + '***' : p).join('@');
+  console.log(`[webhook] Enrolled ${maskedEmail} in ${courseSlug} via webhook (ref: ${reference.slice(0, 8)}...)`);
   return NextResponse.json({ received: true });
 }
 

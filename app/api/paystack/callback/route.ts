@@ -86,6 +86,19 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // ── Guard: validate courseSlug is a safe path segment ────────────────────
+  // courseSlug comes from Paystack metadata, which was set by the client before
+  // payment. A malicious value like "../admin" or "../../login?redirect=..."
+  // would be injected into redirect URLs below, bypassing the open-redirect
+  // fix on /login. Only allow real slug format: lowercase alphanumeric + hyphens.
+  const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  if (!SLUG_RE.test(courseSlug)) {
+    console.warn('[callback] Invalid course_slug in metadata rejected:', courseSlug);
+    return NextResponse.redirect(
+      new URL('/dashboard/my-courses?paystack_error=invalid_course', req.url)
+    );
+  }
+
   const supabase = getAdminClient();
 
   // ── Idempotency check ─────────────────────────────────────────────────────
@@ -147,7 +160,8 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  console.log(`[callback] Enrolled ${email} in ${courseSlug} via callback (ref: ${reference})`);
+  const maskedEmail = email.split('@').map((p, i) => i === 0 ? p.slice(0, 2) + '***' : p).join('@');
+  console.log(`[callback] Enrolled ${maskedEmail} in ${courseSlug} via callback (ref: ${reference.slice(0, 8)}...)`);
 
   // ── Success — redirect to the course ─────────────────────────────────────
   return NextResponse.redirect(
