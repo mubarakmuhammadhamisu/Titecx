@@ -50,7 +50,6 @@ export async function POST(req: NextRequest) {
     courseSlug: string;
     isFree?: boolean;
     reference?: string;
-    amountKobo?: number;
   };
   try {
     body = await req.json();
@@ -58,7 +57,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { courseSlug, isFree, reference, amountKobo } = body;
+  const { courseSlug, isFree, reference } = body;
 
   if (!courseSlug) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

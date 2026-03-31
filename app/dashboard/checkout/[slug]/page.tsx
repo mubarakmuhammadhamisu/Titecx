@@ -267,7 +267,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
         enrollWithTimeout({
           reference: response.reference,
           courseSlug: course.slug,
-          amountKobo: totalKobo,
         })
           .then((data) => {
             if (data.enrolled) {

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import React, { useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
 
 // ── Delete Modal ──────────────────────────────────────────────────────────────
@@ -75,9 +76,10 @@ export default function ProfilePage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
 
+  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [pwForm, setPwForm] = useState({ new: '', confirm: '' });
+  const [pwForm, setPwForm] = useState({ current: '', new: '', confirm: '' });
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState(false);
   const [pwLoading, setPwLoading] = useState(false);
@@ -134,13 +136,20 @@ export default function ProfilePage() {
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setPwError(''); setPwSuccess(false);
-    if (!pwForm.new || !pwForm.confirm) { setPwError('All fields are required.'); return; }
+    if (!pwForm.current || !pwForm.new || !pwForm.confirm) { setPwError('All fields are required.'); return; }
     if (pwForm.new.length < 8) { setPwError('New password must be at least 8 characters.'); return; }
     if (pwForm.new !== pwForm.confirm) { setPwError('Passwords do not match.'); return; }
     setPwLoading(true);
+    // Re-authenticate first — prevents an attacker with temporary session
+    // access from permanently locking the real user out of their account.
+    const { error: reAuthError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: pwForm.current,
+    });
+    if (reAuthError) { setPwLoading(false); setPwError('Current password is incorrect.'); return; }
     const result = await updatePassword(pwForm.new);
     setPwLoading(false);
-    if (result.error) { setPwError(result.error); } else { setPwSuccess(true); setPwForm({ new: '', confirm: '' }); }
+    if (result.error) { setPwError(result.error); } else { setPwSuccess(true); setPwForm({ current: '', new: '', confirm: '' }); }
   };
 
   const handlePrefChange = async (key: keyof typeof user.preferences, value: boolean) => {
@@ -255,7 +264,8 @@ export default function ProfilePage() {
             <GlowCard>
               <div className="flex items-center gap-2 mb-5"><Lock size={18} className="text-indigo-400" /><h2 className="text-lg font-bold text-white">Change Password</h2></div>
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                {[{ label: 'New Password', key: 'new', show: showNew, toggle: () => setShowNew(!showNew), ph: 'At least 8 characters' },
+                {[{ label: 'Current Password', key: 'current', show: showCurrent, toggle: () => setShowCurrent(!showCurrent), ph: 'Your current password' },
+                  { label: 'New Password', key: 'new', show: showNew, toggle: () => setShowNew(!showNew), ph: 'At least 8 characters' },
                   { label: 'Confirm New Password', key: 'confirm', show: showConfirm, toggle: () => setShowConfirm(!showConfirm), ph: 'Re-enter your new password' }
                 ].map(({ label, key, show, toggle, ph }) => (
                   <div key={key}>

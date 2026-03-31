@@ -23,7 +23,10 @@ const RegisterContent = () => {
   const { register, user, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') ?? '/dashboard';
+  // Sanitise: only allow relative paths starting with /  — reject absolute
+  // URLs like https://evil.com and protocol-relative URLs like //evil.com.
+  const raw = searchParams.get('redirect') ?? '/dashboard';
+  const redirect = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/dashboard';
 
   const [name, setName]                   = useState('');
   const [email, setEmail]                 = useState('');

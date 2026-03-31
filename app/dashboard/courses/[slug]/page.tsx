@@ -18,7 +18,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
   // completedLessonIds is required here — the old code used l.status === 'completed'
   // which read from the static DB field. That field is seeded as 'locked' for most
   // lessons and never updates. Real completion state lives in completedLessonIds.
-  const { courses, completedLessonIds } = useAuth();
+  const { courses, completedLessonIds, isEnrolled } = useAuth();
 
   const course = useMemo(() => {
     return courses.find((c) => c.slug === slug);
@@ -68,6 +68,27 @@ export default function CourseOverviewPage({ params }: PageProps) {
     0
   );
   const firstLesson = course.modules[0]?.lessons[0];
+
+  // ── Enrollment gate ───────────────────────────────────────────────────────
+  // courses[] contains ALL published courses. Without this check any
+  // logged-in user can view the full curriculum of a paid course for free.
+  if (!isEnrolled(slug)) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] flex-col gap-4 text-center px-4">
+        <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mb-2">
+          <Lock size={28} className="text-indigo-400" />
+        </div>
+        <h2 className="text-xl font-bold text-white">You are not enrolled in this course</h2>
+        <p className="text-gray-400 text-sm max-w-xs">Purchase or enrol to unlock all lessons and track your progress.</p>
+        <Link
+          href={`/dashboard/checkout/${slug}`}
+          className="mt-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition"
+        >
+          Enrol Now
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-8">
