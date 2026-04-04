@@ -21,6 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { validateCourseFromMetadata, ValidatedCourse } from '@/lib/verifyPaystackPayment';
 
 function getAdminClient() {
   return createClient(
@@ -69,6 +70,20 @@ export async function POST(req: NextRequest) {
 
   const supabase = getAdminClient();
 
+  // ── Metadata validation gate ─────────────────────────────────────────
+  // courseSlug comes from Paystack event metadata -- treat as untrusted even
+  // though the event itself is HMAC-verified. Validate against DB before any
+  // enrollment or payment logging. All downstream uses are via validatedCourse.slug.
+  let validatedCourse: ValidatedCourse;
+  try {
+    validatedCourse = await validateCourseFromMetadata(courseSlug, amount, supabase);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : '';
+    console.warn('[webhook] Course metadata validation failed:', msg);
+    // Return 200 to stop Paystack retries — this event cannot be actioned
+    return NextResponse.json({ received: true, error: 'payment_amount_invalid' });
+  }
+
   // Idempotency — if this reference is already in payments, we already enrolled
   const { data: existing } = await supabase
     .from('payments')
@@ -94,30 +109,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, error: 'user_not_found' });
   }
 
-  // Log the payment first
-  await supabase.from('payments').insert({
-    user_id: profile.id,
-    course_slug: courseSlug,
-    paystack_reference: reference,
-    amount_kobo: amount,
-    status: 'success',
+  // Record payment and enroll atomically via DB transaction (RPC).
+  // Both inserts happen inside a single PostgreSQL transaction — if either
+  // fails, both are rolled back. ON CONFLICT DO NOTHING makes it idempotent.
+  const { error: enrollError } = await supabase.rpc('enroll_after_payment', {
+    p_user_id:            profile.id,
+    p_course_slug:        validatedCourse.slug,
+    p_paystack_reference: reference,
+    p_amount_kobo:        amount,
+    p_status:             'success',
   });
 
-  // Enroll (upsert so it is safe even if /api/enroll already wrote a row)
-  const { error: enrollError } = await supabase
-    .from('enrollments')
-    .upsert(
-      { user_id: profile.id, course_slug: courseSlug, progress: 0 },
-      { onConflict: 'user_id,course_slug' },
-    );
-
   if (enrollError) {
-    console.error('[webhook] Enrollment DB error:', enrollError.message);
+    console.error('[webhook] Payment+enrollment transaction failed:', enrollError.message);
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
   }
 
   const maskedEmail = email.split('@').map((p, i) => i === 0 ? p.slice(0, 2) + '***' : p).join('@');
-  console.log(`[webhook] Enrolled ${maskedEmail} in ${courseSlug} via webhook (ref: ${reference.slice(0, 8)}...)`);
+  console.log(`[webhook] Enrolled ${maskedEmail} in ${validatedCourse.slug} via webhook (ref: ${reference.slice(0, 8)}...)`);
   return NextResponse.json({ received: true });
 }
 

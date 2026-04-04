@@ -20,6 +20,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { verifyPaystackPayment, PaystackTransactionData } from '@/lib/verifyPaystackPayment';
 
 function getAdminClient() {
   return createClient(
@@ -115,85 +116,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Payment reference required for paid course' }, { status: 400 });
   }
 
-  const secret = process.env.PAYSTACK_SECRET_KEY;
-  if (!secret) {
-    console.error('[enroll] PAYSTACK_SECRET_KEY not set');
-    return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
-  }
-
-  // 1. Verify the transaction with Paystack using the secret key
-  const verifyRes = await fetch(
-    `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
-    { headers: { Authorization: `Bearer ${secret}` } },
-  );
-
-  if (!verifyRes.ok) {
+  // 1. Verify with Paystack and validate amount against DB course price (shared helper)
+  let paystackData: PaystackTransactionData;
+  try {
+    paystackData = await verifyPaystackPayment(reference, courseSlug, supabase);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : '';
+    console.error('[enroll] Payment verification failed:', msg);
+    if (msg.startsWith('PAYSTACK_SECRET_KEY'))  return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
+    if (msg.startsWith('Underpayment'))          return NextResponse.json({ error: 'Payment amount is less than course price' }, { status: 400 });
+    if (msg.startsWith('Payment not confirmed')) return NextResponse.json({ error: 'Payment not confirmed' }, { status: 402 });
+    if (msg.startsWith('Course not found'))      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     return NextResponse.json({ error: 'Could not verify payment' }, { status: 502 });
-  }
-
-  const verifyData = await verifyRes.json() as PaystackVerifyResponse;
-
-  if (!verifyData.status || verifyData.data?.status !== 'success') {
-    console.warn('[enroll] Payment not successful:', verifyData.data?.status);
-    return NextResponse.json({ error: 'Payment not confirmed' }, { status: 402 });
   }
 
   // ── Guard: reference must be for THIS course, not a different one ─────────
   // Prevents reusing a paid reference from Course A to enroll in Course B.
-  const paystackCourseSlug = verifyData.data.metadata?.course_slug as string | undefined;
+  const paystackCourseSlug = paystackData.metadata?.course_slug as string | undefined;
   if (paystackCourseSlug && paystackCourseSlug !== courseSlug) {
     console.warn('[enroll] Reference course_slug mismatch:', paystackCourseSlug, '!=', courseSlug);
     return NextResponse.json({ error: 'Reference is for a different course' }, { status: 400 });
   }
 
-  // ── Guard: paid amount must be >= expected course price ───────────────────
-  // Prevents paying ₦1 and getting enrolled via a tampered client amount.
-  const { data: courseForPrice } = await supabase
-    .from('courses')
-    .select('price')
-    .eq('slug', courseSlug)
-    .eq('is_published', true)
-    .maybeSingle();
-  const expectedKobo = Number(courseForPrice?.price?.replace(/[^\d]/g, '') ?? 0) * 100;
-  if (expectedKobo > 0 && verifyData.data.amount < expectedKobo) {
-    console.warn('[enroll] Underpayment detected:', verifyData.data.amount, '<', expectedKobo);
-    return NextResponse.json({ error: 'Payment amount is less than course price' }, { status: 400 });
-  }
-
-  // 2. Log payment — use the amount Paystack confirmed, never the body amount
-  await supabase.from('payments').upsert(
-    {
-      user_id: userId,
-      course_slug: courseSlug,
-      paystack_reference: reference,
-      amount_kobo: verifyData.data.amount,
-      status: 'success',
-    },
-    { onConflict: 'paystack_reference' },
-  );
-
-  // 3. Enroll
-  const { error } = await supabase.from('enrollments').insert({
-    user_id: userId,
-    course_slug: courseSlug,
-    progress: 0,
+  // 2 & 3. Record payment and enroll atomically via DB transaction (RPC).
+  // Both inserts happen inside a single PostgreSQL transaction — if either
+  // fails, both are rolled back. ON CONFLICT DO NOTHING makes it idempotent.
+  const { error } = await supabase.rpc('enroll_after_payment', {
+    p_user_id:            userId,
+    p_course_slug:        courseSlug,
+    p_paystack_reference: reference,
+    p_amount_kobo:        paystackData.amount,
+    p_status:             'success',
   });
 
   if (error) {
-    console.error('[enroll] Paid enrollment DB error:', error.message);
+    console.error('[enroll] Payment+enrollment transaction failed:', error.message);
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
   }
 
   return NextResponse.json({ enrolled: true });
 }
 
-interface PaystackVerifyResponse {
-  status: boolean;
-  data: {
-    status: string;
-    reference: string;
-    amount: number;
-    customer: { email: string };
-    metadata?: Record<string, unknown>;
-  };
-}
+
