@@ -23,6 +23,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { validateCourseFromMetadata, ValidatedCourse } from '@/lib/verifyPaystackPayment';
 
 function getAdminClient() {
   return createClient(
@@ -101,7 +102,22 @@ export async function GET(req: NextRequest) {
 
   const supabase = getAdminClient();
 
-  // ── Idempotency check ─────────────────────────────────────────────────────
+  // ── Metadata validation gate ─────────────────────────────────────────
+  // courseSlug comes from Paystack metadata -- treat as untrusted until the DB
+  // confirms the course exists, is published, and the paid amount is sufficient.
+  // All downstream code uses validatedCourse.slug, not the raw metadata string.
+  let validatedCourse: ValidatedCourse;
+  try {
+    validatedCourse = await validateCourseFromMetadata(courseSlug, amount, supabase);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : '';
+    console.warn('[callback] Course metadata validation failed:', msg);
+    return NextResponse.redirect(
+      new URL('/dashboard/my-courses?paystack_error=invalid_amount', req.url)
+    );
+  }
+
+  // ── Idempotency check ─────────────────────────────────────────────────────────────
   const { data: existingPayment } = await supabase
     .from('payments')
     .select('id')
@@ -111,11 +127,11 @@ export async function GET(req: NextRequest) {
   // If already processed (e.g. webhook fired first), go straight to the course
   if (existingPayment) {
     return NextResponse.redirect(
-      new URL(`/dashboard/courses/${courseSlug}?enrolled=true`, req.url)
+      new URL(`/dashboard/courses/${validatedCourse.slug}?enrolled=true`, req.url)
     );
   }
 
-  // ── Look up the user ──────────────────────────────────────────────────────
+  // ── Look up the user ──────────────────────────────────────────────────────────────────────
   const { data: profile } = await supabase
     .from('profiles')
     .select('id')
@@ -133,11 +149,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // ── Log payment ───────────────────────────────────────────────────────────
+  // ── Log payment ───────────────────────────────────────────────────────────────────────────
   await supabase.from('payments').upsert(
     {
       user_id:             profile.id,
-      course_slug:         courseSlug,
+      course_slug:         validatedCourse.slug,
       paystack_reference:  reference,
       amount_kobo:         amount,
       status:              'success',
@@ -145,11 +161,11 @@ export async function GET(req: NextRequest) {
     { onConflict: 'paystack_reference' }
   );
 
-  // ── Enroll ────────────────────────────────────────────────────────────────
+  // ── Enroll ────────────────────────────────────────────────────────────────────────────────────
   const { error: enrollError } = await supabase
     .from('enrollments')
     .upsert(
-      { user_id: profile.id, course_slug: courseSlug, progress: 0 },
+      { user_id: profile.id, course_slug: validatedCourse.slug, progress: 0 },
       { onConflict: 'user_id,course_slug' }
     );
 
@@ -161,11 +177,11 @@ export async function GET(req: NextRequest) {
   }
 
   const maskedEmail = email.split('@').map((p, i) => i === 0 ? p.slice(0, 2) + '***' : p).join('@');
-  console.log(`[callback] Enrolled ${maskedEmail} in ${courseSlug} via callback (ref: ${reference.slice(0, 8)}...)`);
+  console.log(`[callback] Enrolled ${maskedEmail} in ${validatedCourse.slug} via callback (ref: ${reference.slice(0, 8)}...)`);
 
-  // ── Success — redirect to the course ─────────────────────────────────────
+  // ── Success — redirect to the course ─────────────────────────────────────────────────
   return NextResponse.redirect(
-    new URL(`/dashboard/courses/${courseSlug}?enrolled=true`, req.url)
+    new URL(`/dashboard/courses/${validatedCourse.slug}?enrolled=true`, req.url)
   );
 }
 

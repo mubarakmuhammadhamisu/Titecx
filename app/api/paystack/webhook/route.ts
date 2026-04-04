@@ -21,6 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { validateCourseFromMetadata, ValidatedCourse } from '@/lib/verifyPaystackPayment';
 
 function getAdminClient() {
   return createClient(
@@ -69,6 +70,20 @@ export async function POST(req: NextRequest) {
 
   const supabase = getAdminClient();
 
+  // ── Metadata validation gate ─────────────────────────────────────────
+  // courseSlug comes from Paystack event metadata -- treat as untrusted even
+  // though the event itself is HMAC-verified. Validate against DB before any
+  // enrollment or payment logging. All downstream uses are via validatedCourse.slug.
+  let validatedCourse: ValidatedCourse;
+  try {
+    validatedCourse = await validateCourseFromMetadata(courseSlug, amount, supabase);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : '';
+    console.warn('[webhook] Course metadata validation failed:', msg);
+    // Return 200 to stop Paystack retries — this event cannot be actioned
+    return NextResponse.json({ received: true, error: 'payment_amount_invalid' });
+  }
+
   // Idempotency — if this reference is already in payments, we already enrolled
   const { data: existing } = await supabase
     .from('payments')
@@ -97,7 +112,7 @@ export async function POST(req: NextRequest) {
   // Log the payment first
   await supabase.from('payments').insert({
     user_id: profile.id,
-    course_slug: courseSlug,
+    course_slug: validatedCourse.slug,
     paystack_reference: reference,
     amount_kobo: amount,
     status: 'success',
@@ -107,7 +122,7 @@ export async function POST(req: NextRequest) {
   const { error: enrollError } = await supabase
     .from('enrollments')
     .upsert(
-      { user_id: profile.id, course_slug: courseSlug, progress: 0 },
+      { user_id: profile.id, course_slug: validatedCourse.slug, progress: 0 },
       { onConflict: 'user_id,course_slug' },
     );
 
@@ -117,7 +132,7 @@ export async function POST(req: NextRequest) {
   }
 
   const maskedEmail = email.split('@').map((p, i) => i === 0 ? p.slice(0, 2) + '***' : p).join('@');
-  console.log(`[webhook] Enrolled ${maskedEmail} in ${courseSlug} via webhook (ref: ${reference.slice(0, 8)}...)`);
+  console.log(`[webhook] Enrolled ${maskedEmail} in ${validatedCourse.slug} via webhook (ref: ${reference.slice(0, 8)}...)`);
   return NextResponse.json({ received: true });
 }
 
