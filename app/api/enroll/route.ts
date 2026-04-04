@@ -138,27 +138,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Reference is for a different course' }, { status: 400 });
   }
 
-  // 2. Log payment — use the amount Paystack confirmed, never the body amount
-  await supabase.from('payments').upsert(
-    {
-      user_id: userId,
-      course_slug: courseSlug,
-      paystack_reference: reference,
-      amount_kobo: paystackData.amount,
-      status: 'success',
-    },
-    { onConflict: 'paystack_reference' },
-  );
-
-  // 3. Enroll
-  const { error } = await supabase.from('enrollments').insert({
-    user_id: userId,
-    course_slug: courseSlug,
-    progress: 0,
+  // 2 & 3. Record payment and enroll atomically via DB transaction (RPC).
+  // Both inserts happen inside a single PostgreSQL transaction — if either
+  // fails, both are rolled back. ON CONFLICT DO NOTHING makes it idempotent.
+  const { error } = await supabase.rpc('enroll_after_payment', {
+    p_user_id:            userId,
+    p_course_slug:        courseSlug,
+    p_paystack_reference: reference,
+    p_amount_kobo:        paystackData.amount,
+    p_status:             'success',
   });
 
   if (error) {
-    console.error('[enroll] Paid enrollment DB error:', error.message);
+    console.error('[enroll] Payment+enrollment transaction failed:', error.message);
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
   }
 

@@ -149,28 +149,19 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // ── Log payment ───────────────────────────────────────────────────────────────────────────
-  await supabase.from('payments').upsert(
-    {
-      user_id:             profile.id,
-      course_slug:         validatedCourse.slug,
-      paystack_reference:  reference,
-      amount_kobo:         amount,
-      status:              'success',
-    },
-    { onConflict: 'paystack_reference' }
-  );
-
-  // ── Enroll ────────────────────────────────────────────────────────────────────────────────────
-  const { error: enrollError } = await supabase
-    .from('enrollments')
-    .upsert(
-      { user_id: profile.id, course_slug: validatedCourse.slug, progress: 0 },
-      { onConflict: 'user_id,course_slug' }
-    );
+  // ── Record payment and enroll atomically via DB transaction (RPC) ─────────────
+  // Both inserts happen inside a single PostgreSQL transaction — if either
+  // fails, both are rolled back. ON CONFLICT DO NOTHING makes it idempotent.
+  const { error: enrollError } = await supabase.rpc('enroll_after_payment', {
+    p_user_id:            profile.id,
+    p_course_slug:        validatedCourse.slug,
+    p_paystack_reference: reference,
+    p_amount_kobo:        amount,
+    p_status:             'success',
+  });
 
   if (enrollError) {
-    console.error('[callback] Enrollment DB error:', enrollError.message);
+    console.error('[callback] Payment+enrollment transaction failed:', enrollError.message);
     return NextResponse.redirect(
       new URL('/dashboard/my-courses?paystack_error=enrollment_failed', req.url)
     );

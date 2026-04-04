@@ -109,25 +109,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, error: 'user_not_found' });
   }
 
-  // Log the payment first
-  await supabase.from('payments').insert({
-    user_id: profile.id,
-    course_slug: validatedCourse.slug,
-    paystack_reference: reference,
-    amount_kobo: amount,
-    status: 'success',
+  // Record payment and enroll atomically via DB transaction (RPC).
+  // Both inserts happen inside a single PostgreSQL transaction — if either
+  // fails, both are rolled back. ON CONFLICT DO NOTHING makes it idempotent.
+  const { error: enrollError } = await supabase.rpc('enroll_after_payment', {
+    p_user_id:            profile.id,
+    p_course_slug:        validatedCourse.slug,
+    p_paystack_reference: reference,
+    p_amount_kobo:        amount,
+    p_status:             'success',
   });
 
-  // Enroll (upsert so it is safe even if /api/enroll already wrote a row)
-  const { error: enrollError } = await supabase
-    .from('enrollments')
-    .upsert(
-      { user_id: profile.id, course_slug: validatedCourse.slug, progress: 0 },
-      { onConflict: 'user_id,course_slug' },
-    );
-
   if (enrollError) {
-    console.error('[webhook] Enrollment DB error:', enrollError.message);
+    console.error('[webhook] Payment+enrollment transaction failed:', enrollError.message);
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
   }
 
