@@ -66,6 +66,11 @@ function Hero() {
     </section>
   );
 }
+const features = [
+  { title: "Expert-Built Courses", description: "Focused on real skills." },
+  { title: "Learn at Your Pace", description: "Pause, resume anytime." },
+  { title: "Lifetime Access", description: "Buy once, learn forever." },
+];
 
 /* =========================
    FEATURES
