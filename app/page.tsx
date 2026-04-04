@@ -31,8 +31,7 @@ function Hero() {
             <span className="text-indigo-400">Actually Matter</span>
           </h1>
           <p className="mt-6 text-xl text-gray-300">
-            High-quality courses built for real-world skills. Join our growing community+
-            students today.
+            High-quality courses built for real-world skills. Join our growing community.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
             <Link
@@ -67,6 +66,11 @@ function Hero() {
     </section>
   );
 }
+const features = [
+  { title: "Expert-Built Courses", description: "Focused on real skills." },
+  { title: "Learn at Your Pace", description: "Pause, resume anytime." },
+  { title: "Lifetime Access", description: "Buy once, learn forever." },
+];
 
 /* =========================
    FEATURES
@@ -87,11 +91,6 @@ function Features() {
   );
 }
 
-const features = [
-  { title: "Expert-Built Courses", description: "Focused on real skills." },
-  { title: "Learn at Your Pace", description: "Pause, resume anytime." },
-  { title: "Lifetime Access", description: "Buy once, learn forever." },
-];
 
 /* =========================
    COURSE PREVIEW
