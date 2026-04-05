@@ -3,7 +3,7 @@
 // Validates a coupon code server-side against the COUPON_CODE environment
 // variable. The code never appears in the client bundle.
 //
-// SETUP REQUIRED:
+// SETUP REQUIRED: 
 //   Add to Vercel environment variables (NOT prefixed with NEXT_PUBLIC_):
 //     COUPON_CODE=LEARN10
 //
@@ -15,8 +15,22 @@
 // We return only { valid: boolean } — never the real code.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
+  // ── Rate limit: 10 requests per minute per IP ─────────────────────────────
+  // Prevents automated brute-forcing of coupon codes.
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? req.headers.get('x-real-ip')
+    ?? 'unknown';
+  const { allowed } = checkRateLimit(`validate-coupon:${ip}`, 10, 60_000);
+  if (!allowed) {
+    return NextResponse.json({ valid: false }, {
+      status: 429,
+      headers: { 'Retry-After': '60' },
+    });
+  }
+
   try {
     const { coupon } = await req.json() as { coupon?: string };
 
