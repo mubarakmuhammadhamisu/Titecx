@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 1. Verify with Paystack and validate amount against DB course price (shared helper)
-  let paystackData: PaystackTransactionData;
+  let paystackData: PaystackTransactionData & { validatedSlug: string };
   try {
     paystackData = await verifyPaystackPayment(reference, courseSlug, supabase);
   } catch (err) {
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
     p_user_id:            userId,
     p_course_slug:        paystackData.validatedSlug,
     p_paystack_reference: reference,
-    p_amount_kobo:        paystackData.amount,
+    p_amount_kobo:        paystackData.amount, 
     p_status:             'success',
   });
 
