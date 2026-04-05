@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
   // fails, both are rolled back. ON CONFLICT DO NOTHING makes it idempotent.
   const { error } = await supabase.rpc('enroll_after_payment', {
     p_user_id:            userId,
-    p_course_slug:        courseSlug,
+    p_course_slug:        paystackData.validatedSlug,
     p_paystack_reference: reference,
     p_amount_kobo:        paystackData.amount,
     p_status:             'success',

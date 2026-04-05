@@ -54,6 +54,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Guard: password change requires an email-based account.
+  // Supabase allows phone-only accounts with no email — re-authenticating
+  // via signInWithPassword would crash with a null email assertion.
+  if (!user.email) {
+    return NextResponse.json({ error: 'Password change is only available for email accounts' }, { status: 400 });
+  }
+
   // Step 2: Parse and validate the request body
   let body: { currentPassword?: string; newPassword?: string };
   try {
@@ -83,7 +90,7 @@ export async function POST(req: NextRequest) {
   );
 
   const { error: reAuthError } = await anonClient.auth.signInWithPassword({
-    email: user.email!,
+    email: user.email,
     password: currentPassword,
   });
 

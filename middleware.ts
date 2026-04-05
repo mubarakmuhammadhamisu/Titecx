@@ -37,12 +37,16 @@ export async function middleware(req: NextRequest) {
       ?? req.headers.get('x-real-ip')
       ?? 'unknown';
     const limit = pathname === '/register' ? 5 : 10;
-    const { allowed } = checkRateLimit(`${pathname}:${ip}`, limit, 60_000);
-    if (!allowed) {
-      return new NextResponse('Too many requests', {
-        status: 429,
-        headers: { 'Retry-After': '60' },
-      });
+    // Skip rate limiting when IP cannot be determined (local dev, stripped headers).
+    // A shared 'unknown' bucket would incorrectly throttle unrelated clients.
+    if (ip !== 'unknown') {
+      const { allowed } = checkRateLimit(`${pathname}:${ip}`, limit, 60_000);
+      if (!allowed) {
+        return new NextResponse('Too many requests', {
+          status: 429,
+          headers: { 'Retry-After': '60' },
+        });
+      }
     }
   }
 
