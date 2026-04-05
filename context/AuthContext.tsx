@@ -55,7 +55,7 @@ interface AuthContextValue {
   updateProfile: (data: Partial<Pick<AppUser, 'name' | 'phone' | 'bio' | 'location'>>) => Promise<{ error?: string }>;
   updatePreferences: (prefs: AppUser['preferences']) => Promise<{ error?: string }>;
   updateAvatar: (file: File) => Promise<{ error?: string }>;
-  updatePassword: (newPassword: string) => Promise<{ error?: string }>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<{ error?: string }>;
   deleteAccount: () => Promise<{ error?: string }>;
 }
 
@@ -386,9 +386,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return {};
   };
 
-  const updatePassword = async (newPassword: string) => {
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) return { error: error.message };
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    // Password change is now handled server-side — the API route re-authenticates
+    // the user with their current password before allowing the update.
+    // This prevents an attacker with a hijacked session from changing the password
+    // without knowing the current one.
+    const res = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const data = await res.json().catch(() => ({ error: 'Server error' }));
+    if (!res.ok) return { error: data.error ?? 'Password update failed' };
     return {};
   };
 
@@ -398,7 +407,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // now happens server-side in /api/delete-account using the service role key.
     // Previously these ran client-side BEFORE the API confirmed the auth
     // account was deleted — if the API failed the user's data was already gone.
-    const res = await fetch('/api/delete-account', { method: 'POST' });
+    const res = await fetch('/api/delete-account', { method: 'POST', headers: { 'x-csrf-protection': '1' } });
     if (!res.ok) return { error: 'Failed to delete account. Please contact support.' };
     await supabase.auth.signOut();
     setUser(null); setEnrolledCourses([]); setCompletedLessonIds(new Set()); setCourses([]);

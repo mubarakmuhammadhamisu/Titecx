@@ -21,6 +21,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { verifyPaystackPayment, PaystackTransactionData } from '@/lib/verifyPaystackPayment';
+import { checkCsrfHeader } from '@/lib/csrf';
 
 function getAdminClient() {
   return createClient(
@@ -30,6 +31,10 @@ function getAdminClient() {
 }
 
 export async function POST(req: NextRequest) {
+  // ── CSRF: reject cross-site requests missing the custom header ───────────
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
+
   // ── Step 0: Verify session — never trust userId from the request body ────
   // Read the authenticated user from the JWT cookie (same pattern as
   // /api/delete-account). An unauthenticated caller or a caller passing
