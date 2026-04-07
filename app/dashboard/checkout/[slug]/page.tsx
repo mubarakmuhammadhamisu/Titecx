@@ -172,7 +172,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
     try {
       const res = await fetch('/api/validate-coupon', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
         body: JSON.stringify({ coupon }),
       });
       const data = await res.json() as { valid: boolean };

@@ -90,7 +90,7 @@ export default async function CertificatePage({ params }: PageProps) {
             <div className="flex items-center justify-center gap-2 pt-2">
               <CheckCircle2 size={18} className="text-emerald-400" />
               <span className="text-sm text-emerald-400 font-medium">
-                Issued by TITECX · titecx-mb.vercel.app
+                Issued by TITECX · {(process.env.NEXT_PUBLIC_APP_URL ?? 'titecx-mb.vercel.app').replace(/^https?:\/\//, '')}
               </span>
             </div>
           </div>

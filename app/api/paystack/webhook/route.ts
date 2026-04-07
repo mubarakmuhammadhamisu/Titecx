@@ -123,7 +123,10 @@ export async function POST(req: NextRequest) {
 
   if (enrollError) {
     console.error('[webhook] Payment+enrollment transaction failed:', enrollError.message);
-    return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
+    // Return 200 to stop Paystack retries — the RPC failure is a server-side issue,
+    // not something Paystack can fix by retrying. Retrying would replay the same event
+    // against a failing DB and keep Paystack in a retry loop for 24 hours.
+    return NextResponse.json({ received: true, error: 'enrollment_failed' });
   }
 
   const maskedEmail = email.split('@').map((p, i) => i === 0 ? p.slice(0, 2) + '***' : p).join('@');

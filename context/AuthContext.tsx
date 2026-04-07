@@ -292,16 +292,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     }
 
-    // ── Write 1: record lesson completion ────────────────────────────────────
-    const { error: completionError } = await supabase.from('lesson_completions').upsert(
-      { user_id: user.id, course_slug: courseSlug, lesson_id: lessonId },
-      { onConflict: 'user_id,course_slug,lesson_id' }
-    );
+    // ── Server-side write: lesson completion + progress update ──────────────
+    // The API route verifies enrollment, upserts lesson_completions (Write 1),
+    // then recomputes and updates the enrollment progress % (Write 2).
+    // Rollback logic below mirrors the previous two-write error handling exactly.
+    let apiResult: { success?: boolean; error?: string } = {};
+    try {
+      const res = await fetch('/api/mark-lesson-complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
+        body: JSON.stringify({ courseSlug, lessonId }),
+      });
+      apiResult = await res.json().catch(() => ({ error: 'parse_failed' }));
+      // Non-2xx and not a progress_failed (200) → treat as a completion failure
+      if (!res.ok && apiResult.error !== 'progress_failed') {
+        apiResult = { error: apiResult.error ?? 'completion_failed' };
+      }
+    } catch {
+      apiResult = { error: 'completion_failed' };
+    }
 
-    if (completionError) {
-      // Write 1 failed — roll back both the checkmark and the progress bar.
+    if (apiResult.error === 'progress_failed') {
+      // Write 1 succeeded — lesson IS saved. Keep the checkmark (it's true).
+      // Write 2 failed — the progress % in DB is stale.
+      // Roll back the progress bar only; do NOT remove the checkmark.
+      console.error('[markLessonComplete] enrollments update failed (server)');
+      if (schema && optimisticProgress !== null) {
+        setEnrolledCourses((prev) =>
+          prev.map((c) => {
+            if (c.slug !== courseSlug) return c;
+            const allLessons = schema.modules.flatMap((m) => m.lessons);
+            const nextLesson = allLessons.find((l) => !optimisticCompleted.has(l.id));
+            const originalCount = schema.modules
+              .flatMap((m) => m.lessons)
+              .filter((l) => completedLessonIds.has(l.id)).length;
+            const totalLessons = schema.modules.flatMap((m) => m.lessons).length;
+            const originalProgress = totalLessons > 0
+              ? Math.round((originalCount / totalLessons) * 100) : 0;
+            return { ...c, progress: originalProgress, nextLessonId: nextLesson?.id };
+          })
+        );
+      }
+      showProgressError('Lesson saved but progress % could not update. Please reload.');
+      return;
+    }
+
+    if (apiResult.error) {
+      // Write 1 failed (or network/parse error) — roll back both checkmark and progress bar.
       // The lesson is NOT saved; the UI must reflect that.
-      console.error('[markLessonComplete] lesson_completions write failed:', completionError.message);
+      console.error('[markLessonComplete] lesson_completions write failed:', apiResult.error);
       setCompletedLessonIds(completedLessonIds); // restore original set
       if (schema && optimisticProgress !== null) {
         setEnrolledCourses((prev) =>
@@ -325,47 +364,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // ── Write 2: update enrollment progress % ───────────────────────────────
-    if (schema && optimisticProgress !== null) {
-      const { error: progressError } = await supabase.from('enrollments')
-        .update({
-          progress: optimisticProgress,
-          completed_at: optimisticProgress === 100 ? new Date().toISOString() : null,
-        })
-        .eq('user_id', user.id)
-        .eq('course_slug', courseSlug);
-
-      if (progressError) {
-        // Write 1 succeeded — lesson IS saved. Keep the checkmark (it's true).
-        // Write 2 failed — the progress % in DB is stale.
-        // Roll back the progress bar only; do NOT remove the checkmark.
-        console.error('[markLessonComplete] enrollments update failed:', progressError.message);
-        setEnrolledCourses((prev) =>
-          prev.map((c) => {
-            if (c.slug !== courseSlug) return c;
-            const allLessons = schema.modules.flatMap((m) => m.lessons);
-            const nextLesson = allLessons.find((l) => !optimisticCompleted.has(l.id));
-            const originalCount = schema.modules
-              .flatMap((m) => m.lessons)
-              .filter((l) => completedLessonIds.has(l.id)).length;
-            const totalLessons = schema.modules.flatMap((m) => m.lessons).length;
-            const originalProgress = totalLessons > 0
-              ? Math.round((originalCount / totalLessons) * 100) : 0;
-            return { ...c, progress: originalProgress, nextLessonId: nextLesson?.id };
-          })
-        );
-        showProgressError('Lesson saved but progress % could not update. Please reload.');
-      }
-    }
-
     // Both writes succeeded — UI is already correct from the optimistic update.
   };
 
   const updateProfile = async (data: Partial<Pick<AppUser, 'name' | 'phone' | 'bio' | 'location'>>) => {
     if (!user) return { error: 'Not logged in.' };
-    const { error } = await supabase.from('profiles').update(data).eq('id', user.id);
+    // Input validation — runs before any Supabase call so invalid data is never written.
+    // Build a sanitized copy — validated and trimmed values replace the originals.
+    const sanitized = { ...data };
+    if (sanitized.name !== undefined) {
+      const trimmedName = sanitized.name.trim();
+      if (!trimmedName) return { error: 'Name cannot be empty.' };
+      if (trimmedName.length > 100) return { error: 'Name must be 100 characters or fewer.' };
+      sanitized.name = trimmedName; // store the trimmed value, not the raw input
+    }
+    if (sanitized.bio !== undefined && sanitized.bio.length > 500) {
+      return { error: 'Bio must be 500 characters or fewer.' };
+    }
+    const { error } = await supabase.from('profiles').update(sanitized).eq('id', user.id);
     if (error) return { error: error.message };
-    setUser((prev) => prev ? { ...prev, ...data } : prev);
+    setUser((prev) => prev ? { ...prev, ...sanitized } : prev);
     return {};
   };
 
