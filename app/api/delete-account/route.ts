@@ -23,8 +23,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { checkCsrfHeader } from '@/lib/csrf';
 
 export async function POST(req: NextRequest) {
+  // ── CSRF: reject cross-site requests missing the custom header ───────────
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
+
   try {
     // ── Step 1: Read the authenticated user from the JWT in the cookie ──────
     // createServerClient reads the HTTP-only session cookie set by @supabase/ssr.

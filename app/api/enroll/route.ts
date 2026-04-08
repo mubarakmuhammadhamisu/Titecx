@@ -21,6 +21,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { verifyPaystackPayment, PaystackTransactionData } from '@/lib/verifyPaystackPayment';
+import { checkCsrfHeader } from '@/lib/csrf';
 
 function getAdminClient() {
   return createClient(
@@ -30,6 +31,10 @@ function getAdminClient() {
 }
 
 export async function POST(req: NextRequest) {
+  // ── CSRF: reject cross-site requests missing the custom header ───────────
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
+
   // ── Step 0: Verify session — never trust userId from the request body ────
   // Read the authenticated user from the JWT cookie (same pattern as
   // /api/delete-account). An unauthenticated caller or a caller passing
@@ -117,7 +122,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 1. Verify with Paystack and validate amount against DB course price (shared helper)
-  let paystackData: PaystackTransactionData;
+  let paystackData: PaystackTransactionData & { validatedSlug: string };
   try {
     paystackData = await verifyPaystackPayment(reference, courseSlug, supabase);
   } catch (err) {
@@ -143,9 +148,9 @@ export async function POST(req: NextRequest) {
   // fails, both are rolled back. ON CONFLICT DO NOTHING makes it idempotent.
   const { error } = await supabase.rpc('enroll_after_payment', {
     p_user_id:            userId,
-    p_course_slug:        courseSlug,
+    p_course_slug:        paystackData.validatedSlug,
     p_paystack_reference: reference,
-    p_amount_kobo:        paystackData.amount,
+    p_amount_kobo:        paystackData.amount, 
     p_status:             'success',
   });
 

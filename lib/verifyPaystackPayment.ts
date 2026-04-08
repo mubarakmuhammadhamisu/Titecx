@@ -90,8 +90,8 @@ export async function assertPaymentAmount(
   paidAmountKobo: number,
   courseSlug: string,
   supabase: SupabaseClient,
-): Promise<void> {
-  await validateCourseFromMetadata(courseSlug, paidAmountKobo, supabase);
+): Promise<ValidatedCourse> {
+  return validateCourseFromMetadata(courseSlug, paidAmountKobo, supabase);
 }
 
 /**
@@ -113,7 +113,7 @@ export async function verifyPaystackPayment(
   reference: string,
   courseSlug: string,
   supabase: SupabaseClient,
-): Promise<PaystackTransactionData> {
+): Promise<PaystackTransactionData & { validatedSlug: string }> {
   const secret = process.env.PAYSTACK_SECRET_KEY;
   if (!secret) {
     throw new Error('PAYSTACK_SECRET_KEY not set');
@@ -134,8 +134,8 @@ export async function verifyPaystackPayment(
     throw new Error(`Payment not confirmed: ${body.data?.status}`);
   }
 
-  // Validate the confirmed amount against the DB price
-  await assertPaymentAmount(body.data.amount, courseSlug, supabase);
+  // Validate the confirmed amount against the DB price, capture the DB-verified slug
+  const validated = await assertPaymentAmount(body.data.amount, courseSlug, supabase);
 
-  return body.data;
+  return { ...body.data, validatedSlug: validated.slug };
 }

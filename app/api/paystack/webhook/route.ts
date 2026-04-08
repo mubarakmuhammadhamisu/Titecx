@@ -65,7 +65,8 @@ export async function POST(req: NextRequest) {
 
   if (!email || !courseSlug) {
     console.error('[webhook] Missing email or course_slug in event data', event.data);
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    // Return 200 to stop Paystack retries — this event cannot be actioned without email/courseSlug
+    return NextResponse.json({ received: true, error: 'missing_fields' });
   }
 
   const supabase = getAdminClient();

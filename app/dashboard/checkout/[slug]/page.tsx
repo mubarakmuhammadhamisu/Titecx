@@ -61,7 +61,7 @@ async function enrollWithTimeout(
   try {
     const res = await fetch('/api/enroll', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
       body: JSON.stringify(body),
       signal: controller.signal,
     });

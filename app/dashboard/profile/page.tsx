@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import React, { useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
 
 // ── Delete Modal ──────────────────────────────────────────────────────────────
@@ -140,14 +139,10 @@ export default function ProfilePage() {
     if (pwForm.new.length < 8) { setPwError('New password must be at least 8 characters.'); return; }
     if (pwForm.new !== pwForm.confirm) { setPwError('Passwords do not match.'); return; }
     setPwLoading(true);
-    // Re-authenticate first — prevents an attacker with temporary session
-    // access from permanently locking the real user out of their account.
-    const { error: reAuthError } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password: pwForm.current,
-    });
-    if (reAuthError) { setPwLoading(false); setPwError('Current password is incorrect.'); return; }
-    const result = await updatePassword(pwForm.new);
+    // Re-authentication and password update are now handled server-side
+    // in /api/change-password — the server verifies the current password
+    // before allowing any update, so it cannot be bypassed client-side.
+    const result = await updatePassword(pwForm.current, pwForm.new);
     setPwLoading(false);
     if (result.error) { setPwError(result.error); } else { setPwSuccess(true); setPwForm({ current: '', new: '', confirm: '' }); }
   };

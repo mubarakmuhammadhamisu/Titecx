@@ -18,9 +18,37 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // ---------------------------------------------------------------------------
+  // STEP 0 — Rate limit auth pages before any other work.
+  //
+  // login/register auth calls go directly to Supabase from the client, so
+  // this limits page-load rate from a single IP. Supabase enforces its own
+  // limits on the actual auth API calls.
+  //   /login    — 10 requests per minute per IP
+  //   /register — 5 requests per minute per IP
+  // ---------------------------------------------------------------------------
+  if (pathname === '/login' || pathname === '/register') {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      ?? req.headers.get('x-real-ip')
+      ?? 'unknown';
+    const limit = pathname === '/register' ? 5 : 10;
+    // Skip rate limiting when IP cannot be determined (local dev, stripped headers).
+    // A shared 'unknown' bucket would incorrectly throttle unrelated clients.
+    if (ip !== 'unknown') {
+      const { allowed } = checkRateLimit(`${pathname}:${ip}`, limit, 60_000);
+      if (!allowed) {
+        return new NextResponse('Too many requests', {
+          status: 429,
+          headers: { 'Retry-After': '60' },
+        });
+      }
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // STEP 1 — Create a response object FIRST, before anything else.  
