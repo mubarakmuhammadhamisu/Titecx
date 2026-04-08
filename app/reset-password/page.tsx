@@ -85,7 +85,7 @@ function ResetPasswordContent() {
     setEmailLoading(true);
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?type=recovery`,
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin}/reset-password?type=recovery`,
     });
 
     setEmailLoading(false);

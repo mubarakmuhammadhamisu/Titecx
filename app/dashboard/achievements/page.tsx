@@ -46,12 +46,23 @@ export default function AchievementsPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Escapes user-controlled strings before injection into document.write().
+  // Prevents XSS when user.name or cert.title contains HTML special characters.
+  const escapeHtml = (s: string) =>
+    s.replace(/&/g, '&amp;')
+     .replace(/</g, '&lt;')
+     .replace(/>/g, '&gt;')
+     .replace(/"/g, '&quot;')
+     .replace(/'/g, '&#39;');
+
   // Download: open a minimal printable certificate in a new window and trigger print
   const handleDownload = (cert: typeof certificates[0]) => {
+    const safeName  = escapeHtml(user.name);
+    const safeTitle = escapeHtml(cert.title);
     const html = `<!DOCTYPE html>
 <html>
 <head>
-  <title>Certificate — ${cert.title}</title>
+  <title>Certificate — ${safeTitle}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -86,9 +97,9 @@ export default function AchievementsPage() {
     <div class="divider"></div>
     <div class="heading">Certificate of Completion</div>
     <div class="heading" style="font-size:11px">This certifies that</div>
-    <div class="name">${user.name}</div>
+    <div class="name">${safeName}</div>
     <div class="completed">has successfully completed</div>
-    <div class="course">${cert.title}</div>
+    <div class="course">${safeTitle}</div>
     <div class="issuer">${cert.issuer}</div>
     <div class="date">${cert.date}</div>
   </div>
