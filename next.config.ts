@@ -16,7 +16,7 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' https://js.paystack.co",
-      "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://www.chekout.paystack.com",
+      "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://www.checkout.paystack.com",
       "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://img.youtube.com",
       "connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.paystack.co https://checkout.paystack.com",
       "style-src 'self' 'unsafe-inline'",
