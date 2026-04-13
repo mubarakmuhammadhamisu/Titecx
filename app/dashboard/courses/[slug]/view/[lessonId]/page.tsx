@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import VideoPlayer from '@/components/CoursePlayer/VideoPlayer';
 import Reader from '@/components/CoursePlayer/Reader';
+import QuizPlayer from '@/components/CoursePlayer/QuizPlayer';
 import CurriculumSidebar from '@/components/CoursePlayer/CurriculumSidebar';
 import LessonNavigation from '@/components/CoursePlayer/LessonNavigation';
 import { useAuth } from '@/context/AuthContext';
@@ -28,9 +29,9 @@ export default function CourseLessonPage({ params }: PageProps) {
 
   const isCompleted = completedLessonIds.has(lessonId);
 
-  const handleComplete = () => {
+  const handleComplete = useCallback(() => {
     if (!isCompleted && course) markLessonComplete(course.slug, lessonId);
-  };
+  }, [isCompleted, course, lessonId, markLessonComplete]);
 
   if (!course) return <div className="flex items-center justify-center min-h-[60vh]"><p className="text-gray-400">Course not found</p></div>;
   if (!lesson) return <div className="flex items-center justify-center min-h-[60vh]"><p className="text-gray-400">Lesson not found</p></div>;
@@ -77,6 +78,14 @@ export default function CourseLessonPage({ params }: PageProps) {
             )}
             {lesson.type === 'reading' && (
               <Reader content={lesson.content as any} title={lesson.title} />
+            )}
+            {lesson.type === 'quiz' && (
+              <QuizPlayer
+                content={lesson.content as any}
+                title={lesson.title}
+                isCompleted={isCompleted}
+                onQuizComplete={handleComplete}
+              />
             )}
           </motion.div>
 

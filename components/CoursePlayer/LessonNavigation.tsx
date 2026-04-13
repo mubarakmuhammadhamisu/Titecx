@@ -22,8 +22,10 @@ export default function LessonNavigation({
   const prev = idx > 0 ? lessons[idx - 1] : null;
   const next = idx < lessons.length - 1 ? lessons[idx + 1] : null;
 
-  // For reading → must mark complete. For video → auto-completes on end, but allow next immediately.
-  const canGoNext = lessonType === 'reading' ? isCompleted : true;
+  // Video → auto-completes on end, allow Next immediately.
+  // Reading + Quiz → must be completed before Next is enabled.
+  const requiresCompletion = lessonType === 'reading' || lessonType === 'quiz';
+  const canGoNext = requiresCompletion ? isCompleted : true;
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-indigo-500/20">
@@ -38,7 +40,9 @@ export default function LessonNavigation({
         </div>
       )}
 
-      {/* Reading lessons: show "Mark as Complete" button */}
+      {/* Reading lessons only: show "Mark as Complete" button.
+          Quiz lessons complete themselves via QuizPlayer's onQuizComplete callback.
+          Video lessons complete on video end. */}
       {lessonType === 'reading' && (
         <button onClick={onMarkComplete} disabled={isCompleted}
           className={`flex items-center gap-2 px-6 py-2 rounded-lg transition font-medium text-sm ${
@@ -61,7 +65,11 @@ export default function LessonNavigation({
           canGoNext ? 'bg-gray-900 text-gray-600 opacity-50' : 'bg-indigo-600/30 text-indigo-400/60 border border-indigo-500/30'
         }`}>
           <span className="text-sm font-medium">
-            {lessonType === 'reading' && !isCompleted ? 'Complete to Continue' : next ? 'Next' : 'Course Complete 🎉'}
+            {requiresCompletion && !isCompleted
+              ? lessonType === 'quiz'
+                ? 'Complete quiz to continue'
+                : 'Complete to Continue'
+              : next ? 'Next' : 'Course Complete 🎉'}
           </span>
           <ChevronRight size={18} />
         </div>
