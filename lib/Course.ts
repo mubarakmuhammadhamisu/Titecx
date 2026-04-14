@@ -14,50 +14,31 @@ export type FilterStatus = 'all' | 'in-progress' | 'completed';
 export interface VideoContent   { videoUrl: string; duration: string; topics?: string[]; }
 export interface ReadingContent { markdownBody: string; topics?: string[]; }
 
-// ── QuizQuestion ──────────────────────────────────────────────────────────────
-// One question inside a quiz lesson.
-//
-// Fields:
-//   id            — unique string identifier (e.g. "q1", "q2")
-//   question      — the question text shown to the user
-//   answers       — array of all answer options (correct + wrong, in any order)
-//   correctIndex  — index inside `answers[]` that is the right answer (0-based)
-//   points        — score awarded when the user picks the correct answer
-//                   (use 0 to mark a question as bonus / unscored)
-//
-// Example:
-//   {
-//     id: "q1",
-//     question: "What does HTML stand for?",
-//     answers: [
-//       "HyperText Markup Language",   // ← correctIndex: 0
-//       "High-Tech Modern Layout",
-//       "HyperLink and Text Markup",
-//       "Hypertext Machine Language",
-//     ],
-//     correctIndex: 0,
-//     points: 10,
-//   }
-export interface QuizQuestion {
-  id: string;
-  question: string;
-  answers: string[];     // all options shown (correct + incorrect, any order)
-  correctIndex: number;  // which index in answers[] is the right answer
-  points: number;        // points earned when answered correctly (0 if answered wrong)
-}
-
 // ── QuizContent ───────────────────────────────────────────────────────────────
-// The `content` field of a lesson whose `type === 'quiz'`.
+// Each question keeps your existing field names (options, correctAnswer)
+// with one new field: points — how much this question is worth.
 //
-// Fields:
-//   questions  — ordered array of QuizQuestion objects
-//   topics     — optional list of topic labels shown on the intro screen
-//                (same convention as VideoContent and ReadingContent)
-//
-// Pass/fail threshold is fixed at 50% in QuizPlayer.tsx.
-// To change it, update the `passed` constant there.
+// Example question object in Supabase:
+// {
+//   "id": "q1",
+//   "question": "What does HTML stand for?",
+//   "options": [
+//     "HyperText Markup Language",
+//     "High-Tech Modern Layout",
+//     "HyperLink and Text Markup",
+//     "Hypertext Machine Language"
+//   ],
+//   "correctAnswer": 0,
+//   "points": 10
+// }
 export interface QuizContent {
-  questions: QuizQuestion[];
+  questions: Array<{
+    id: string;
+    question: string;
+    options: string[];      // all answer choices shown to the user
+    correctAnswer: number;  // index into options[] that is the right answer (0-based)
+    points: number;         // score awarded when answered correctly
+  }>;
   topics?: string[];
 }
 

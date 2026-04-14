@@ -3,46 +3,42 @@
 // =============================================================================
 // components/CoursePlayer/QuizPlayer.tsx
 //
-// Self-contained quiz player for TITECX lesson view.
-// Matches the existing dark-theme aesthetic (GlowCard, indigo/purple palette).
+// Uses the EXISTING QuizContent shape from lib/Course.ts:
+//   questions: Array<{
+//     id: string;
+//     question: string;
+//     options: string[];       ← array of all answer choices
+//     correctAnswer: number;  ← index into options[] that is correct
+//     points: number;         ← score for getting it right (add this to your data)
+//   }>
+//   topics?: string[];
 //
-// PROPS:
-//   content       — QuizContent object (see lib/Course.ts for shape)
-//   title         — lesson title shown in the header
-//   isCompleted   — whether this lesson is already marked complete in DB
-//   onQuizComplete — called once when the user submits the quiz (triggers DB write)
+// FLOW: intro screen → one question at a time → results
 //
-// FLOW:
-//   intro → question (one at a time) → results → calls onQuizComplete
+// ANSWER FEEDBACK (locks immediately on pick):
+//   • Correct pick   → green ✓ on that option
+//   • Wrong pick     → red ✗ on that option + green ✓ revealed on correct
+//   • Cannot change answer — only advance with "Next" / "See Results"
 //
-// ANSWER FEEDBACK:
-//   • Correct pick   → green ✓ ring + green fill on that option
-//   • Wrong pick     → red ✗ ring + red fill on that option
-//                      green ✓ ring revealed on the correct option
-//   • Locked after any pick — user cannot change answer, only advance
-//
-// SCORING:
-//   Each question has a `points` value (set in the data).
-//   If correct → full points earned. If wrong → 0 points for that question.
-//   Results screen shows totalEarned / maxPossible and a pass/fail badge.
+// COMPLETION:
+//   onQuizComplete() is called once when the user submits the final question.
+//   This triggers markLessonComplete in the parent (same as video end / reading mark).
 // =============================================================================
 
 import React, { useState, useCallback } from 'react';
 import GlowCard from '@/components/AppShell/GlowCard';
 import {
-  CheckCircle2, XCircle, ChevronRight, Brain,
-  Trophy, Star, ArrowRight, RotateCcw,
+  Brain, CheckCircle2, XCircle,
+  ChevronRight, ArrowRight, Trophy, Star, RotateCcw,
 } from 'lucide-react';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-// These mirror the QuizContent / QuizQuestion interfaces in lib/Course.ts.
-// Duplicated here so the component compiles independently; update both files together.
+// ── Types (mirrors lib/Course.ts QuizContent — keep in sync) ─────────────────
 interface QuizQuestion {
   id: string;
   question: string;
-  answers: string[];     // all options shown to the user (mix of correct + wrong)
-  correctIndex: number;  // index into answers[] that is the right answer
-  points: number;        // points awarded when answered correctly
+  options: string[];      // all choices shown to the user
+  correctAnswer: number;  // index into options[] that is correct
+  points: number;         // points earned on a correct pick (0 on wrong)
 }
 
 interface QuizContent {
@@ -57,89 +53,79 @@ interface QuizPlayerProps {
   onQuizComplete: () => void;
 }
 
-// ── Internal state ─────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 type Phase = 'intro' | 'question' | 'results';
 
 interface AnswerRecord {
   questionId: string;
-  selectedIndex: number;
+  pickedIndex: number;
   correct: boolean;
   pointsEarned: number;
 }
 
-// Letter labels for up to 6 answers (A–F)
+// Letter labels A–F for up to 6 options
 const LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function QuizPlayer({
-  content,
-  title,
-  isCompleted,
-  onQuizComplete,
+  content, title, isCompleted, onQuizComplete,
 }: QuizPlayerProps) {
   const { questions } = content;
 
-  const [phase, setPhase]               = useState<Phase>('intro');
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [records, setRecords]           = useState<AnswerRecord[]>([]);
-  const [submitted, setSubmitted]       = useState(false); // quiz fully submitted
+  const [phase, setPhase]                 = useState<Phase>('intro');
+  const [currentIndex, setCurrentIndex]   = useState(0);
+  const [pickedIndex, setPickedIndex]     = useState<number | null>(null);
+  const [records, setRecords]             = useState<AnswerRecord[]>([]);
+  const [justCompleted, setJustCompleted] = useState(false);
 
   const totalQuestions = questions.length;
-  const maxScore       = questions.reduce((s, q) => s + q.points, 0);
+  const maxScore       = questions.reduce((s, q) => s + (q.points ?? 0), 0);
   const currentQ       = questions[currentIndex];
 
-  // ── Derived from records ──────────────────────────────────────────────────
-  const totalEarned    = records.reduce((s, r) => s + r.pointsEarned, 0);
-  const correctCount   = records.filter((r) => r.correct).length;
-  const pct            = maxScore > 0 ? Math.round((totalEarned / maxScore) * 100) : 0;
-  const passed         = pct >= 50;
+  // Derived from records (only relevant on results screen)
+  const totalEarned  = records.reduce((s, r) => s + r.pointsEarned, 0);
+  const correctCount = records.filter((r) => r.correct).length;
+  const pct          = maxScore > 0 ? Math.round((totalEarned / maxScore) * 100) : 0;
+  const passed       = pct >= 50;
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── Reset / start ─────────────────────────────────────────────────────────
   const handleStart = useCallback(() => {
     setPhase('question');
     setCurrentIndex(0);
-    setSelectedIndex(null);
+    setPickedIndex(null);
     setRecords([]);
-    setSubmitted(false);
+    setJustCompleted(false);
   }, []);
 
-  const handleSelectAnswer = useCallback((idx: number) => {
-    // Lock once selected — cannot change
-    if (selectedIndex !== null) return;
-    setSelectedIndex(idx);
-  }, [selectedIndex]);
+  // ── Pick an option ────────────────────────────────────────────────────────
+  const handlePick = useCallback((idx: number) => {
+    if (pickedIndex !== null) return; // already locked
+    setPickedIndex(idx);
+  }, [pickedIndex]);
 
+  // ── Advance to next question or results ───────────────────────────────────
   const handleNext = useCallback(() => {
-    if (selectedIndex === null || !currentQ) return;
+    if (pickedIndex === null || !currentQ) return;
 
-    const correct      = selectedIndex === currentQ.correctIndex;
-    const pointsEarned = correct ? currentQ.points : 0;
-    const newRecord: AnswerRecord = {
-      questionId: currentQ.id,
-      selectedIndex,
-      correct,
-      pointsEarned,
-    };
-    const newRecords = [...records, newRecord];
+    const correct      = pickedIndex === currentQ.correctAnswer;
+    const pointsEarned = correct ? (currentQ.points ?? 0) : 0;
+    const newRecords   = [...records, { questionId: currentQ.id, pickedIndex, correct, pointsEarned }];
     setRecords(newRecords);
 
     if (currentIndex + 1 < totalQuestions) {
-      // Advance to next question
       setCurrentIndex((i) => i + 1);
-      setSelectedIndex(null);
+      setPickedIndex(null);
     } else {
-      // Last question → results screen
+      // Last question — show results and fire completion once
       setPhase('results');
-      setSubmitted(true);
-      // Mark the lesson complete in the DB (once, on first completion)
       if (!isCompleted) {
+        setJustCompleted(true);
         onQuizComplete();
       }
     }
-  }, [selectedIndex, currentQ, records, currentIndex, totalQuestions, isCompleted, onQuizComplete]);
+  }, [pickedIndex, currentQ, records, currentIndex, totalQuestions, isCompleted, onQuizComplete]);
 
-  // ── Guards ────────────────────────────────────────────────────────────────
+  // ── Guard: no questions ───────────────────────────────────────────────────
   if (!questions || questions.length === 0) {
     return (
       <GlowCard className="space-y-4">
@@ -147,14 +133,14 @@ export default function QuizPlayer({
           <Brain size={22} className="text-pink-400" />
           <h2 className="text-xl font-bold text-white">{title}</h2>
         </div>
-        <p className="text-gray-400 text-sm">
-          This quiz has no questions yet. Check back later.
-        </p>
+        <p className="text-gray-400 text-sm">This quiz has no questions yet. Check back later.</p>
       </GlowCard>
     );
   }
 
-  // ── PHASE: intro ──────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHASE: intro
+  // ═══════════════════════════════════════════════════════════════════════════
   if (phase === 'intro') {
     return (
       <GlowCard className="space-y-6">
@@ -176,19 +162,15 @@ export default function QuizPlayer({
           )}
         </div>
 
-        {/* Stats row */}
+        {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Questions', value: totalQuestions, color: 'indigo' },
-            { label: 'Max Score',  value: maxScore,       color: 'purple' },
-            { label: 'Pass Mark',  value: '50%',          color: 'pink'   },
-          ].map(({ label, value, color }) => (
-            <div
-              key={label}
-              className={`rounded-xl border p-3 text-center
-                bg-${color}-500/10 border-${color}-500/25`}
-            >
-              <p className={`text-2xl font-extrabold text-${color}-400`}>{value}</p>
+            { label: 'Questions', value: totalQuestions, colorKey: 'indigo' },
+            { label: 'Max Score',  value: maxScore,       colorKey: 'purple' },
+            { label: 'Pass Mark',  value: '50%',          colorKey: 'pink'   },
+          ].map(({ label, value, colorKey }) => (
+            <div key={label} className={`rounded-xl border p-3 text-center bg-${colorKey}-500/10 border-${colorKey}-500/25`}>
+              <p className={`text-2xl font-extrabold text-${colorKey}-400`}>{value}</p>
               <p className="text-xs text-gray-500 mt-0.5">{label}</p>
             </div>
           ))}
@@ -200,30 +182,26 @@ export default function QuizPlayer({
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Topics Covered</p>
             <div className="flex flex-wrap gap-2">
               {content.topics.map((t) => (
-                <span key={t} className="text-xs px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">
-                  {t}
-                </span>
+                <span key={t} className="text-xs px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">{t}</span>
               ))}
             </div>
           </div>
         )}
 
-        {/* Instructions */}
+        {/* Rules */}
         <div className="rounded-xl bg-gray-800/60 border border-gray-700/50 p-4 space-y-2">
           <p className="text-sm font-semibold text-white">How it works</p>
           <ul className="space-y-1.5 text-sm text-gray-400">
-            <li className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
-              Read each question and pick the best answer.
-            </li>
-            <li className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
-              Once you select an answer you cannot change it.
-            </li>
-            <li className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
-              The correct answer is shown immediately after each pick.
-            </li>
+            {[
+              'Read each question and pick the best answer.',
+              'Once you select an answer you cannot change it.',
+              'The correct answer is shown immediately after each pick.',
+            ].map((rule) => (
+              <li key={rule} className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                {rule}
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -241,25 +219,26 @@ export default function QuizPlayer({
     );
   }
 
-  // ── PHASE: question ───────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHASE: question
+  // ═══════════════════════════════════════════════════════════════════════════
   if (phase === 'question' && currentQ) {
-    const answered        = selectedIndex !== null;
+    const answered        = pickedIndex !== null;
     const progressPercent = Math.round((currentIndex / totalQuestions) * 100);
 
     return (
       <GlowCard className="space-y-6">
-        {/* Top bar: progress + counter */}
+        {/* Progress bar + counter */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-gray-400">
+          <div className="flex items-center justify-between text-xs">
             <span className="font-medium text-white">
               Question {currentIndex + 1}
               <span className="text-gray-500"> / {totalQuestions}</span>
             </span>
             <span className="text-pink-400 font-semibold">
-              {currentQ.points} {currentQ.points === 1 ? 'pt' : 'pts'}
+              {currentQ.points ?? 0} {(currentQ.points ?? 0) === 1 ? 'pt' : 'pts'}
             </span>
           </div>
-          {/* Progress bar */}
           <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-500 ease-out"
@@ -269,103 +248,73 @@ export default function QuizPlayer({
         </div>
 
         {/* Question text */}
-        <div className="space-y-1">
+        <div>
           <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-lg bg-pink-500/15 border border-pink-500/25 flex items-center justify-center shrink-0">
               <Brain size={15} className="text-pink-400" />
             </div>
             <span className="text-xs font-semibold text-pink-400 uppercase tracking-wide">Question</span>
           </div>
-          <p className="text-lg font-semibold text-white leading-snug">
-            {currentQ.question}
-          </p>
+          <p className="text-lg font-semibold text-white leading-snug">{currentQ.question}</p>
         </div>
 
-        {/* Answer options */}
+        {/* Options */}
         <div className="space-y-3">
-          {currentQ.answers.map((answer, idx) => {
-            const isSelected = selectedIndex === idx;
-            const isCorrect  = idx === currentQ.correctIndex;
+          {currentQ.options.map((option, idx) => {
+            const isPicked  = pickedIndex === idx;
+            const isCorrect = idx === currentQ.correctAnswer;
 
-            // Before answering: neutral style with hover
-            // After answering: apply result styles
-            let containerClass = '';
-            let labelClass     = '';
+            let wrapClass  = '';
+            let labelClass = '';
             let icon: React.ReactNode = null;
+            let textClass  = '';
 
             if (!answered) {
-              // Neutral + hover state
-              containerClass = `
-                border border-gray-700/80 bg-gray-800/50
-                hover:border-indigo-500/60 hover:bg-indigo-500/8
-                cursor-pointer active:scale-[0.99]
-              `;
+              wrapClass  = 'border border-gray-700/80 bg-gray-800/50 hover:border-indigo-500/60 hover:bg-indigo-500/5 cursor-pointer active:scale-[0.99]';
               labelClass = 'bg-gray-700 text-gray-300 group-hover:bg-indigo-500/30 group-hover:text-indigo-200';
-            } else if (isSelected && isCorrect) {
-              // User picked the right answer
-              containerClass = 'border border-emerald-500/70 bg-emerald-500/10 cursor-default';
-              labelClass     = 'bg-emerald-500/30 text-emerald-300';
-              icon           = <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />;
-            } else if (isSelected && !isCorrect) {
-              // User picked a wrong answer
-              containerClass = 'border border-red-500/70 bg-red-500/10 cursor-default';
-              labelClass     = 'bg-red-500/30 text-red-300';
-              icon           = <XCircle size={18} className="text-red-400 shrink-0" />;
-            } else if (!isSelected && isCorrect && answered) {
-              // Reveal the correct answer when user got it wrong
-              containerClass = 'border border-emerald-500/50 bg-emerald-500/6 cursor-default';
-              labelClass     = 'bg-emerald-500/20 text-emerald-400';
-              icon           = <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />;
+              textClass  = 'text-gray-200 group-hover:text-white';
+            } else if (isPicked && isCorrect) {
+              wrapClass  = 'border border-emerald-500/70 bg-emerald-500/10 cursor-default';
+              labelClass = 'bg-emerald-500/30 text-emerald-300';
+              textClass  = 'text-emerald-300';
+              icon       = <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />;
+            } else if (isPicked && !isCorrect) {
+              wrapClass  = 'border border-red-500/70 bg-red-500/10 cursor-default';
+              labelClass = 'bg-red-500/30 text-red-300';
+              textClass  = 'text-red-300';
+              icon       = <XCircle size={18} className="text-red-400 shrink-0" />;
+            } else if (!isPicked && isCorrect && answered) {
+              // Reveal correct after a wrong pick
+              wrapClass  = 'border border-emerald-500/50 bg-emerald-500/6 cursor-default';
+              labelClass = 'bg-emerald-500/20 text-emerald-400';
+              textClass  = 'text-emerald-300';
+              icon       = <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />;
             } else {
-              // Other options — dim them out after answering
-              containerClass = 'border border-gray-800 bg-gray-800/30 opacity-50 cursor-default';
-              labelClass     = 'bg-gray-700/60 text-gray-500';
+              wrapClass  = 'border border-gray-800 bg-gray-800/30 opacity-40 cursor-default';
+              labelClass = 'bg-gray-700/60 text-gray-500';
+              textClass  = 'text-gray-500';
             }
 
             return (
               <button
                 key={idx}
-                onClick={() => handleSelectAnswer(idx)}
+                onClick={() => handlePick(idx)}
                 disabled={answered}
-                className={`
-                  group w-full flex items-center gap-4 p-4 rounded-xl
-                  transition-all duration-200 text-left
-                  ${containerClass}
-                `}
+                className={`group w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 text-left ${wrapClass}`}
               >
-                {/* Letter label */}
-                <span className={`
-                  w-8 h-8 rounded-lg text-sm font-bold flex items-center justify-center shrink-0 transition-all
-                  ${labelClass}
-                `}>
+                <span className={`w-8 h-8 rounded-lg text-sm font-bold flex items-center justify-center shrink-0 transition-all ${labelClass}`}>
                   {LABELS[idx] ?? idx + 1}
                 </span>
-
-                {/* Answer text */}
-                <span className={`
-                  flex-1 text-sm font-medium leading-snug
-                  ${answered
-                    ? (isSelected && isCorrect)
-                      ? 'text-emerald-300'
-                      : (isSelected && !isCorrect)
-                        ? 'text-red-300'
-                        : isCorrect
-                          ? 'text-emerald-300'
-                          : 'text-gray-500'
-                    : 'text-gray-200 group-hover:text-white'
-                  }
-                `}>
-                  {answer}
+                <span className={`flex-1 text-sm font-medium leading-snug transition-colors ${textClass}`}>
+                  {option}
                 </span>
-
-                {/* Result icon — only shown after answering */}
                 {icon}
               </button>
             );
           })}
         </div>
 
-        {/* Next / Finish button — only visible after answering */}
+        {/* Next / Finish — slides in after answering */}
         <div className={`transition-all duration-300 ${answered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}`}>
           <button
             onClick={handleNext}
@@ -375,37 +324,34 @@ export default function QuizPlayer({
                        text-white font-bold transition shadow-lg shadow-indigo-500/20
                        flex items-center justify-center gap-2"
           >
-            {currentIndex + 1 < totalQuestions ? (
-              <>Next Question <ChevronRight size={18} /></>
-            ) : (
-              <>See Results <ArrowRight size={18} /></>
-            )}
+            {currentIndex + 1 < totalQuestions
+              ? <><span>Next Question</span><ChevronRight size={18} /></>
+              : <><span>See Results</span><ArrowRight size={18} /></>
+            }
           </button>
         </div>
       </GlowCard>
     );
   }
 
-  // ── PHASE: results ────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHASE: results
+  // ═══════════════════════════════════════════════════════════════════════════
   if (phase === 'results') {
     return (
       <GlowCard className="space-y-6">
         {/* Score hero */}
         <div className="text-center space-y-3 py-2">
-          <div className={`
-            mx-auto w-20 h-20 rounded-full flex items-center justify-center
-            shadow-2xl border-2
-            ${passed
-              ? 'bg-linear-to-br from-emerald-500/30 to-teal-500/30 border-emerald-500/50 shadow-emerald-500/30'
+          <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center shadow-2xl border-2 ${
+            passed
+              ? 'bg-linear-to-br from-emerald-500/30 to-teal-500/30 border-emerald-500/50 shadow-emerald-500/25'
               : 'bg-linear-to-br from-red-500/20 to-orange-500/20 border-red-500/40 shadow-red-500/20'
-            }
-          `}>
+          }`}>
             {passed
               ? <Trophy size={36} className="text-emerald-400" />
               : <RotateCcw size={32} className="text-red-400" />
             }
           </div>
-
           <div>
             <p className={`text-4xl font-black tracking-tight ${passed ? 'text-emerald-400' : 'text-red-400'}`}>
               {totalEarned}
@@ -413,67 +359,51 @@ export default function QuizPlayer({
             </p>
             <p className="text-gray-400 text-sm mt-1">{pct}% score</p>
           </div>
-
-          <div className={`
-            inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold border
-            ${passed
+          <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold border ${
+            passed
               ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
               : 'bg-red-500/15 border-red-500/30 text-red-400'
-            }
-          `}>
+          }`}>
             {passed ? <><Star size={14} /> Passed</> : <><XCircle size={14} /> Not Passed</>}
           </div>
         </div>
 
-        {/* Quick stats */}
+        {/* Stats row */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Correct',   value: correctCount, sub: `of ${totalQuestions}`, color: 'emerald' },
-            { label: 'Score',     value: `${totalEarned}pts`, sub: `of ${maxScore}`,   color: 'indigo'  },
-            { label: 'Result',    value: pct + '%',    sub: passed ? 'pass' : 'fail', color: passed ? 'emerald' : 'red' },
-          ].map(({ label, value, sub, color }) => (
+            { label: 'Correct', value: `${correctCount}/${totalQuestions}`, color: 'emerald' },
+            { label: 'Score',   value: `${totalEarned}pts`,                  color: 'indigo'  },
+            { label: 'Result',  value: `${pct}%`,                            color: passed ? 'emerald' : 'red' },
+          ].map(({ label, value, color }) => (
             <div key={label} className={`rounded-xl border p-3 text-center bg-${color}-500/10 border-${color}-500/25`}>
               <p className={`text-lg font-extrabold text-${color}-400`}>{value}</p>
               <p className="text-xs text-gray-500">{label}</p>
-              <p className={`text-xs text-${color}-500/80`}>{sub}</p>
             </div>
           ))}
         </div>
 
-        {/* Per-question breakdown */}
+        {/* Question-by-question breakdown */}
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Question Breakdown</p>
-          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Breakdown</p>
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
             {questions.map((q, i) => {
               const rec = records[i];
               if (!rec) return null;
               return (
-                <div
-                  key={q.id}
-                  className={`
-                    flex items-center gap-3 p-3 rounded-lg border text-sm
-                    ${rec.correct
-                      ? 'bg-emerald-500/8 border-emerald-500/25'
-                      : 'bg-red-500/8 border-red-500/20'
-                    }
-                  `}
-                >
-                  {/* Number */}
+                <div key={q.id} className={`flex items-center gap-3 p-3 rounded-lg border text-sm ${
+                  rec.correct
+                    ? 'bg-emerald-500/8 border-emerald-500/25'
+                    : 'bg-red-500/8 border-red-500/20'
+                }`}>
                   <span className="text-xs text-gray-500 font-bold w-4 shrink-0">{i + 1}</span>
-
-                  {/* Icon */}
                   {rec.correct
-                    ? <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                    : <XCircle      size={16} className="text-red-400 shrink-0" />
+                    ? <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                    : <XCircle      size={15} className="text-red-400 shrink-0" />
                   }
-
-                  {/* Question truncated */}
-                  <p className={`flex-1 truncate ${rec.correct ? 'text-gray-200' : 'text-gray-400'}`}>
+                  <p className={`flex-1 truncate text-xs ${rec.correct ? 'text-gray-200' : 'text-gray-400'}`}>
                     {q.question}
                   </p>
-
-                  {/* Points */}
-                  <span className={`text-xs font-bold shrink-0 ${rec.correct ? 'text-emerald-400' : 'text-red-400/70'}`}>
+                  <span className={`text-xs font-bold shrink-0 ${rec.correct ? 'text-emerald-400' : 'text-red-500/60'}`}>
                     {rec.correct ? `+${rec.pointsEarned}` : '0'} pts
                   </span>
                 </div>
@@ -482,30 +412,27 @@ export default function QuizPlayer({
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          {/* Retake — resets state back to intro without re-triggering onQuizComplete */}
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row gap-3 pt-1">
           <button
             onClick={() => {
               setPhase('intro');
               setCurrentIndex(0);
-              setSelectedIndex(null);
+              setPickedIndex(null);
               setRecords([]);
-              setSubmitted(false);
+              setJustCompleted(false);
             }}
             className="flex-1 py-3 rounded-xl border border-indigo-500/30 hover:border-indigo-500/60
                        text-gray-300 hover:text-white font-semibold text-sm transition
                        flex items-center justify-center gap-2"
           >
-            <RotateCcw size={16} /> Retake Quiz
+            <RotateCcw size={15} /> Retake Quiz
           </button>
-
-          {/* Completion notice if already saved */}
           <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl
-                          bg-emerald-500/10 border border-emerald-500/30 text-emerald-400
-                          font-semibold text-sm">
-            <CheckCircle2 size={16} />
-            {submitted ? 'Progress Saved' : 'Already Completed'}
+                          bg-emerald-500/10 border border-emerald-500/30
+                          text-emerald-400 font-semibold text-sm">
+            <CheckCircle2 size={15} />
+            {justCompleted ? 'Progress Saved' : 'Already Completed'}
           </div>
         </div>
       </GlowCard>
