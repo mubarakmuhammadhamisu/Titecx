@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Profile and courses are critical. A failure here is almost always a
       // transient Supabase/network error — NOT an invalid session.
       // We set loadError=true WITHOUT redirecting to /login.
-      // Invalid sessions are handled by the middleware + AuthGuard via JWT.
+      // Invalid sessions are handled by the proxy + AuthGuard via JWT.
       if (profileError || coursesError) {
         console.error(
           '[loadUserData] critical query failed:',

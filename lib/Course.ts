@@ -13,8 +13,32 @@ export type FilterStatus = 'all' | 'in-progress' | 'completed';
 
 export interface VideoContent   { videoUrl: string; duration: string; topics?: string[]; }
 export interface ReadingContent { markdownBody: string; topics?: string[]; }
+
+// ── QuizContent ───────────────────────────────────────────────────────────────
+// Each question keeps your existing field names (options, correctAnswer)
+// with one new field: points — how much this question is worth.
+//
+// Example question object in Supabase:
+// {
+//   "id": "q1",
+//   "question": "What does HTML stand for?",
+//   "options": [
+//     "HyperText Markup Language",
+//     "High-Tech Modern Layout",
+//     "HyperLink and Text Markup",
+//     "Hypertext Machine Language"
+//   ],
+//   "correctAnswer": 0,
+//   "points": 10
+// }
 export interface QuizContent {
-  questions: Array<{ id: string; question: string; options: string[]; correctAnswer: number }>;
+  questions: Array<{
+    id: string;
+    question: string;
+    options: string[];      // all answer choices shown to the user
+    correctAnswer: number;  // index into options[] that is the right answer (0-based)
+    points: number;         // score awarded when answered correctly
+  }>;
   topics?: string[];
 }
 

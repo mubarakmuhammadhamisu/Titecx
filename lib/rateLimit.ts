@@ -2,7 +2,7 @@
 // lib/rateLimit.ts
 //
 // Lightweight in-memory sliding-window rate limiter.
-// Compatible with both Node.js (API routes) and Edge Runtime (middleware).
+// Compatible with both Node.js (API routes) and Edge Runtime (proxy).
 //
 // Limitations:
 //   - State is process-local. On distributed deployments (multiple Vercel Edge

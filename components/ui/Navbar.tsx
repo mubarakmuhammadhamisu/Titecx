@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import MobileMenu from './MobileMenu';
 import { LayoutDashboard } from 'lucide-react';
+import TitecxForgeLogo from './TitecxForgeLogo';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -20,9 +22,12 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           href={user ? '/dashboard' : '/'}
-          className="text-xl font-bold text-white hover:text-indigo-300 transition"
+          className="text-2xl font-bold text-white hover:text-indigo-300 transition flex"
         >
-          TITECX
+          <Image src={"/titecx_logo.png"} width={30} height={15} alt='titecx logo' className='m-3'/>
+
+         <TitecxForgeLogo/>
+         
         </Link>
 
         {/* Desktop nav */}
