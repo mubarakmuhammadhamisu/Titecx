@@ -1,4 +1,4 @@
-const TitecxLogo =({className="text-2xl"})=>{
+const TitecxForgeLogo =({className="text-2xl"})=>{
     return(
          <span className='  flex justify-center items-center font-extrabold'>  
             TITEC
@@ -10,4 +10,4 @@ const TitecxLogo =({className="text-2xl"})=>{
     )
 }
 
-export default TitecxLogo
+export default TitecxForgeLogo

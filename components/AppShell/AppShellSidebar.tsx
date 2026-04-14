@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Home, BookOpen, User, BarChart3, Award, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import TitecxLogo from '../ui/TitecxLogo';
+import TitecxForgeLogo from '../ui/TitecxForgeLogo';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
@@ -64,7 +64,7 @@ export default function AppShellSidebar() {
           <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/40 group-hover:shadow-indigo-500/60 transition text-sm">
             <Image src={"/im1.png"} alt='Titecx logo' width={40} height={40} className=" rounded-full w-full h-full object-cover"/>
           </div>
-         <TitecxLogo className='text-xl'/>
+         <TitecxForgeLogo className='text-xl'/>
         </Link>
 
         {/* Nav */}

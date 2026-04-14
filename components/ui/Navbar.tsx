@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import MobileMenu from './MobileMenu';
 import { LayoutDashboard } from 'lucide-react';
-import TitecxLogo from './TitecxLogo';
+import TitecxForgeLogo from './TitecxForgeLogo';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -26,7 +26,7 @@ export default function Navbar() {
         >
           <Image src={"/titecx_logo.png"} width={30} height={15} alt='titecx logo' className='m-3'/>
 
-         <TitecxLogo/>
+         <TitecxForgeLogo/>
          
         </Link>
 

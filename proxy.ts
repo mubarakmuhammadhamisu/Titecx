@@ -1,12 +1,12 @@
 // =============================================================================
-// middleware.ts — FULLY REWRITTEN using @supabase/ssr
+// proxy.ts — FULLY REWRITTEN using @supabase/ssr
 //
 // WHY THIS FILE WAS REWRITTEN:
 //   The old version tried to manually find and parse the Supabase session
 //   cookie by looking for a cookie ending in "-auth-token". This broke because
 //   newer versions of @supabase/supabase-js store the session split across
 //   multiple cookies named "-auth-token.0", "-auth-token.1" etc. The old
-//   check never matched those, so the middleware always thought the user was
+//   check never matched those, so the proxy always thought the user was
 //   logged out, causing an infinite 307 redirect loop between /login and
 //   /dashboard.
 //
@@ -20,7 +20,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // ---------------------------------------------------------------------------
@@ -131,10 +131,10 @@ export async function middleware(req: NextRequest) {
 }
 
 // -----------------------------------------------------------------------------
-// Matcher — which routes this middleware runs on.
+// Matcher — which routes this proxy runs on.
 //
 // The old matcher only ran on /dashboard and /admin. That was wrong.
-// @supabase/ssr needs the middleware to run on EVERY route (except static
+// @supabase/ssr needs the proxy to run on EVERY route (except static
 // files) so it can refresh the session token on every request. If the token
 // only refreshes when you visit /dashboard, it can go stale on other pages.
 //
