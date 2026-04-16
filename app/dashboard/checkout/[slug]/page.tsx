@@ -20,6 +20,7 @@ import {
   Lock,
   AlertCircle,
 } from 'lucide-react';
+import { Trustbadges } from '@/lib/TrustBadges';
 
 // ─── Paystack types ───────────────────────────────────────────────────────────
 declare global {
@@ -123,12 +124,31 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
     const existing = document.querySelector<HTMLScriptElement>(
       'script[src*="paystack"]'
     );
+
+    let didLoad = false;
+    const timeout = setTimeout(() =>{
+      if (!didLoad) {
+        setPaystackLoadError(true);
+      }
+    },800);
+
+    
     if (existing) {
-      const onLoad = () => setPaystackReady(true);
-      const onError = () => setPaystackLoadError(true);
+      const onLoad = () =>{
+         didLoad = true;
+         clearTimeout(timeout);
+        setPaystackReady(true);
+      }
+      
+      const onError = () =>{
+         didLoad = true;
+         clearTimeout(timeout);
+        setPaystackLoadError(true);
+      }
       existing.addEventListener('load', onLoad);
       existing.addEventListener('error', onError);
       return () => {
+        clearTimeout(timeout);
         existing.removeEventListener('load', onLoad);
         existing.removeEventListener('error', onError);
       };
@@ -137,10 +157,23 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
     const script = document.createElement('script');
     script.src = 'https://js.paystack.co/v1/inline.js';
     script.async = true;
-    script.onload = () => setPaystackReady(true);
-    script.onerror = () => setPaystackLoadError(true);
+    script.onload = () =>
+      {
+        didLoad = true;
+        clearTimeout(timeout);
+      setPaystackReady(true);
+      }
+    script.onerror = () =>
+      {
+        didLoad = true;
+        clearTimeout(timeout);
+        setPaystackLoadError(true);
+      }
     document.body.appendChild(script);
     // Do not remove the script on unmount — PaystackPop stays in window scope.
+    return () => {
+      clearTimeout(timeout);
+    } 
   }, []);
 
   if (!course) {
@@ -349,7 +382,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
           <ArrowLeft size={14} /> Courses
         </Link>
         <ChevronRight size={14} />
-        <Link href={`/courses/${course.slug}`} className="hover:text-gray-300 transition truncate max-w-[160px]">
+        <Link href={`/courses/${course.slug}`} className="hover:text-gray-300 transition truncate max-w-40">
           {course.title}
         </Link>
         <ChevronRight size={14} />
@@ -595,12 +628,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
 
           {/* Trust badges */}
           <div className="rounded-2xl bg-gray-900 border border-indigo-500/20 p-4 space-y-2.5">
-            {[
-              { icon: Award,      text: 'Certificate of completion' },
-              { icon: ShieldCheck, text: 'Secure & encrypted payment' },
-              { icon: Zap,         text: 'Instant access after payment' },
-              { icon: RefreshCw,   text: '24-hour refund policy' },
-            ].map(({ icon: Icon, text }) => (
+            {Trustbadges.map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-2.5 text-xs text-gray-400">
                 <Icon size={14} className="text-indigo-400 shrink-0" />
                 {text}
