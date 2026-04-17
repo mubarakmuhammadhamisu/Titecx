@@ -130,7 +130,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
       if (!didLoad) {
         setPaystackLoadError(true);
       }
-    },800);
+    },7000);
 
     
     if (existing) {
@@ -294,7 +294,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
       // the enrollment to the database. Using .then()/.catch() (not async/await)
       // because Paystack's code doesn't await the return value of this callback.
       callback(response: { reference: string }) {
-        setProcessing(true);
+        
         setPaymentError('');
 
         enrollWithTimeout({
@@ -339,6 +339,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
       },
     });
 
+    setProcessing(true);
     handler.openIframe();
   };
 
