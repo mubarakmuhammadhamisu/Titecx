@@ -15,7 +15,7 @@ interface PageProps { params: Promise<{ slug: string; lessonId: string }> }
 
 export default function CourseLessonPage({ params }: PageProps) {
   const { slug, lessonId } = React.use(params);
-  const { completedLessonIds, markLessonComplete, courses, isEnrolled } = useAuth();
+  const { completedLessonIds, markLessonComplete, courses, isEnrolled, isLoading } = useAuth();
 
   const course = useMemo(() => courses.find((c) => c.slug === slug), [courses, slug]);
   const lesson = useMemo(() => {
@@ -32,6 +32,8 @@ export default function CourseLessonPage({ params }: PageProps) {
   const handleComplete = useCallback(() => {
     if (!isCompleted && course) markLessonComplete(course.slug, lessonId);
   }, [isCompleted, course, lessonId, markLessonComplete]);
+
+  if (isLoading) return (<div className="flex items-center justify-center min-h-[60vh]"><div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" /></div>);
 
   if (!course) return <div className="flex items-center justify-center min-h-[60vh]"><p className="text-gray-400">Course not found</p></div>;
   if (!lesson) return <div className="flex items-center justify-center min-h-[60vh]"><p className="text-gray-400">Lesson not found</p></div>;
