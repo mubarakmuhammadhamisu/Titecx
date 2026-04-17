@@ -102,18 +102,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Course is not free' }, { status: 400 });
     }
 
-    const { error } = await supabase.from('enrollments').insert({
-      user_id: userId,
-      course_slug: courseSlug,
-      progress: 0,
-    });
+    const { data: newEnrollment, error } = await supabase
+      .from('enrollments')
+      .insert({ user_id: userId, course_slug: courseSlug, progress: 0 })
+      .select('id')
+      .single();
 
     if (error) {
       console.error('[enroll] Free enrollment DB error:', error.message);
       return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
     }
 
-    return NextResponse.json({ enrolled: true });
+    return NextResponse.json({ enrolled: true, enrollmentId: newEnrollment.id });
   }
 
   // ── Paid course path ──────────────────────────────────────────────────────
@@ -159,7 +159,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
   }
 
-  return NextResponse.json({ enrolled: true });
+  // Fetch the enrollment row created by the RPC so we can return its real DB id.
+  const { data: newEnrollment } = await supabase
+    .from('enrollments')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('course_slug', paystackData.validatedSlug)
+    .maybeSingle();
+
+  return NextResponse.json({ enrolled: true, enrollmentId: newEnrollment?.id ?? null });
 }
 
 

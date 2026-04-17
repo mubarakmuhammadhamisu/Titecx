@@ -50,7 +50,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<{ error?: string }>;
   register: (name: string, email: string, password: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
-  enroll: (slug: string) => void;
+  enroll: (slug: string, enrollmentId?: string) => void;
   markLessonComplete: (courseSlug: string, lessonId: string) => Promise<void>;
   updateProfile: (data: Partial<Pick<AppUser, 'name' | 'phone' | 'bio' | 'location'>>) => Promise<{ error?: string }>;
   updatePreferences: (prefs: AppUser['preferences']) => Promise<{ error?: string }>;
@@ -227,13 +227,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
-  const enroll = (slug: string) => {
+  const enroll = (slug: string, enrollmentId?: string) => {
     if (!user || enrolledCourses.some((c) => c.slug === slug)) return;
     const schema = courses.find((c) => c.slug === slug); // reads from context state
     if (!schema) return;
     const allLessons = schema.modules.flatMap((m) => m.lessons);
     setEnrolledCourses((prev) => [...prev, {
-      id: crypto.randomUUID(), slug: schema.slug, title: schema.title,
+      id: enrollmentId ?? crypto.randomUUID(), slug: schema.slug, title: schema.title,
       instructor: schema.instructor, progress: 0,
       duration: schema.duration.replace(' hours', 'h').replace(' hour', 'h'),
       students: 0, thumbnail: schema.thumbnail,
