@@ -33,7 +33,11 @@ export default function CourseLessonPage({ params }: PageProps) {
     if (!isCompleted && course) markLessonComplete(course.slug, lessonId);
   }, [isCompleted, course, lessonId, markLessonComplete]);
 
-  if (isLoading) return (<div className="flex items-center justify-center min-h-[60vh]"><div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" /></div>);
+  if (isLoading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+    </div>
+  );
 
   if (!course) return <div className="flex items-center justify-center min-h-[60vh]"><p className="text-gray-400">Course not found</p></div>;
   if (!lesson) return <div className="flex items-center justify-center min-h-[60vh]"><p className="text-gray-400">Lesson not found</p></div>;

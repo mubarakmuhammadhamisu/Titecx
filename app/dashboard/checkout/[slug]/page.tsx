@@ -55,7 +55,7 @@ const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ?? '';
 // even if the enrollment confirmation timed out.
 async function enrollWithTimeout(
   body: object
-): Promise<{ enrolled?: boolean; alreadyExisted?: boolean; error?: string }> {
+): Promise<{ enrolled?: boolean; alreadyExisted?: boolean; enrollmentId?: string; error?: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 20_000);
 
@@ -130,7 +130,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
       if (!didLoad) {
         setPaystackLoadError(true);
       }
-    },7000);
+    },800);
 
     
     if (existing) {
@@ -233,7 +233,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
       });
 
       if (data.enrolled) {
-        enroll(course.slug);
+        enroll(course.slug, data.enrollmentId ?? undefined);
         setDone(true);
       } else {
         setPaymentError(
@@ -254,7 +254,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
 
   // ── Paid course — Paystack popup ─────────────────────────────────────────
   const handlePaystackPay = () => {
-    if (!agreed || !user) return;
+    if (!agreed || !user || processing) return;
     setPaymentError('');
 
     // Guard: script not ready yet
@@ -294,7 +294,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
       // the enrollment to the database. Using .then()/.catch() (not async/await)
       // because Paystack's code doesn't await the return value of this callback.
       callback(response: { reference: string }) {
-        
+        setProcessing(true);
         setPaymentError('');
 
         enrollWithTimeout({
@@ -303,7 +303,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
         })
           .then((data) => {
             if (data.enrolled) {
-              enroll(course.slug);
+              enroll(course.slug, data.enrollmentId ?? undefined);
               setDone(true);
             } else {
               // Server responded but enrollment was rejected — show inline error.
@@ -339,6 +339,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
       },
     });
 
+    // Disable the button immediately — before the popup opens — so the user
+    // cannot click "Pay Now" again while the Paystack popup is open.
+    // onClose() resets this if they dismiss without paying.
     setProcessing(true);
     handler.openIframe();
   };

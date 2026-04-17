@@ -1,41 +1,41 @@
 'use client';
- 
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Module } from '@/lib/Course';
 import { ChevronDown, CheckCircle2, Circle, Video, BookOpen, Brain, Lock } from 'lucide-react';
- 
+
 interface CurriculumSidebarProps {
   modules: Module[];
   currentLessonId: string;
   courseSlug: string;
   completedLessonIds: Set<string>;
 }
- 
+
 export default function CurriculumSidebar({
   modules, currentLessonId, courseSlug, completedLessonIds,
 }: CurriculumSidebarProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set(modules.map((m) => m.id)));
- 
+
   const toggle = (id: string) => {
     const s = new Set(expanded);
     s.has(id) ? s.delete(id) : s.add(id);
     setExpanded(s);
   };
- 
+
   // Flat ordered list of every lesson id in the course, preserving module order.
   // Used to compute sequential locking: lesson N is locked if lesson N-1 is not done.
   const allLessonsFlat = modules.flatMap((m) => m.lessons);
   const allLessonIdsInCourse = new Set(allLessonsFlat.map((l) => l.id));
- 
+
   const completedInThisCourse = [...completedLessonIds].filter((id) =>
     allLessonIdsInCourse.has(id)
   ).length;
   const totalInThisCourse = allLessonIdsInCourse.size;
- 
+
   const completedInModule = (lessons: { id: string }[]) =>
     lessons.filter((l) => completedLessonIds.has(l.id)).length;
- 
+
   // Returns true when a lesson should be locked in the sidebar.
   // The first lesson is always unlocked; every subsequent lesson requires
   // the immediately preceding lesson (across all modules) to be completed.
@@ -44,7 +44,7 @@ export default function CurriculumSidebar({
     if (idx <= 0) return false;
     return !completedLessonIds.has(allLessonsFlat[idx - 1].id);
   };
- 
+
   return (
     <div className="bg-gray-900 rounded-xl border border-indigo-500/20 overflow-hidden flex flex-col h-full">
       <div className="px-4 py-3 border-b border-indigo-500/20 bg-gray-950">
@@ -53,7 +53,7 @@ export default function CurriculumSidebar({
           {completedInThisCourse} of {totalInThisCourse} lessons done
         </p>
       </div>
- 
+
       <div className="overflow-y-auto flex-1 space-y-1 p-2">
         {modules.map((module) => {
           const done  = completedInModule(module.lessons);
@@ -73,14 +73,14 @@ export default function CurriculumSidebar({
                 </span>
                 <span className="text-xs text-gray-500">{done}/{total}</span>
               </button>
- 
+
               {expanded.has(module.id) && (
                 <div className="ml-6 space-y-1">
                   {module.lessons.map((lesson) => {
                     const isActive = lesson.id === currentLessonId;
                     const isDone   = completedLessonIds.has(lesson.id);
                     const locked   = isLocked(lesson.id);
- 
+
                     const sharedInner = (
                       <>
                         {isDone
@@ -96,7 +96,7 @@ export default function CurriculumSidebar({
                         {isActive && <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />}
                       </>
                     );
- 
+
                     if (locked) {
                       return (
                         <div
@@ -107,7 +107,7 @@ export default function CurriculumSidebar({
                         </div>
                       );
                     }
- 
+
                     return (
                       <Link
                         key={lesson.id}
@@ -131,4 +131,3 @@ export default function CurriculumSidebar({
     </div>
   );
 }
- 
