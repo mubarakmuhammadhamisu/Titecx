@@ -6,6 +6,7 @@ import GlowCard from '@/components/AppShell/GlowCard';
 import { BookOpen, Play, ArrowRight, Lock, Home, ArrowLeft, ShieldAlert} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { motion } from 'framer-motion';
+import type { Module } from '@/lib/Course';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -18,11 +19,36 @@ export default function CourseOverviewPage({ params }: PageProps) {
   // completedLessonIds is required here — the old code used l.status === 'completed'
   // which read from the static DB field. That field is seeded as 'locked' for most
   // lessons and never updates. Real completion state lives in completedLessonIds.
-  const { courses, completedLessonIds, isEnrolled } = useAuth();
+  const { courses, completedLessonIds, isEnrolled, isLoading } = useAuth();
 
   const course = useMemo(() => {
     return courses.find((c) => c.slug === slug);
   }, [courses, slug]);
+
+  // ── Locking helpers (mirrors CurriculumSidebar exactly) ──────────────────
+  // Module gate: locked until the final lesson of the preceding module is done.
+  const isModuleLocked = (modules: Module[], moduleIdx: number): boolean => {
+    if (moduleIdx === 0) return false;
+    const prev = modules[moduleIdx - 1];
+    if (!prev || prev.lessons.length === 0) return false;
+    const lastLesson = prev.lessons[prev.lessons.length - 1];
+    return !completedLessonIds.has(lastLesson.id);
+  };
+
+  // Lesson gate: within an unlocked module, sequential locking applies.
+  const isLessonLocked = (modules: Module[], moduleIdx: number, lessonIdx: number): boolean => {
+    if (isModuleLocked(modules, moduleIdx)) return true;
+    if (lessonIdx === 0) return false;
+    return !completedLessonIds.has(modules[moduleIdx].lessons[lessonIdx - 1].id);
+  };
+
+  // Task 4: show spinner while auth context is initialising — prevents the
+  // "Course not found" card from flashing before courses[] is populated.
+  if (isLoading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+    </div>
+  );
 
   if (!course) {
     return (
@@ -135,8 +161,6 @@ export default function CourseOverviewPage({ params }: PageProps) {
       ) : (
         <div className="space-y-6">
           {course.modules.map((mod, moduleIdx) => {
-            // Use completedLessonIds (live DB state) — NOT mod.lessons[n].status
-            // (which is a static field seeded once and never updated).
             const completedInModule = mod.lessons.filter(
               (l) => completedLessonIds.has(l.id)
             ).length;
@@ -144,6 +168,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
               mod.lessons.length > 0
                 ? Math.round((completedInModule / mod.lessons.length) * 100)
                 : 0;
+            const moduleLocked = isModuleLocked(course.modules, moduleIdx);
 
             return (
               <motion.div
@@ -155,12 +180,19 @@ export default function CourseOverviewPage({ params }: PageProps) {
                 <GlowCard className="space-y-4">
                   {/* Module header */}
                   <div className="flex items-center justify-between pb-4 border-b border-indigo-500/20">
-                    <div>
-                      <h2 className="text-2xl font-bold text-white">{mod.title}</h2>
-                      <p className="text-gray-400 text-sm mt-1">{mod.lessons.length} lessons</p>
+                    <div className="flex items-center gap-2">
+                      {moduleLocked && <Lock size={16} className="text-gray-500 shrink-0" />}
+                      <div>
+                        <h2 className={`text-2xl font-bold ${moduleLocked ? 'text-gray-500' : 'text-white'}`}>{mod.title}</h2>
+                        <p className="text-gray-400 text-sm mt-1">
+                          {moduleLocked
+                            ? 'Complete the previous module quiz to unlock'
+                            : `${mod.lessons.length} lessons`}
+                        </p>
+                      </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-indigo-400">{progressPercent}%</div>
+                      <div className={`text-2xl font-bold ${moduleLocked ? 'text-gray-600' : 'text-indigo-400'}`}>{progressPercent}%</div>
                       <p className="text-xs text-gray-400">Complete</p>
                     </div>
                   </div>
@@ -177,15 +209,11 @@ export default function CourseOverviewPage({ params }: PageProps) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                     {mod.lessons.map((lesson, lessonIdx) => {
                       const isCompleted = completedLessonIds.has(lesson.id);
-                      // A lesson is "current" if it's the first one not yet completed.
-                      // We determine this from the first unfinished lesson in the module.
-                      const firstUnfinishedIdx = mod.lessons.findIndex(
-                        (l) => !completedLessonIds.has(l.id)
-                      );
-                      const isCurrent =
-                        !isCompleted && lessonIdx === firstUnfinishedIdx;
-                      const isLocked =
-                        !isCompleted && !isCurrent && lessonIdx > firstUnfinishedIdx;
+                      const isLocked    = isLessonLocked(course.modules, moduleIdx, lessonIdx);
+                      // "Current" = first lesson that is unlocked and not yet done
+                      const isCurrent   = !isCompleted && !isLocked &&
+                        mod.lessons.slice(0, lessonIdx).every((l) => completedLessonIds.has(l.id)) &&
+                        !isModuleLocked(course.modules, moduleIdx);
 
                       return (
                         <motion.div

@@ -71,21 +71,42 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Step 3: Delete all user data rows, then the auth account ────────────
-    // Previously the client deleted these rows using the anon key before calling
-    // this route. That was wrong: (a) data could be wiped before the auth
-    // deletion was confirmed, leaving an orphaned auth account with no data,
-    // and (b) it relied on client-side RLS DELETE policies being correct.
-    // Using the service role key here is safe because we already verified the
-    // session in Step 1 — this is the authenticated user's own data.
+    // Each deletion is checked individually. If any data row fails to delete
+    // we return an error BEFORE touching the auth account — this keeps the
+    // auth account alive so the user can retry and support can investigate.
+    // A deleted auth account with orphaned data rows cannot be cleaned up.
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
-    await adminClient.from('lesson_completions').delete().eq('user_id', user.id);
-    await adminClient.from('enrollments').delete().eq('user_id', user.id);
-    await adminClient.from('payments').delete().eq('user_id', user.id);
-    await adminClient.from('profiles').delete().eq('id', user.id);
+    const { error: lcError } = await adminClient
+      .from('lesson_completions').delete().eq('user_id', user.id);
+    if (lcError) {
+      console.error('[delete-account] lesson_completions delete failed:', lcError.message);
+      return NextResponse.json({ error: 'Failed to delete account data. Please try again.' }, { status: 500 });
+    }
+
+    const { error: enError } = await adminClient
+      .from('enrollments').delete().eq('user_id', user.id);
+    if (enError) {
+      console.error('[delete-account] enrollments delete failed:', enError.message);
+      return NextResponse.json({ error: 'Failed to delete account data. Please try again.' }, { status: 500 });
+    }
+
+    const { error: pyError } = await adminClient
+      .from('payments').delete().eq('user_id', user.id);
+    if (pyError) {
+      console.error('[delete-account] payments delete failed:', pyError.message);
+      return NextResponse.json({ error: 'Failed to delete account data. Please try again.' }, { status: 500 });
+    }
+
+    const { error: prError } = await adminClient
+      .from('profiles').delete().eq('id', user.id);
+    if (prError) {
+      console.error('[delete-account] profiles delete failed:', prError.message);
+      return NextResponse.json({ error: 'Failed to delete account data. Please try again.' }, { status: 500 });
+    }
 
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id);
 

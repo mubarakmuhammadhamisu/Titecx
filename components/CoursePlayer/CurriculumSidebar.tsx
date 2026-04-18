@@ -23,10 +23,9 @@ export default function CurriculumSidebar({
     setExpanded(s);
   };
 
-  // Flat ordered list of every lesson id in the course, preserving module order.
-  // Used to compute sequential locking: lesson N is locked if lesson N-1 is not done.
-  const allLessonsFlat = modules.flatMap((m) => m.lessons);
-  const allLessonIdsInCourse = new Set(allLessonsFlat.map((l) => l.id));
+  const allLessonIdsInCourse = new Set(
+    modules.flatMap((m) => m.lessons.map((l) => l.id))
+  );
 
   const completedInThisCourse = [...completedLessonIds].filter((id) =>
     allLessonIdsInCourse.has(id)
@@ -36,13 +35,31 @@ export default function CurriculumSidebar({
   const completedInModule = (lessons: { id: string }[]) =>
     lessons.filter((l) => completedLessonIds.has(l.id)).length;
 
-  // Returns true when a lesson should be locked in the sidebar.
-  // The first lesson is always unlocked; every subsequent lesson requires
-  // the immediately preceding lesson (across all modules) to be completed.
-  const isLocked = (lessonId: string): boolean => {
-    const idx = allLessonsFlat.findIndex((l) => l.id === lessonId);
-    if (idx <= 0) return false;
-    return !completedLessonIds.has(allLessonsFlat[idx - 1].id);
+  // ── Locking rules ────────────────────────────────────────────────────────
+  // Module gate: a module (index > 0) is entirely locked until the final
+  // lesson (the quiz) of the preceding module has been completed.
+  const isModuleLocked = (moduleIdx: number): boolean => {
+    if (moduleIdx === 0) return false;
+    const prev = modules[moduleIdx - 1];
+    if (!prev || prev.lessons.length === 0) return false;
+    const lastLesson = prev.lessons[prev.lessons.length - 1];
+    return !completedLessonIds.has(lastLesson.id);
+  };
+
+  // Lesson gate: once a module is unlocked, lessons inside it are sequentially
+  // locked — each requires the lesson immediately before it to be completed.
+  // Task 2: the currently active lesson is NEVER locked even if its predecessor
+  // is not yet marked complete (handles optimistic UI lag).
+  const isLocked = (lessonId: string, isActive: boolean): boolean => {
+    if (isActive) return false; // active lesson is always accessible
+    for (let mi = 0; mi < modules.length; mi++) {
+      const li = modules[mi].lessons.findIndex((l) => l.id === lessonId);
+      if (li === -1) continue;
+      if (isModuleLocked(mi)) return true;   // entire module is gated
+      if (li === 0) return false;             // first lesson of unlocked module
+      return !completedLessonIds.has(modules[mi].lessons[li - 1].id);
+    }
+    return false;
   };
 
   return (
@@ -55,9 +72,10 @@ export default function CurriculumSidebar({
       </div>
 
       <div className="overflow-y-auto flex-1 space-y-1 p-2">
-        {modules.map((module) => {
+        {modules.map((module, moduleIdx) => {
           const done  = completedInModule(module.lessons);
           const total = module.lessons.length;
+          const moduleLocked = isModuleLocked(moduleIdx);
           return (
             <div key={module.id}>
               <button
@@ -66,20 +84,23 @@ export default function CurriculumSidebar({
               >
                 <ChevronDown
                   size={16}
-                  className={`text-indigo-400 transition-transform ${expanded.has(module.id) ? '' : '-rotate-90'}`}
+                  className={`transition-transform ${moduleLocked ? 'text-gray-600' : 'text-indigo-400'} ${expanded.has(module.id) ? '' : '-rotate-90'}`}
                 />
-                <span className="text-sm font-medium text-gray-200 group-hover:text-white transition flex-1">
+                <span className={`text-sm font-medium transition flex-1 ${moduleLocked ? 'text-gray-600' : 'text-gray-200 group-hover:text-white'}`}>
                   {module.title}
                 </span>
-                <span className="text-xs text-gray-500">{done}/{total}</span>
+                {moduleLocked
+                  ? <Lock size={12} className="text-gray-600 shrink-0" />
+                  : <span className="text-xs text-gray-500">{done}/{total}</span>
+                }
               </button>
 
-              {expanded.has(module.id) && (
+      {expanded.has(module.id) && (
                 <div className="ml-6 space-y-1">
                   {module.lessons.map((lesson) => {
                     const isActive = lesson.id === currentLessonId;
                     const isDone   = completedLessonIds.has(lesson.id);
-                    const locked   = isLocked(lesson.id);
+                    const locked   = isLocked(lesson.id, isActive);
 
                     const sharedInner = (
                       <>

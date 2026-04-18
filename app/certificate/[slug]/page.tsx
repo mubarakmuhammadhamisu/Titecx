@@ -128,27 +128,27 @@ export default async function CertificatePage({ params }: PageProps) {
           <div className="h-1 bg-linear-to-r from-indigo-500/0 via-indigo-500/40 to-indigo-500/0" />
         </div>
 
-        {/* CTA for visitors who aren't enrolled */}
-        <div className="mt-10 text-center space-y-4">
-          <p className="text-gray-400 text-sm">
-            Want to earn this certificate?
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href={`/courses/${course.slug}`}
-              className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700
-                         text-white font-semibold text-sm transition"
-            >
-              View Course
-            </Link>
-            <Link
-              href="/courses"
-              className="px-6 py-3 rounded-xl border border-indigo-500/30
-                         hover:border-indigo-500/60 text-gray-300 text-sm transition"
-            >
-              Browse All Courses
-            </Link>
-          </div>
+        {/* Graduate actions — only completers reach this page */}
+        <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            href="/dashboard/achievements"
+            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700
+                       text-white font-semibold text-sm transition text-center"
+          >
+            ← Back to Achievements
+          </Link>
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                navigator.clipboard.writeText(window.location.href).catch(() => {});
+              }
+            }}
+            className="px-6 py-3 rounded-xl border border-indigo-500/30
+                       hover:border-indigo-500/60 text-gray-300 text-sm
+                       font-semibold transition text-center"
+          >
+            Copy Certificate Link
+          </button>
         </div>
       </section>
 
