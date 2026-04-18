@@ -130,7 +130,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
       if (!didLoad) {
         setPaystackLoadError(true);
       }
-    },800);
+    },7000);
 
     
     if (existing) {
