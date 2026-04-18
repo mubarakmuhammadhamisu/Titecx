@@ -25,6 +25,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { checkCsrfHeader } from '@/lib/csrf';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 function getAdminClient() {
   return createClient(
@@ -49,6 +50,18 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authError } = await sessionClient.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // ── Rate limit: 60 completions per user per minute ────────────────────────
+  // Keyed by userId so a burst of lesson completions from one account doesn't
+  // affect others. 60/min is far above any real usage pace (1/s) but blocks
+  // automated scripts hammering the endpoint to inflate progress.
+  const { allowed } = checkRateLimit(`mark-complete:${user.id}`, 60, 60_000);
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please slow down.' }, {
+      status: 429,
+      headers: { 'Retry-After': '60' },
+    });
   }
 
   // ── Body ──────────────────────────────────────────────────────────────────

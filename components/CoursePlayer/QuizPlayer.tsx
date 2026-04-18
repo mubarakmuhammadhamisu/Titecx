@@ -432,7 +432,7 @@ export default function QuizPlayer({
           >
             <RotateCcw size={15} /> Retake Quiz
           </button>
-          {(justCompleted || (isCompleted && passed)) ? (
+          {(justCompleted || isCompleted) ? (
             <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl
                             bg-emerald-500/10 border border-emerald-500/30
                             text-emerald-400 font-semibold text-sm">

@@ -80,16 +80,20 @@ export async function uploadAvatar(
     return { error: 'Image must be under 5 MB.' };
   }
 
-  const ext = file.name.split('.').pop();
-  const path = `${userId}/avatar.${ext}`;
+  // Task 7: use a fixed path with no extension so the upsert always targets
+  // the exact same storage object regardless of what file type the user uploads.
+  // Without this, uploading a .jpg then a .png creates two separate objects
+  // because the path changes — the old one is never overwritten.
+  // Setting contentType explicitly tells Supabase the MIME type even without
+  // a file extension in the path.
+  const path = `${userId}/avatar`;
 
   const { error: uploadError } = await supabase.storage
     .from('avatars')
-    .upload(path, file, { upsert: true }); // upsert=true overwrites old avatar
+    .upload(path, file, { upsert: true, contentType: file.type });
 
   if (uploadError) return { error: uploadError.message };
 
   const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-  // Add a cache-bust param so the browser doesn't serve the old image
   return { url: `${data.publicUrl}?t=${Date.now()}`, path };
 }
