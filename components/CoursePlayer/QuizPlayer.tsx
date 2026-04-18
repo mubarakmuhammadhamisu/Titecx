@@ -116,14 +116,18 @@ export default function QuizPlayer({
       setCurrentIndex((i) => i + 1);
       setPickedIndex(null);
     } else {
-      // Last question — show results and fire completion once
+      // Last question — compute final score from newRecords (records state not yet updated)
+      // and only award completion if the student actually passed (≥50%).
       setPhase('results');
-      if (!isCompleted) {
+      const finalEarned = newRecords.reduce((s, r) => s + r.pointsEarned, 0);
+      const finalPct    = maxScore > 0 ? Math.round((finalEarned / maxScore) * 100) : 0;
+      const finalPassed = finalPct >= 50;
+      if (!isCompleted && finalPassed) {
         setJustCompleted(true);
         onQuizComplete();
       }
     }
-  }, [pickedIndex, currentQ, records, currentIndex, totalQuestions, isCompleted, onQuizComplete]);
+  }, [pickedIndex, currentQ, records, currentIndex, totalQuestions, isCompleted, maxScore, onQuizComplete]);
 
   // ── Guard: no questions ───────────────────────────────────────────────────
   if (!questions || questions.length === 0) {
@@ -428,12 +432,21 @@ export default function QuizPlayer({
           >
             <RotateCcw size={15} /> Retake Quiz
           </button>
-          <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl
-                          bg-emerald-500/10 border border-emerald-500/30
-                          text-emerald-400 font-semibold text-sm">
-            <CheckCircle2 size={15} />
-            {justCompleted ? 'Progress Saved' : 'Already Completed'}
-          </div>
+          {(justCompleted || (isCompleted && passed)) ? (
+            <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl
+                            bg-emerald-500/10 border border-emerald-500/30
+                            text-emerald-400 font-semibold text-sm">
+              <CheckCircle2 size={15} />
+              {justCompleted ? 'Progress Saved' : 'Already Completed'}
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl
+                            bg-red-500/10 border border-red-500/30
+                            text-red-400 font-semibold text-sm">
+              <XCircle size={15} />
+              Score below 50% — retake to pass
+            </div>
+          )}
         </div>
       </GlowCard>
     );

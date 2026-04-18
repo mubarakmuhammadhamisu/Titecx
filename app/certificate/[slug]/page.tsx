@@ -1,16 +1,14 @@
 // app/certificate/[slug]/page.tsx
 //
-// Public certificate verification page — no auth required.
-// URL: /certificate/[slug]  e.g. /certificate/react-fundamentals
-//
-// This page is reached when a student shares their certificate link from
-// the Achievements page. The URL contains only the course slug, so the page
-// shows the course-level certificate template (title, issuer, TITECX branding).
-//
-// It uses getCourseBySlug — the same server-side fetch used by /courses/[slug].
-// No new libraries introduced. Styling follows the existing dark-themed pattern.
+// Certificate verification page — requires the viewer to be logged in and
+// to have completed the course (progress = 100 or completed_at is set).
+// Unauthenticated visitors and students who haven't finished the course
+// are redirected rather than shown a certificate they haven't earned.
 
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import Navbar from '@/components/ui/Navbar';
 import Footer from '@/components/ui/Footer';
@@ -25,6 +23,37 @@ export default async function CertificatePage({ params }: PageProps) {
 
   // getCourseBySlug returns null for unknown or unpublished slugs
   if (!course) return notFound();
+
+  // ── Auth check: must be logged in ──────────────────────────────────────────
+  const cookieStore = await cookies();
+  const sessionClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_Publishable_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
+  );
+  const { data: { user } } = await sessionClient.auth.getUser();
+
+  if (!user) {
+    redirect(`/login?redirect=/certificate/${slug}`);
+  }
+
+  // ── Completion check: enrollment must be at 100% ────────────────────────────
+  // Uses the admin client so RLS doesn't interfere with the read.
+  const adminClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+  const { data: enrollment } = await adminClient
+    .from('enrollments')
+    .select('progress, completed_at')
+    .eq('user_id', user.id)
+    .eq('course_slug', slug)
+    .maybeSingle();
+
+  // Not enrolled, or enrolled but not finished — redirect to the course page.
+  if (!enrollment || (enrollment.progress < 100 && !enrollment.completed_at)) {
+    redirect(`/dashboard/courses/${slug}`);
+  }
 
   return (
     <main className="min-h-screen bg-gray-950 text-gray-100">
