@@ -16,8 +16,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { checkCsrfHeader } from '@/lib/csrf';
 
 export async function POST(req: NextRequest) {
+  // ── CSRF: reject cross-site requests missing the custom header ───────────
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
+
   // ── Rate limit: 10 requests per minute per IP ─────────────────────────────
   // Prevents automated brute-forcing of coupon codes.
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()

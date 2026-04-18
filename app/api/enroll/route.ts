@@ -22,6 +22,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { verifyPaystackPayment, PaystackTransactionData } from '@/lib/verifyPaystackPayment';
 import { checkCsrfHeader } from '@/lib/csrf';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 function getAdminClient() {
   return createClient(
@@ -51,6 +52,17 @@ export async function POST(req: NextRequest) {
   }
   // userId is now always the authenticated caller — cannot be spoofed by body
   const userId = user.id;
+
+  // ── Rate limit: 10 enroll attempts per user per minute ───────────────────
+  // Each rejected call still hits the Paystack API and runs DB queries.
+  // Keyed by userId (not IP) so users on shared connections aren't affected.
+  const { allowed } = checkRateLimit(`enroll:${userId}`, 10, 60_000);
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please wait a minute.' }, {
+      status: 429,
+      headers: { 'Retry-After': '60' },
+    });
+  }
 
   let body: {
     courseSlug: string;

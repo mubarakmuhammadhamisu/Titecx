@@ -23,6 +23,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { checkCsrfHeader } from '@/lib/csrf';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 function getAdminClient() {
   return createClient(
@@ -35,6 +36,22 @@ export async function POST(req: NextRequest) {
   // CSRF: reject cross-site requests
   const csrfError = checkCsrfHeader(req);
   if (csrfError) return csrfError;
+
+  // ── Rate limit: 5 attempts per minute per IP ──────────────────────────────
+  // Prevents an attacker with a hijacked session from brute-forcing the
+  // current password at the re-authentication step.
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? req.headers.get('x-real-ip')
+    ?? 'unknown';
+  if (ip !== 'unknown') {
+    const { allowed } = checkRateLimit(`change-password:${ip}`, 5, 60_000);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Too many attempts. Please wait a minute.' }, {
+        status: 429,
+        headers: { 'Retry-After': '60' },
+      });
+    }
+  }
 
   // Step 1: Verify the caller's session from the JWT cookie
   const cookieStore = await cookies();
