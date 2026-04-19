@@ -5,15 +5,22 @@
 // It verifies the Paystack reference with Paystack's own API using the
 // SECRET key (never exposed to the browser), then enrolls the user.
 //
-// This means even if someone calls enroll() from DevTools, they need
-// a valid Paystack reference that was actually paid — they can't fake it.
+// Coupon support (Phase 4):
+//   If the request body includes a couponCode, this route:
+//   1. Re-validates the coupon from the DB (is_active, not expired, under limit).
+//   2. Calculates the discounted expected price.
+//   3. Passes that as minimumAmountKoboOverride to verifyPaystackPayment so the
+//      paid amount is compared to the discounted price, not the full price.
+//   4. After successful enrollment, atomically increments the coupon's used_count.
 //
 // Flow:
 //   Client pays → Paystack popup returns reference → client calls this route
 //   → we call Paystack /transaction/verify/:reference → if paid → enroll
+//   → if coupon was used → increment used_count
 //
-// The webhook (above) handles the fallback case where the browser closes
-// before this route is called.
+// The webhook handles the fallback case where the browser closes before this
+// route is called (no coupon increment in that path — coupon use isn't tracked
+// for webhook-triggered enrollments, which is an acceptable trade-off).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,9 +44,6 @@ export async function POST(req: NextRequest) {
   if (csrfError) return csrfError;
 
   // ── Step 0: Verify session — never trust userId from the request body ────
-  // Read the authenticated user from the JWT cookie (same pattern as
-  // /api/delete-account). An unauthenticated caller or a caller passing
-  // someone else's userId in the body is rejected here before anything else.
   const cookieStore = await cookies();
   const sessionClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -50,12 +54,9 @@ export async function POST(req: NextRequest) {
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  // userId is now always the authenticated caller — cannot be spoofed by body
   const userId = user.id;
 
   // ── Rate limit: 10 enroll attempts per user per minute ───────────────────
-  // Each rejected call still hits the Paystack API and runs DB queries.
-  // Keyed by userId (not IP) so users on shared connections aren't affected.
   const { allowed } = checkRateLimit(`enroll:${userId}`, 10, 60_000);
   if (!allowed) {
     return NextResponse.json({ error: 'Too many requests. Please wait a minute.' }, {
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
     courseSlug: string;
     isFree?: boolean;
     reference?: string;
+    couponCode?: string;
   };
   try {
     body = await req.json();
@@ -75,7 +77,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { courseSlug, isFree, reference } = body;
+  const { courseSlug, isFree, reference, couponCode } = body;
 
   if (!courseSlug) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -97,9 +99,6 @@ export async function POST(req: NextRequest) {
 
   // ── Free course path ──────────────────────────────────────────────────────
   if (isFree) {
-    // Validate server-side that the course exists and is actually free.
-    // Prevents someone POST-ing { isFree: true } against a paid course slug.
-    // Now queries Supabase instead of the old static file.
     const { data: courseData } = await supabase
       .from('courses')
       .select('price')
@@ -133,45 +132,116 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Payment reference required for paid course' }, { status: 400 });
   }
 
-  // 1. Verify with Paystack and validate amount against DB course price (shared helper)
+  // ── Coupon validation (if a code was submitted) ───────────────────────────
+  // We re-validate here even though the checkout page already called
+  // /api/validate-coupon. Time may have passed; another student may have
+  // consumed the last slot between validation and payment. This is the only
+  // authoritative check — the client result is advisory only.
+  let minimumAmountKoboOverride: number | undefined;
+  let validatedCouponId: string | null = null;
+  let validatedCouponUsedCount: number | null = null;
+
+  if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
+    const { data: couponRow, error: couponError } = await supabase
+      .from('coupons')
+      .select('id, discount_percent, max_usage, used_count, is_active, expires_at')
+      .ilike('code', couponCode.trim())
+      .maybeSingle();
+
+    if (couponError) {
+      console.error('[enroll] Coupon DB lookup error:', couponError.message);
+      return NextResponse.json({ error: 'Could not validate coupon. Please try again.' }, { status: 500 });
+    }
+
+    if (!couponRow || !couponRow.is_active) {
+      return NextResponse.json({ error: 'Invalid or inactive coupon code.' }, { status: 400 });
+    }
+
+    if (couponRow.expires_at && new Date(couponRow.expires_at) < new Date()) {
+      return NextResponse.json({ error: 'Coupon has expired.' }, { status: 400 });
+    }
+
+    if (couponRow.used_count >= couponRow.max_usage) {
+      return NextResponse.json({ error: 'Coupon has reached its usage limit.' }, { status: 400 });
+    }
+
+    // Fetch the course price to calculate the discounted floor.
+    const { data: courseForPrice } = await supabase
+      .from('courses')
+      .select('price')
+      .eq('slug', courseSlug)
+      .eq('is_published', true)
+      .maybeSingle();
+
+    if (!courseForPrice) {
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+    }
+
+    // Strip non-digits from price string (e.g. "₦9,999" → 9999), convert to kobo.
+    const fullPriceKobo = Number(courseForPrice.price.replace(/[^\d]/g, '') ?? 0) * 100;
+    const discountKobo  = Math.floor(fullPriceKobo * couponRow.discount_percent / 100);
+    minimumAmountKoboOverride = fullPriceKobo - discountKobo;
+
+    // Store for later — we increment usage only after enrollment succeeds.
+    validatedCouponId       = couponRow.id;
+    validatedCouponUsedCount = couponRow.used_count;
+  }
+
+  // ── Verify payment with Paystack ──────────────────────────────────────────
   let paystackData: PaystackTransactionData & { validatedSlug: string };
   try {
-    paystackData = await verifyPaystackPayment(reference, courseSlug, supabase);
+    paystackData = await verifyPaystackPayment(
+      reference,
+      courseSlug,
+      supabase,
+      minimumAmountKoboOverride,  // undefined = compare against full price (no coupon)
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : '';
     console.error('[enroll] Payment verification failed:', msg);
     if (msg.startsWith('PAYSTACK_SECRET_KEY'))  return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
-    if (msg.startsWith('Underpayment'))          return NextResponse.json({ error: 'Payment amount is less than course price' }, { status: 400 });
+    if (msg.startsWith('Underpayment'))          return NextResponse.json({ error: 'Payment amount is less than the expected price.' }, { status: 400 });
     if (msg.startsWith('Payment not confirmed')) return NextResponse.json({ error: 'Payment not confirmed' }, { status: 402 });
     if (msg.startsWith('Course not found'))      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     return NextResponse.json({ error: 'Could not verify payment' }, { status: 502 });
   }
 
   // ── Guard: reference must be for THIS course, not a different one ─────────
-  // Prevents reusing a paid reference from Course A to enroll in Course B.
   const paystackCourseSlug = paystackData.metadata?.course_slug as string | undefined;
   if (paystackCourseSlug && paystackCourseSlug !== courseSlug) {
     console.warn('[enroll] Reference course_slug mismatch:', paystackCourseSlug, '!=', courseSlug);
     return NextResponse.json({ error: 'Reference is for a different course' }, { status: 400 });
   }
 
-  // 2 & 3. Record payment and enroll atomically via DB transaction (RPC).
-  // Both inserts happen inside a single PostgreSQL transaction — if either
-  // fails, both are rolled back. ON CONFLICT DO NOTHING makes it idempotent.
-  const { error } = await supabase.rpc('enroll_after_payment', {
+  // ── Record payment and enroll atomically via DB transaction (RPC) ─────────
+  const { error: rpcError } = await supabase.rpc('enroll_after_payment', {
     p_user_id:            userId,
     p_course_slug:        paystackData.validatedSlug,
     p_paystack_reference: reference,
-    p_amount_kobo:        paystackData.amount, 
+    p_amount_kobo:        paystackData.amount,
     p_status:             'success',
   });
 
-  if (error) {
-    console.error('[enroll] Payment+enrollment transaction failed:', error.message);
+  if (rpcError) {
+    console.error('[enroll] Payment+enrollment transaction failed:', rpcError.message);
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
   }
 
-  // Fetch the enrollment row created by the RPC so we can return its real DB id.
+  // ── Increment coupon usage now that enrollment is confirmed ───────────────
+  // Uses the DB function to atomically increment, avoiding lost-update races
+  // if two students submit the same coupon at the same moment.
+  if (validatedCouponId) {
+    const { error: couponIncrErr } = await supabase.rpc('increment_coupon_usage', {
+      coupon_id: validatedCouponId,
+    });
+    if (couponIncrErr) {
+      // Non-fatal: enrollment succeeded. Log for ops investigation but don't
+      // fail the request — the student is already enrolled and has paid.
+      console.error('[enroll] Coupon increment failed (enrollment still succeeded):', couponIncrErr.message);
+    }
+  }
+
+  // ── Return the real DB enrollment ID ─────────────────────────────────────
   const { data: newEnrollment } = await supabase
     .from('enrollments')
     .select('id')
@@ -181,5 +251,3 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ enrolled: true, enrollmentId: newEnrollment?.id ?? null });
 }
-
-

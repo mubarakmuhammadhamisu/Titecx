@@ -102,17 +102,23 @@ export async function assertPaymentAmount(
  * Endpoints that already hold verified Paystack data (callback, webhook) should
  * call validateCourseFromMetadata directly to avoid a redundant Paystack round-trip.
  *
+ * @param minimumAmountKoboOverride  When provided (e.g. a coupon-discounted price),
+ *   this value is used as the minimum acceptable payment instead of the full DB price.
+ *   The course slug is still validated against the DB — only the amount floor changes.
+ *   Pass undefined (default) to use the full course price as the floor.
+ *
  * @throws Error('PAYSTACK_SECRET_KEY not set')     server misconfiguration
  * @throws Error('Paystack verify returned <N>')    Paystack API failure
  * @throws Error('Payment not confirmed: <status>') transaction not 'success'
  * @throws Error('Course not found: <slug>')        course missing or unpublished
- * @throws Error('Underpayment: ...')               paid amount < expected
+ * @throws Error('Underpayment: ...')               paid amount < expected floor
  * @returns The verified transaction data from Paystack
  */
 export async function verifyPaystackPayment(
   reference: string,
   courseSlug: string,
   supabase: SupabaseClient,
+  minimumAmountKoboOverride?: number,
 ): Promise<PaystackTransactionData & { validatedSlug: string }> {
   const secret = process.env.PAYSTACK_SECRET_KEY;
   if (!secret) {
@@ -134,7 +140,35 @@ export async function verifyPaystackPayment(
     throw new Error(`Payment not confirmed: ${body.data?.status}`);
   }
 
-  // Validate the confirmed amount against the DB price, capture the DB-verified slug
+  // ── Amount check ────────────────────────────────────────────────────────────
+  // When a coupon discount was applied, the caller pre-calculates the discounted
+  // floor and passes it as minimumAmountKoboOverride. We use that value instead
+  // of re-reading the full price from the DB so discounted payments aren't
+  // incorrectly rejected as underpayments.
+  if (minimumAmountKoboOverride !== undefined) {
+    // Still validate the course exists and is published — only the amount floor
+    // changes. Use a select that does NOT throw on price mismatch.
+    const { data: courseData } = await supabase
+      .from('courses')
+      .select('slug, price')
+      .eq('slug', courseSlug)
+      .eq('is_published', true)
+      .maybeSingle();
+
+    if (!courseData) {
+      throw new Error(`Course not found: ${courseSlug}`);
+    }
+
+    if (body.data.amount < minimumAmountKoboOverride) {
+      throw new Error(
+        `Underpayment: paid ${body.data.amount} kobo, expected at least ${minimumAmountKoboOverride} kobo`,
+      );
+    }
+
+    return { ...body.data, validatedSlug: courseData.slug };
+  }
+
+  // Standard path (no coupon): validate against full DB price
   const validated = await assertPaymentAmount(body.data.amount, courseSlug, supabase);
 
   return { ...body.data, validatedSlug: validated.slug };

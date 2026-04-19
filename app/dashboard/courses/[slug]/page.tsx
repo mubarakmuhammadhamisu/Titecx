@@ -19,7 +19,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
   // completedLessonIds is required here — the old code used l.status === 'completed'
   // which read from the static DB field. That field is seeded as 'locked' for most
   // lessons and never updates. Real completion state lives in completedLessonIds.
-  const { courses, completedLessonIds, isEnrolled, isLoading } = useAuth();
+  const { courses, completedLessonIds, isEnrolled, isLoading, enrolledCourses } = useAuth();
 
   const course = useMemo(() => {
     return courses.find((c) => c.slug === slug);
@@ -94,6 +94,17 @@ export default function CourseOverviewPage({ params }: PageProps) {
     0
   );
   const firstLesson = course.modules[0]?.lessons[0];
+
+  // Task 2B: Use nextLessonId from the enrolled course record when available so
+  // returning students resume where they left off rather than restarting from lesson 1.
+  const enrolledCourse = useMemo(
+    () => enrolledCourses.find((c) => c.slug === slug),
+    [enrolledCourses, slug],
+  );
+  // ctaLessonId is the target for the "Start Learning / Continue" button.
+  // Priority: nextLessonId (server-tracked progress) → firstLesson (new enrollee).
+  const ctaLessonId = enrolledCourse?.nextLessonId ?? firstLesson?.id;
+  const ctaLabel = enrolledCourse?.nextLessonId ? 'Continue Learning' : 'Start Learning';
 
   // ── Enrollment gate ───────────────────────────────────────────────────────
   // courses[] contains ALL published courses. Without this check any
@@ -294,8 +305,8 @@ export default function CourseOverviewPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* CTA */}
-      {firstLesson && (
+      {/* CTA — links to nextLessonId when available, first lesson for new enrollees */}
+      {ctaLessonId && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -303,11 +314,11 @@ export default function CourseOverviewPage({ params }: PageProps) {
           className="pt-4"
         >
           <Link
-            href={`/dashboard/courses/${slug}/view/${firstLesson.id}`}
+            href={`/dashboard/courses/${slug}/view/${ctaLessonId}`}
             className="inline-flex items-center gap-2 px-8 py-3 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg transition shadow-lg shadow-indigo-500/20"
           >
             <Play size={18} />
-            Start Learning
+            {ctaLabel}
           </Link>
         </motion.div>
       )}

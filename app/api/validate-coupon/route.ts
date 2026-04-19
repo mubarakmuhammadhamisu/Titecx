@@ -1,22 +1,30 @@
 // POST /api/validate-coupon
 //
-// Validates a coupon code server-side against the COUPON_CODE environment
-// variable. The code never appears in the client bundle.
+// Validates a coupon code against the coupons DB table.
 //
-// SETUP REQUIRED:
-//   Add to Vercel environment variables (NOT prefixed with NEXT_PUBLIC_):
-//     COUPON_CODE=LEARN10
+// Migrated from: a single COUPON_CODE environment variable.
+// Now queries the DB so you can create, expire, and limit coupons in real-time
+// without redeploying the app or restarting the server.
 //
-// Why not NEXT_PUBLIC_: any variable prefixed with NEXT_PUBLIC_ is embedded
-// in the browser bundle and readable by anyone. A plain COUPON_CODE env var
-// is only readable by the server.
+// Returns:
+//   { valid: true,  discount_percent: number }   — coupon is usable
+//   { valid: false, reason: string }             — coupon is not usable
 //
-// The client sends the raw coupon string; we compare it here.
-// We return only { valid: boolean } — never the real code.
+// This route never returns the raw DB row. It never increments used_count —
+// that only happens in /api/enroll after a successful payment, so a student
+// who validates but never pays doesn't consume a coupon slot.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { checkCsrfHeader } from '@/lib/csrf';
+
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export async function POST(req: NextRequest) {
   // ── CSRF: reject cross-site requests missing the custom header ───────────
@@ -28,36 +36,62 @@ export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     ?? req.headers.get('x-real-ip')
     ?? 'unknown';
-  // Skip rate limiting when IP cannot be determined (local dev, stripped headers).
-  // A shared 'unknown' bucket would incorrectly throttle unrelated clients.
   if (ip !== 'unknown') {
     const { allowed } = checkRateLimit(`validate-coupon:${ip}`, 10, 60_000);
     if (!allowed) {
-      return NextResponse.json({ valid: false }, {
-        status: 429,
-        headers: { 'Retry-After': '60' },
-      });
+      return NextResponse.json(
+        { valid: false, reason: 'Too many attempts. Please wait a minute.' },
+        { status: 429, headers: { 'Retry-After': '60' } },
+      );
     }
   }
 
+  let coupon: string | undefined;
   try {
-    const { coupon } = await req.json() as { coupon?: string };
-
-    if (!coupon || typeof coupon !== 'string') {
-      return NextResponse.json({ valid: false }, { status: 400 });
-    }
-
-    const validCode = process.env.COUPON_CODE;
-    if (!validCode) {
-      // No coupon configured on this server — treat all coupons as invalid
-      console.warn('[validate-coupon] COUPON_CODE env var not set');
-      return NextResponse.json({ valid: false });
-    }
-
-    const isValid = coupon.trim().toUpperCase() === validCode.trim().toUpperCase();
-    return NextResponse.json({ valid: isValid });
-
+    const body = await req.json() as { coupon?: string };
+    coupon = body.coupon;
   } catch {
-    return NextResponse.json({ valid: false }, { status: 400 });
+    return NextResponse.json({ valid: false, reason: 'Invalid request.' }, { status: 400 });
   }
+
+  if (!coupon || typeof coupon !== 'string' || !coupon.trim()) {
+    return NextResponse.json({ valid: false, reason: 'Please enter a coupon code.' }, { status: 400 });
+  }
+
+  const supabase = getAdminClient();
+
+  // Lookup is case-insensitive — stored codes are uppercase, client sends uppercase,
+  // but we normalise both sides for safety.
+  const { data: row, error } = await supabase
+    .from('coupons')
+    .select('id, discount_percent, max_usage, used_count, is_active, expires_at')
+    .ilike('code', coupon.trim())   // ilike = case-insensitive LIKE (exact match here)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[validate-coupon] DB error:', error.message);
+    return NextResponse.json(
+      { valid: false, reason: 'Could not validate coupon. Please try again.' },
+      { status: 500 },
+    );
+  }
+
+  if (!row) {
+    return NextResponse.json({ valid: false, reason: 'Coupon not found.' });
+  }
+
+  if (!row.is_active) {
+    return NextResponse.json({ valid: false, reason: 'This coupon is no longer active.' });
+  }
+
+  if (row.expires_at && new Date(row.expires_at) < new Date()) {
+    return NextResponse.json({ valid: false, reason: 'This coupon has expired.' });
+  }
+
+  if (row.used_count >= row.max_usage) {
+    return NextResponse.json({ valid: false, reason: 'This coupon has reached its usage limit.' });
+  }
+
+  // Valid — return the discount percentage. Never return the raw DB row.
+  return NextResponse.json({ valid: true, discount_percent: row.discount_percent });
 }
