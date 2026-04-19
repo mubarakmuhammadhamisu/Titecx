@@ -381,6 +381,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (sanitized.bio !== undefined && sanitized.bio.length > 500) {
       return { error: 'Bio must be 500 characters or fewer.' };
     }
+    if (sanitized.phone !== undefined) {
+      const trimmedPhone = sanitized.phone.trim();
+      if (trimmedPhone.length > 20) return { error: 'Phone must be 20 characters or fewer.' };
+      sanitized.phone = trimmedPhone;
+    }
+    if (sanitized.location !== undefined) {
+      const trimmedLocation = sanitized.location.trim();
+      if (trimmedLocation.length > 100) return { error: 'Location must be 100 characters or fewer.' };
+      sanitized.location = trimmedLocation;
+    }
     const { error } = await supabase.from('profiles').update(sanitized).eq('id', user.id);
     if (error) return { error: error.message };
     setUser((prev) => prev ? { ...prev, ...sanitized } : prev);

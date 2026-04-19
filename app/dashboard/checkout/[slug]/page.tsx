@@ -96,6 +96,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
 
   const [coupon, setCoupon] = useState('');
   const [couponApplied, setCouponApplied] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState(0); // real % from DB
   const [couponError, setCouponError] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -191,7 +192,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
   const isFree = course.price === 'Free';
   const rawPrice = course.price.replace(/[^\d]/g, '');
   const numericPrice = rawPrice ? parseInt(rawPrice, 10) : 0;
-  const discount = couponApplied ? Math.floor(numericPrice * 0.1) : 0;
+  // discountPercent comes from the DB (via /api/validate-coupon) — not hardcoded.
+  const discount = couponApplied ? Math.floor(numericPrice * discountPercent / 100) : 0;
   const total = numericPrice - discount;
   const totalKobo = total * 100;
 
@@ -199,21 +201,20 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
     setCouponError('');
     if (!coupon.trim()) { setCouponError('Please enter a coupon code.'); return; }
 
-    // Validate server-side — the real coupon code lives in a server-only
-    // env var (COUPON_CODE) and is never sent to the browser. This replaces
-    // the old btoa() comparison which exposed the code in the client bundle.
     try {
       const res = await fetch('/api/validate-coupon', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
         body: JSON.stringify({ coupon }),
       });
-      const data = await res.json() as { valid: boolean };
+      const data = await res.json() as { valid: boolean; discount_percent?: number; reason?: string };
       if (data.valid) {
         setCouponApplied(true);
+        setDiscountPercent(data.discount_percent ?? 10); // real % from DB
       } else {
-        setCouponError('Invalid coupon code.');
+        setCouponError(data.reason ?? 'Invalid coupon code.');
         setCouponApplied(false);
+        setDiscountPercent(0);
       }
     } catch {
       setCouponError('Could not validate coupon. Please try again.');
@@ -300,6 +301,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
         enrollWithTimeout({
           reference: response.reference,
           courseSlug: course.slug,
+          couponCode: couponApplied ? coupon : undefined,
         })
           .then((data) => {
             if (data.enrolled) {
@@ -496,7 +498,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                     type="text"
                     placeholder="Enter promo code"
                     value={coupon}
-                    onChange={(e) => { setCoupon(e.target.value.toUpperCase()); setCouponError(''); setCouponApplied(false); }}
+                    onChange={(e) => { setCoupon(e.target.value.toUpperCase()); setCouponError(''); setCouponApplied(false); setDiscountPercent(0); }}
                     className="flex-1 px-4 py-2.5 rounded-lg bg-gray-800 border border-indigo-500/20 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 transition"
                   />
                   <button
@@ -508,7 +510,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                 </div>
                 {couponApplied && (
                   <p className="text-xs text-emerald-400 flex items-center gap-1.5">
-                    <CheckCircle2 size={13} /> 10% discount applied!
+                    <CheckCircle2 size={13} /> {discountPercent}% discount applied!
                   </p>
                 )}
                 {couponError && <p className="text-xs text-red-400">{couponError}</p>}
