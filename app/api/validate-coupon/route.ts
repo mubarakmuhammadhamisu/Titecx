@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   const { data: row, error } = await supabase
     .from('coupons')
     .select('id, discount_percent, max_usage, used_count, is_active, expires_at')
-    .ilike('code', coupon.trim())   // ilike = case-insensitive LIKE (exact match here)
+    .eq('code', coupon.trim().toUpperCase())   // ilike = case-insensitive LIKE (exact match here)
     .maybeSingle();
 
   if (error) {

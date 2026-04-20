@@ -8,7 +8,14 @@ import { TrendingUp, Clock, ChevronRight } from 'lucide-react';
 import DashboardError from '@/components/ui/DashboardError';
 
 export default function ProgressPage() {
-  const { user, enrolledCourses, loadError } = useAuth();
+  const { user, enrolledCourses, loadError, isLoading } = useAuth();
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+    </div>
+  );
+
   if (!user) return null;
   if (loadError) return <DashboardError />;
 

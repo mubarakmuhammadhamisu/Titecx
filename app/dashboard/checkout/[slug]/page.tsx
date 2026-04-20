@@ -284,6 +284,10 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
       ref,
       metadata: {
         course_slug: course.slug,
+        // Include coupon_code in metadata so the redirect-mode callback
+        // (/api/paystack/callback) can validate a discounted payment amount.
+        // Never includes sensitive data — just the code string for DB lookup.
+        ...(couponApplied && coupon.trim() ? { coupon_code: coupon.trim().toUpperCase() } : {}),
         custom_fields: [
           { display_name: 'Course', variable_name: 'course', value: course.title },
           { display_name: 'Student', variable_name: 'student', value: user.name },
