@@ -168,13 +168,8 @@ export default function AchievementsPage() {
       icon: Star,
       earned: enrolledCourses.length > 0 && enrolledCourses.every((c) => c.progress >= 90),
     },
-    {
-      id: 4,
-      name: 'Perfect Score',
-      description: 'Get 100% in a quiz',
-      icon: Award,
-      earned: false,
-    },
+    // 'Perfect Score' badge is omitted until quiz-score storage is implemented.
+    // It will be re-added once a quiz_results table tracks per-attempt scores.
   ];
 
   return (
@@ -294,9 +289,9 @@ export default function AchievementsPage() {
         </div>
       </div>
 
-      {/* Leaderboard */}
+      {/* Your Learning Rank */}
       <GlowCard>
-        <h2 className="text-lg font-bold text-white mb-4">Leaderboard</h2>
+        <h2 className="text-lg font-bold text-white mb-4">Your Learning Rank</h2>
         {totalPoints === 0 ? (
           <div className="py-6 text-center">
             <Trophy className="mx-auto mb-3 text-gray-600" size={36} />
@@ -314,7 +309,7 @@ export default function AchievementsPage() {
               <span className="text-purple-400 font-bold">{totalPoints.toLocaleString()} pts</span>
             </div>
             <div className="pt-3 border-t border-white/5">
-              <p className="text-gray-500 text-xs text-center">Invite friends to see how you compare!</p>
+              <p className="text-gray-500 text-xs text-center">Complete quizzes to boost your rank.</p>
             </div>
           </div>
         )}

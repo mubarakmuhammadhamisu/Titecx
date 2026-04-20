@@ -79,6 +79,9 @@ export async function GET(req: NextRequest) {
   const email      = verifyData.data.customer?.email;
   const courseSlug = verifyData.data.metadata?.course_slug as string | undefined;
   const amount     = verifyData.data.amount;
+  // coupon_code is set by the checkout page into Paystack metadata when a
+  // coupon was applied. Only used for amount-floor calculation below.
+  const rawCouponCode = verifyData.data.metadata?.coupon_code as string | undefined;
 
   if (!email || !courseSlug) {
     console.error('[callback] Missing email or course_slug from verify response');
@@ -100,21 +103,90 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // ── Sanitise coupon code from metadata ────────────────────────────────────
+  // Only uppercase alphanumeric + hyphens are valid coupon codes.
+  // Reject anything else to prevent injection into DB queries.
+  const COUPON_RE = /^[A-Z0-9_-]{1,50}$/;
+  const couponCode = rawCouponCode && COUPON_RE.test(rawCouponCode.trim().toUpperCase())
+    ? rawCouponCode.trim().toUpperCase()
+    : null;
+
   const supabase = getAdminClient();
 
-  // ── Metadata validation gate ─────────────────────────────────────────
-  // courseSlug comes from Paystack metadata -- treat as untrusted until the DB
-  // confirms the course exists, is published, and the paid amount is sufficient.
-  // All downstream code uses validatedCourse.slug, not the raw metadata string.
+  // ── Amount validation — coupon-aware ─────────────────────────────────────
+  // If a valid coupon code is in the metadata, look it up and compute the
+  // discounted price floor. Accept any amount >= that floor.
+  // If no coupon (or coupon lookup fails), fall back to full-price validation.
   let validatedCourse: ValidatedCourse;
-  try {
-    validatedCourse = await validateCourseFromMetadata(courseSlug, amount, supabase);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : '';
-    console.warn('[callback] Course metadata validation failed:', msg);
-    return NextResponse.redirect(
-      new URL('/dashboard/my-courses?paystack_error=invalid_amount', req.url)
-    );
+  let minimumAmountKobo: number | undefined;
+
+  if (couponCode) {
+    const { data: couponRow } = await supabase
+      .from('coupons')
+      .select('discount_percent, is_active, expires_at, used_count, max_usage')
+      .eq('code', couponCode)
+      .maybeSingle();
+
+    const couponValid =
+      couponRow &&
+      couponRow.is_active &&
+      (!couponRow.expires_at || new Date(couponRow.expires_at) >= new Date()) &&
+      couponRow.used_count < couponRow.max_usage;
+
+    if (couponValid) {
+      // Fetch course price to compute discounted floor.
+      const { data: courseData } = await supabase
+        .from('courses')
+        .select('slug, price')
+        .eq('slug', courseSlug)
+        .eq('is_published', true)
+        .maybeSingle();
+
+      if (!courseData) {
+        console.warn('[callback] Course not found for coupon discount calc:', courseSlug);
+        return NextResponse.redirect(
+          new URL('/dashboard/my-courses?paystack_error=invalid_course', req.url)
+        );
+      }
+
+      validatedCourse = { slug: courseData.slug, price: courseData.price };
+      const fullKobo    = Number(courseData.price.replace(/[^\d]/g, '') ?? 0) * 100;
+      const discountKobo = Math.floor(fullKobo * couponRow.discount_percent / 100);
+      minimumAmountKobo  = fullKobo - discountKobo;
+
+      // Validate the paid amount against the discounted floor.
+      if (amount < minimumAmountKobo) {
+        console.warn('[callback] Coupon underpayment:', amount, '<', minimumAmountKobo);
+        return NextResponse.redirect(
+          new URL('/dashboard/my-courses?paystack_error=invalid_amount', req.url)
+        );
+      }
+
+      console.log(`[callback] Coupon ${couponCode} applied — discounted floor: ${minimumAmountKobo} kobo`);
+    } else {
+      // Coupon in metadata but not valid in DB — validate against full price.
+      console.warn('[callback] Coupon in metadata is invalid/expired, using full price:', couponCode);
+      try {
+        validatedCourse = await validateCourseFromMetadata(courseSlug, amount, supabase);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : '';
+        console.warn('[callback] Full-price validation failed:', msg);
+        return NextResponse.redirect(
+          new URL('/dashboard/my-courses?paystack_error=invalid_amount', req.url)
+        );
+      }
+    }
+  } else {
+    // No coupon — standard full-price validation.
+    try {
+      validatedCourse = await validateCourseFromMetadata(courseSlug, amount, supabase);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      console.warn('[callback] Course metadata validation failed:', msg);
+      return NextResponse.redirect(
+        new URL('/dashboard/my-courses?paystack_error=invalid_amount', req.url)
+      );
+    }
   }
 
   // ── Idempotency check ─────────────────────────────────────────────────────────────

@@ -137,15 +137,19 @@ export async function POST(req: NextRequest) {
   // /api/validate-coupon. Time may have passed; another student may have
   // consumed the last slot between validation and payment. This is the only
   // authoritative check — the client result is advisory only.
+  //
+  // Security note: .eq() with uppercased input is used instead of .ilike()
+  // to prevent SQL LIKE wildcard injection (e.g. '%' matching all rows).
   let minimumAmountKoboOverride: number | undefined;
   let validatedCouponId: string | null = null;
-  let validatedCouponUsedCount: number | null = null;
+  let validatedCouponMaxUsage: number | null = null;
+  let validatedCouponUsedCount: number | null = null; // for optimistic-lock claim
 
   if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
     const { data: couponRow, error: couponError } = await supabase
       .from('coupons')
       .select('id, discount_percent, max_usage, used_count, is_active, expires_at')
-      .ilike('code', couponCode.trim())
+      .eq('code', couponCode.trim().toUpperCase())
       .maybeSingle();
 
     if (couponError) {
@@ -182,8 +186,9 @@ export async function POST(req: NextRequest) {
     const discountKobo  = Math.floor(fullPriceKobo * couponRow.discount_percent / 100);
     minimumAmountKoboOverride = fullPriceKobo - discountKobo;
 
-    // Store for later — we increment usage only after enrollment succeeds.
-    validatedCouponId       = couponRow.id;
+    // Store for optimistic-lock claim below — executed BEFORE enrollment.
+    validatedCouponId        = couponRow.id;
+    validatedCouponMaxUsage  = couponRow.max_usage;
     validatedCouponUsedCount = couponRow.used_count;
   }
 
@@ -213,6 +218,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Reference is for a different course' }, { status: 400 });
   }
 
+  // ── Claim coupon slot BEFORE enrollment ──────────────────────────────────
+  // This UPDATE runs BEFORE the enrollment RPC so that if the slot is already
+  // gone (race condition), we fail here rather than enrolling without enforcing
+  // the limit.
+  //
+  // Optimistic-lock pattern:
+  //   SET used_count = [known_value + 1]
+  //   WHERE id = [id]
+  //     AND used_count = [known_value]   ← only succeeds if nobody changed it
+  //     AND used_count < max_usage       ← hard cap enforcement
+  //
+  // If another request incremented first, used_count no longer matches the
+  // snapshot we read, so 0 rows are updated and we return 409 immediately.
+  if (validatedCouponId !== null && validatedCouponUsedCount !== null && validatedCouponMaxUsage !== null) {
+    const { data: claimedRow, error: claimErr } = await supabase
+      .from('coupons')
+      .update({ used_count: validatedCouponUsedCount + 1 })
+      .eq('id', validatedCouponId)
+      .eq('used_count', validatedCouponUsedCount)      // optimistic lock
+      .lt('used_count', validatedCouponMaxUsage)       // hard max_usage cap
+      .select('id')
+      .maybeSingle();
+
+    if (claimErr) {
+      console.error('[enroll] Coupon claim update error:', claimErr.message);
+      return NextResponse.json({ error: 'Could not claim coupon. Please try again.' }, { status: 500 });
+    }
+
+    if (!claimedRow) {
+      // 0 rows updated — coupon was exhausted by a concurrent request
+      // between our validation read and now.
+      console.warn('[enroll] Coupon exhausted by concurrent claim:', validatedCouponId);
+      return NextResponse.json(
+        { error: 'This coupon has just reached its usage limit. Please try without it or contact support.' },
+        { status: 409 },
+      );
+    }
+  }
+
   // ── Record payment and enroll atomically via DB transaction (RPC) ─────────
   const { error: rpcError } = await supabase.rpc('enroll_after_payment', {
     p_user_id:            userId,
@@ -225,20 +269,6 @@ export async function POST(req: NextRequest) {
   if (rpcError) {
     console.error('[enroll] Payment+enrollment transaction failed:', rpcError.message);
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
-  }
-
-  // ── Increment coupon usage now that enrollment is confirmed ───────────────
-  // Uses the DB function to atomically increment, avoiding lost-update races
-  // if two students submit the same coupon at the same moment.
-  if (validatedCouponId) {
-    const { error: couponIncrErr } = await supabase.rpc('increment_coupon_usage', {
-      coupon_id: validatedCouponId,
-    });
-    if (couponIncrErr) {
-      // Non-fatal: enrollment succeeded. Log for ops investigation but don't
-      // fail the request — the student is already enrolled and has paid.
-      console.error('[enroll] Coupon increment failed (enrollment still succeeded):', couponIncrErr.message);
-    }
   }
 
   // ── Return the real DB enrollment ID ─────────────────────────────────────

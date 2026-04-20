@@ -110,9 +110,28 @@ function ResetPasswordContent() {
   async function handleSetNewPassword(e: React.FormEvent) {
     e.preventDefault();
     setPwError('');
-    if (newPw.length < 8) { setPwError('Password must be at least 8 characters.'); return; }
-    if (strength < 3) { setPwError('Please add numbers or symbols to strengthen your password.'); return; }
-    if (newPw !== confirmPw) { setPwError('Passwords do not match.'); return; }
+
+    // ── Client-side validation before touching Supabase ───────────────────
+    if (newPw.length < 8) {
+      setPwError('Password must be at least 8 characters.');
+      return;
+    }
+    // Must contain at least one letter AND at least one digit or symbol.
+    const hasLetter  = /[a-zA-Z]/.test(newPw);
+    const hasMixChar = /[0-9]/.test(newPw) || /[^a-zA-Z0-9]/.test(newPw);
+    if (!hasLetter || !hasMixChar) {
+      setPwError('Password must include letters and at least one number or symbol.');
+      return;
+    }
+    if (strength < 3) {
+      setPwError('Please choose a stronger password (8+ characters with letters and numbers).');
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setPwError('Passwords do not match.');
+      return;
+    }
+
     setPwLoading(true);
 
     const { error } = await supabase.auth.updateUser({ password: newPw });

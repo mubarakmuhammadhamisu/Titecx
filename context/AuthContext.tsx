@@ -204,6 +204,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const register = async (name: string, email: string, password: string) => {
+    // ── Client-side email format check ────────────────────────────────────
+    // Saves a round-trip to Supabase on slow connections.
+    // Regex requires: non-empty local part @ non-empty domain with a dot.
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_RE.test(email.trim())) {
+      return { error: 'Please enter a valid email address.' };
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email, password, options: { data: { name } },
     });
