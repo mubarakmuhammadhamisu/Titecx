@@ -82,7 +82,7 @@ export default function LeaderboardPage() {
         </div>
         <button
           onClick={() => setIsResetModalOpen(true)}
-          className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 font-medium text-red-400 hover:border-red-500/60 hover:bg-red-500/20 transition"
+          className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-gradient-to-br from-red-500/20 to-red-600/10 px-4 py-2 font-medium text-red-300 hover:border-red-500/70 hover:from-red-500/30 hover:to-red-600/20 transition-all duration-300"
         >
           <RotateCcw size={18} />
           Reset Monthly
@@ -91,33 +91,37 @@ export default function LeaderboardPage() {
 
       {/* Top Performer */}
       {topStudent && (
-        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-6">
-          <div className="flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-xl border border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 to-amber-500/5 p-6 backdrop-blur-md shadow-lg shadow-yellow-500/10">
+          <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-transparent pointer-events-none" />
+          <div className="relative flex items-center justify-between">
             <div>
-              <p className="text-sm text-yellow-400">🏆 Top Performer This Month</p>
-              <p className="mt-2 text-2xl font-bold text-white">
+              <p className="text-xs font-bold uppercase tracking-wider text-yellow-400">🏆 Top Performer This Month</p>
+              <p className="mt-3 text-3xl font-bold text-white">
                 {topStudent.studentName}
               </p>
-              <p className="text-yellow-400 font-semibold">
+              <p className="mt-1 text-lg font-bold text-yellow-400">
                 {topStudent.points} points
               </p>
+              <p className="mt-1 text-sm text-gray-400">
+                {topStudent.coursesCompleted} course{topStudent.coursesCompleted !== 1 ? 's' : ''} completed
+              </p>
             </div>
-            <div className="text-6xl">🥇</div>
+            <div className="text-7xl drop-shadow-lg">🥇</div>
           </div>
         </div>
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-4">
-          <p className="text-sm text-gray-400">Total Students</p>
-          <p className="mt-2 text-2xl font-bold text-indigo-400">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-indigo-500/10">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Total Students</p>
+          <p className="mt-3 text-4xl font-bold text-indigo-400">
             {filteredLeaderboard.length}
           </p>
         </div>
-        <div className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-4">
-          <p className="text-sm text-gray-400">Total Points Awarded</p>
-          <p className="mt-2 text-2xl font-bold text-purple-400">{totalPoints}</p>
+        <div className="rounded-xl border border-purple-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-purple-500/10">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Total Points Awarded</p>
+          <p className="mt-3 text-4xl font-bold text-purple-400">{totalPoints}</p>
         </div>
       </div>
 

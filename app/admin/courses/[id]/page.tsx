@@ -98,7 +98,7 @@ export default function CourseDetailPage() {
       </button>
 
       {/* Course Header */}
-      <div className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-8 backdrop-blur-sm">
+      <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-8 backdrop-blur-md shadow-lg shadow-indigo-500/10">
         <div className="space-y-6">
           <div>
             <div className="flex items-start justify-between gap-4">
@@ -109,8 +109,8 @@ export default function CourseDetailPage() {
               <span
                 className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${
                   course.published
-                    ? 'bg-green-500/10 text-green-400'
-                    : 'bg-gray-500/10 text-gray-400'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-gray-700/50 text-gray-400 border border-gray-600'
                 }`}
               >
                 {course.published ? 'Published' : 'Draft'}
@@ -118,56 +118,56 @@ export default function CourseDetailPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="rounded-lg bg-gray-800/50 p-4">
-              <p className="text-sm text-gray-400">Price</p>
-              <p className="mt-2 text-2xl font-bold text-indigo-400">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 border border-indigo-500/20 p-5">
+              <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Price</p>
+              <p className="mt-2 text-3xl font-bold text-indigo-400">
                 ₦{course.price.toLocaleString()}
               </p>
             </div>
-            <div className="rounded-lg bg-gray-800/50 p-4">
-              <p className="flex items-center gap-2 text-sm text-gray-400">
-                <Users size={16} />
+            <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 p-5">
+              <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                <Users size={14} />
                 Enrolled
               </p>
-              <p className="mt-2 text-2xl font-bold text-purple-400">
+              <p className="mt-2 text-3xl font-bold text-purple-400">
                 {course.enrolledCount}
               </p>
             </div>
-            <div className="rounded-lg bg-gray-800/50 p-4">
-              <p className="flex items-center gap-2 text-sm text-gray-400">
-                <TrendingUp size={16} />
+            <div className="rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 p-5">
+              <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                <TrendingUp size={14} />
                 Revenue
               </p>
-              <p className="mt-2 text-2xl font-bold text-green-400">
+              <p className="mt-2 text-3xl font-bold text-emerald-400">
                 ₦{(course.totalRevenue / 1000000).toFixed(1)}M
               </p>
             </div>
-            <div className="rounded-lg bg-gray-800/50 p-4">
-              <p className="flex items-center gap-2 text-sm text-gray-400">
-                <BookOpen size={16} />
+            <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 p-5">
+              <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                <BookOpen size={14} />
                 Lessons
               </p>
-              <p className="mt-2 text-2xl font-bold text-blue-400">
+              <p className="mt-2 text-3xl font-bold text-blue-400">
                 {course.lessonsCount}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <div className="rounded-lg bg-blue-500/10 px-4 py-2">
-              <p className="text-xs text-blue-400">
-                <span className="font-bold">{completedCount}</span> Completed
+          <div className="flex flex-wrap gap-3">
+            <div className="rounded-lg bg-gradient-to-r from-blue-500/20 to-blue-600/10 border border-blue-500/30 px-4 py-2">
+              <p className="text-sm text-blue-300 font-medium">
+                <span className="font-bold text-lg">{completedCount}</span> Completed
               </p>
             </div>
-            <div className="rounded-lg bg-indigo-500/10 px-4 py-2">
-              <p className="text-xs text-indigo-400">
-                <span className="font-bold">{inProgressCount}</span> In Progress
+            <div className="rounded-lg bg-gradient-to-r from-indigo-500/20 to-indigo-600/10 border border-indigo-500/30 px-4 py-2">
+              <p className="text-sm text-indigo-300 font-medium">
+                <span className="font-bold text-lg">{inProgressCount}</span> In Progress
               </p>
             </div>
-            <div className="rounded-lg bg-purple-500/10 px-4 py-2">
-              <p className="text-xs text-purple-400">
-                <span className="font-bold">{course.completionRate}%</span>{' '}
+            <div className="rounded-lg bg-gradient-to-r from-purple-500/20 to-purple-600/10 border border-purple-500/30 px-4 py-2">
+              <p className="text-sm text-purple-300 font-medium">
+                <span className="font-bold text-lg">{course.completionRate}%</span>{' '}
                 Completion Rate
               </p>
             </div>

@@ -37,7 +37,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-8 backdrop-blur-sm space-y-8">
+      <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-8 backdrop-blur-md shadow-lg shadow-indigo-500/10 space-y-8">
         {/* Enrollment Settings */}
         <div className="border-b border-indigo-500/10 pb-8">
           <h2 className="text-xl font-bold text-white mb-6">Enrollment Settings</h2>
@@ -158,24 +158,24 @@ export default function SettingsPage() {
       <div className="flex gap-4">
         <button
           onClick={handleSave}
-          className="flex items-center gap-2 rounded-lg bg-indigo-500 px-6 py-3 font-medium text-white hover:bg-indigo-600 transition"
+          className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 shadow-lg shadow-indigo-500/30"
         >
           <Save size={18} />
           Save Settings
         </button>
 
         {saved && (
-          <div className="flex items-center gap-2 text-green-400 text-sm">
+          <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
             ✓ Settings saved successfully
           </div>
         )}
       </div>
 
       {/* Info Box */}
-      <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
+      <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 backdrop-blur-sm">
         <div className="flex gap-3">
           <AlertCircle size={18} className="text-blue-400 shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-300">
+          <p className="text-sm text-blue-200">
             These settings are currently mock-based. When backend integration is added,
             they will be persisted to the database and affect platform behavior.
           </p>
