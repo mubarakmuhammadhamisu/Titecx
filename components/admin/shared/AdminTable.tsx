@@ -54,19 +54,19 @@ export function AdminTable<T extends { id?: string }>({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-indigo-500/20 bg-gray-900/50 backdrop-blur-sm">
+    <div className="overflow-x-auto rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 backdrop-blur-md shadow-lg shadow-indigo-500/10">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-indigo-500/10 bg-gray-900">
+          <tr className="border-b border-indigo-500/20 bg-gray-900/60 backdrop-blur-sm">
             {columns.map((column) => (
               <th
                 key={String(column.key)}
-                className="px-6 py-4 text-left text-sm font-semibold text-gray-300"
+                className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-400"
               >
                 {column.sortable ? (
                   <button
                     onClick={() => handleSort(column.key)}
-                    className="flex items-center gap-2 hover:text-indigo-400"
+                    className="flex items-center gap-2 hover:text-indigo-400 transition-colors"
                   >
                     {column.label}
                     {sortKey === column.key &&
@@ -87,13 +87,15 @@ export function AdminTable<T extends { id?: string }>({
           {sortedData.map((item, index) => (
             <tr
               key={String(item[rowKey] || index)}
-              className="border-b border-indigo-500/10 hover:bg-gray-800/50 transition-colors cursor-pointer"
+              className={`border-b border-indigo-500/10 transition-all duration-200 ${
+                onRowClick ? 'cursor-pointer hover:bg-indigo-500/10 hover:border-indigo-500/30' : ''
+              } ${index % 2 === 0 ? 'bg-gray-900/20' : 'bg-gray-900/10'}`}
               onClick={() => onRowClick?.(item)}
             >
               {columns.map((column) => (
                 <td
                   key={String(column.key)}
-                  className="px-6 py-4 text-sm text-gray-300"
+                  className="px-6 py-4 text-sm text-gray-200"
                 >
                   {column.render
                     ? column.render(item[column.key], item)

@@ -5,12 +5,13 @@ import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { mockCourses, Course } from '@/components/admin/mock-data';
 import { useRouter } from 'next/navigation';
-import { ToggleLeft, ToggleRight } from 'lucide-react';
+import { ToggleLeft, ToggleRight, BookOpen } from 'lucide-react';
 
 export default function CoursesPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [publishedFilter, setPublishedFilter] = useState('');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [toggledCourses, setToggledCourses] = useState<{ [key: string]: boolean }>(
     {}
   );
@@ -140,12 +141,114 @@ export default function CoursesPage() {
           <p className="text-sm text-gray-400">
             Showing {filteredCourses.length} of {mockCourses.length} courses
           </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-indigo-500/30 text-indigo-200 border border-indigo-500/50'
+                  : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-indigo-500/30'
+              }`}
+            >
+              Table
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'grid'
+                  ? 'bg-indigo-500/30 text-indigo-200 border border-indigo-500/50'
+                  : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-indigo-500/30'
+              }`}
+            >
+              Grid
+            </button>
+          </div>
         </div>
-        <AdminTable
-          columns={courseColumns}
-          data={filteredCourses}
-          onRowClick={handleRowClick}
-        />
+
+        {viewMode === 'table' ? (
+          <AdminTable
+            columns={courseColumns}
+            data={filteredCourses}
+            onRowClick={handleRowClick}
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredCourses.map((course) => {
+              const isPublished =
+                toggledCourses[course.id] !== undefined
+                  ? toggledCourses[course.id]
+                  : course.published;
+              return (
+                <div
+                  key={course.id}
+                  onClick={() => handleRowClick(course)}
+                  className="group rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md cursor-pointer transition-all duration-300 hover:border-indigo-400/60 hover:shadow-lg hover:shadow-indigo-500/20"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center border border-indigo-500/30 group-hover:scale-110 transition-transform duration-300">
+                      <BookOpen size={24} className="text-indigo-400" />
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggle(course.id);
+                      }}
+                      className="flex items-center gap-1 text-xs transition"
+                    >
+                      {isPublished ? (
+                        <>
+                          <ToggleRight size={16} className="text-emerald-400" />
+                          <span className="text-emerald-400 text-xs">Published</span>
+                        </>
+                      ) : (
+                        <>
+                          <ToggleLeft size={16} className="text-gray-500" />
+                          <span className="text-gray-500 text-xs">Draft</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <h3 className="font-semibold text-white line-clamp-2 mb-2">
+                    {course.title}
+                  </h3>
+                  <p className="text-xs text-gray-400 line-clamp-2 mb-4">
+                    {course.description}
+                  </p>
+
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-800/30">
+                      <span className="text-gray-400">Price</span>
+                      <span className="font-semibold text-indigo-400">
+                        ₦{course.price.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-800/30">
+                      <span className="text-gray-400">Enrolled</span>
+                      <span className="font-semibold text-emerald-400">
+                        {course.enrolledCount}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-400 text-xs">Completion</span>
+                        <span className="text-xs text-gray-300">
+                          {course.completionRate}%
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-gray-700">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                          style={{ width: `${course.completionRate}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

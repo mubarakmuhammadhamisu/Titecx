@@ -106,20 +106,26 @@ export default function PaymentsPage() {
       </div>
 
       {/* Revenue Summary */}
-      <div className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-6 backdrop-blur-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-400">Total Revenue (Filtered)</p>
-            <p className="mt-2 text-3xl font-bold text-indigo-400">
-              ₦{totalRevenue.toLocaleString()}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-400">Successful Transactions</p>
-            <p className="mt-2 text-3xl font-bold text-green-400">
-              {filteredPayments.filter((p) => p.status === 'success').length}
-            </p>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-indigo-500/10">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Total Revenue (Filtered)</p>
+          <p className="mt-3 text-4xl font-bold text-indigo-400">
+            ₦{totalRevenue.toLocaleString()}
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            {filteredPayments.length} transaction{filteredPayments.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-emerald-500/10">
+          <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Successful Transactions</p>
+          <p className="mt-3 text-4xl font-bold text-emerald-400">
+            {filteredPayments.filter((p) => p.status === 'success').length}
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            {filteredPayments.filter((p) => p.status === 'success').length > 0 
+              ? `₦${filteredPayments.filter((p) => p.status === 'success').reduce((sum, p) => sum + p.amount, 0).toLocaleString()}`
+              : 'No successful transactions'}
+          </p>
         </div>
       </div>
 
@@ -148,11 +154,11 @@ export default function PaymentsPage() {
         <AdminTable columns={paymentColumns} data={filteredPayments} />
       </div>
 
-      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 backdrop-blur-sm">
         <div className="flex gap-3">
           <AlertCircle size={18} className="text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-300">
-            The &quot;Verify with Paystack&quot; button is a mock implementation. When the
+          <p className="text-sm text-amber-200">
+            The &quot;Verify&quot; button is a mock implementation. When the
             real backend is integrated, it will verify payments against Paystack API.
           </p>
         </div>

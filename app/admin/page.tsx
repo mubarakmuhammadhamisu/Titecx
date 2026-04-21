@@ -17,6 +17,18 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 
 export default function AdminOverview() {
   const metrics = getMetrics();
@@ -66,7 +78,7 @@ export default function AdminOverview() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <StatCard
           title="Total Revenue (This Month)"
           value={`₦${metrics.totalRevenue.toLocaleString()}`}
@@ -93,93 +105,92 @@ export default function AdminOverview() {
         />
       </div>
 
-      {/* Revenue Chart Placeholder */}
-      <div className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-6 backdrop-blur-sm">
-        <h2 className="mb-6 text-xl font-bold text-white">
-          Daily Revenue (Last 15 Days)
-        </h2>
-        <div className="relative h-64 w-full">
-          <svg
-            viewBox="0 0 800 200"
-            className="w-full h-full"
-            preserveAspectRatio="none"
-          >
-            {/* Grid lines */}
-            {[0, 50, 100, 150, 200].map((y) => (
-              <line
-                key={`grid-${y}`}
-                x1="0"
-                y1={y}
-                x2="800"
-                y2={y}
-                stroke="rgb(99, 102, 241)"
-                strokeOpacity="0.1"
-                strokeWidth="1"
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Revenue Bar Chart */}
+        <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md">
+          <h2 className="mb-6 text-lg font-bold text-white">
+            Daily Revenue (Last 15 Days)
+          </h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={mockRevenueData}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="rgba(99, 102, 241, 0.1)"
               />
-            ))}
-
-            {/* Chart area */}
-            <defs>
-              <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="rgb(99, 102, 241)" stopOpacity="0.3" />
-                <stop
-                  offset="100%"
-                  stopColor="rgb(99, 102, 241)"
-                  stopOpacity="0"
-                />
-              </linearGradient>
-            </defs>
-
-            {/* Bars */}
-            {mockRevenueData.map((data, index) => {
-              const maxRevenue = Math.max(...mockRevenueData.map((d) => d.revenue));
-              const barHeight = (data.revenue / maxRevenue) * 160;
-              const x = (index / (mockRevenueData.length - 1)) * 750 + 25;
-              return (
-                <g key={data.date}>
-                  <rect
-                    x={x}
-                    y={190 - barHeight}
-                    width="40"
-                    height={barHeight}
-                    fill="url(#chartGradient)"
-                    opacity="0.7"
-                    rx="4"
-                  />
-                  <rect
-                    x={x}
-                    y={190 - barHeight}
-                    width="40"
-                    height={barHeight}
-                    fill="none"
-                    stroke="rgb(99, 102, 241)"
-                    strokeWidth="1"
-                    opacity="0.5"
-                    rx="4"
-                  />
-                </g>
-              );
-            })}
-
-            {/* Axis labels */}
-            <text x="10" y="195" fontSize="12" fill="rgb(156, 163, 175)">
-              ₦0
-            </text>
-            <text
-              x="10"
-              y="50"
-              fontSize="12"
-              fill="rgb(156, 163, 175)"
-              textAnchor="start"
-            >
-              ₦250K
-            </text>
-          </svg>
+              <XAxis
+                dataKey="date"
+                stroke="rgb(156, 163, 175)"
+                style={{ fontSize: '12px' }}
+              />
+              <YAxis
+                stroke="rgb(156, 163, 175)"
+                style={{ fontSize: '12px' }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  borderRadius: '8px',
+                }}
+                labelStyle={{ color: '#fff' }}
+                formatter={(value: any) => `₦${(value as number).toLocaleString()}`}
+              />
+              <Bar
+                dataKey="revenue"
+                fill="url(#colorRevenue)"
+                radius={[8, 8, 0, 0]}
+              />
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="rgb(99, 102, 241)" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="rgb(99, 102, 241)" stopOpacity={0.1} />
+                </linearGradient>
+              </defs>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-        <p className="mt-4 text-sm text-gray-400">
-          Note: This chart displays mock data and will update with real analytics
-          when backend integration is added.
-        </p>
+
+        {/* Revenue Trend Line Chart */}
+        <div className="rounded-xl border border-purple-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md">
+          <h2 className="mb-6 text-lg font-bold text-white">
+            Revenue Trend
+          </h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={mockRevenueData}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="rgba(168, 85, 247, 0.1)"
+              />
+              <XAxis
+                dataKey="date"
+                stroke="rgb(156, 163, 175)"
+                style={{ fontSize: '12px' }}
+              />
+              <YAxis
+                stroke="rgb(156, 163, 175)"
+                style={{ fontSize: '12px' }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  borderRadius: '8px',
+                }}
+                labelStyle={{ color: '#fff' }}
+                formatter={(value: any) => `₦${(value as number).toLocaleString()}`}
+              />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="rgb(168, 85, 247)"
+                strokeWidth={3}
+                dot={{ fill: 'rgb(168, 85, 247)', r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Recent Payments */}

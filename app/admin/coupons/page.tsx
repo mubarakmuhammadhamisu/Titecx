@@ -111,7 +111,7 @@ export default function CouponsPage() {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white hover:bg-indigo-600 transition"
+          className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 shadow-lg shadow-indigo-500/30"
         >
           <Plus size={18} />
           Create Coupon
@@ -146,7 +146,7 @@ export default function CouponsPage() {
             </button>
             <button
               onClick={handleCreateCoupon}
-              className="flex-1 rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white hover:bg-indigo-600 transition"
+              className="flex-1 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300"
             >
               Create
             </button>
