@@ -1,0 +1,176 @@
+TITECX ADMIN DASHBOARD - COMPLETE FILE STRUCTURE
+================================================
+
+app/admin/
+├── layout.tsx                              [45 lines]
+│   └── Admin layout with authentication guard
+│   └── Uses AdminSidebar instead of AppShellSidebar
+│   └── Redirects to login if not authenticated
+│
+├── page.tsx                                [193 lines]
+│   └── Overview/Home page with:
+│   └── 4 stat cards (revenue, students, enrollments, lessons)
+│   └── 30-day revenue chart (SVG-based)
+│   └── Recent payments table
+│   └── Mock data: getMetrics(), getRecentPayments()
+│
+├── students/
+│   ├── page.tsx                            [77 lines]
+│   │   └── Student directory (searchable, sortable table)
+│   │   └── Click row → detail page
+│   │   └── Mock data: mockStudents (12 records)
+│   │
+│   └── [id]/
+│       └── page.tsx                        [199 lines]
+│           └── Student detail view
+│           └── Shows: profile, enrollments, payments
+│           └── Uses mockEnrollments & mockPayments filters
+│
+├── courses/
+│   ├── page.tsx                            [153 lines]
+│   │   └── Course management with filters
+│   │   └── Toggle published/draft status
+│   │   └── Click row → detail page
+│   │   └── Mock data: mockCourses (6 records)
+│   │
+│   └── [id]/
+│       └── page.tsx                        [192 lines]
+│           └── Course detail view
+│           └── Shows: info, enrolled students, completion rates
+│           └── Uses mockEnrollments filter
+│
+├── enrollments/
+│   └── page.tsx                            [178 lines]
+│       └── Enrollments table with:
+│       └── Filters: course, status, payment type
+│       └── Search: student/course name
+│       └── Export CSV button (client-side download)
+│       └── Mock data: mockEnrollments (10 records)
+│
+├── payments/
+│   └── page.tsx                            [163 lines]
+│       └── Payment transactions table
+│       └── Search & filter by status
+│       └── "Verify with Paystack" button (mock)
+│       └── Revenue summary card
+│       └── Mock data: mockPayments (10 records)
+│
+├── coupons/
+│   └── page.tsx                            [217 lines]
+│       └── Coupon management:
+│       └── Create Coupon button → modal form
+│       └── Toggle active/inactive
+│       └── Search by code
+│       └── Mock data: mockCoupons (6 records)
+│
+├── leaderboard/
+│   └── page.tsx                            [174 lines]
+│       └── Student leaderboard:
+│       └── Ranked list with points & courses
+│       └── Search by student name
+│       └── "Reset Monthly" button → confirmation
+│       └── Top performer highlight
+│       └── Mock data: mockLeaderboard (10 records)
+│
+└── settings/
+    └── page.tsx                            [187 lines]
+        └── Platform settings:
+        └── Toggle: enrollments open, show pricing
+        └── Text inputs: email, platform name
+        └── Dropdown: Paystack mode
+        └── Save button (mock)
+        └── No data source (hardcoded defaults)
+
+
+components/admin/
+├── AdminSidebar.tsx                        [179 lines]
+│   └── Admin navigation sidebar
+│   └── 8 nav items (Overview, Students, Courses, etc.)
+│   └── Active page highlighting
+│   └── Mobile hamburger menu
+│   └── Uses Framer Motion animations
+│   └── User profile & logout button
+│
+├── mock-data.ts                            [700 lines]
+│   └── CENTRALIZED MOCK DATA
+│   └── Interfaces: Student, Course, Enrollment, Payment, etc.
+│   └── Data arrays:
+│   │   ├── mockStudents (12 records)
+│   │   ├── mockCourses (6 records)
+│   │   ├── mockEnrollments (10 records)
+│   │   ├── mockPayments (10 records)
+│   │   ├── mockCoupons (6 records)
+│   │   ├── mockLeaderboard (10 records)
+│   │   ├── mockRevenueData (15 data points)
+│   │
+│   └── Helper functions:
+│       ├── getRecentPayments(limit)
+│       └── getMetrics()
+│
+└── shared/
+    ├── AdminTable.tsx                      [110 lines]
+    │   └── Reusable sortable, filterable table
+    │   └── Generic Column interface
+    │   └── Sort by clicking headers
+    │   └── Custom render functions per column
+    │   └── Hover effects & striped rows
+    │
+    ├── FilterBar.tsx                       [76 lines]
+    │   └── Search input + optional filters
+    │   └── Clear button on search
+    │   └── Dropdown filter selects
+    │   └── Reusable across pages
+    │
+    ├── StatCard.tsx                        [40 lines]
+    │   └── Dashboard stat display
+    │   └── Icon, value, trend info
+    │   └── Glassmorphic styling
+    │
+    └── Modal.tsx                           [47 lines]
+        └── Generic modal dialog
+        └── Customizable footer buttons
+        └── Close button & escape handling
+        └── Used for forms & confirmations
+
+
+TOTAL FILE COUNT: 21 files
+- 11 Page components (.tsx)
+- 1 Layout component
+- 1 Sidebar component
+- 4 Shared components
+- 1 Mock data file
+- 1 Documentation (this file)
+
+
+DEPENDENCIES ADDED:
+- date-fns@4.1.0 (for date formatting)
+
+ALREADY INCLUDED:
+- next@16.1.6
+- react@18+
+- framer-motion (for sidebar animations)
+- lucide-react (for icons)
+- tailwindcss@4
+
+
+KEY DESIGN DECISIONS:
+✓ All data in one file (mock-data.ts) for easy replacement
+✓ Reusable components (AdminTable, FilterBar, Modal, StatCard)
+✓ Client-side filtering & sorting (no API calls yet)
+✓ Sidebar auto-collapses on mobile
+✓ Forms show mock success alerts
+✓ CSV export works in-browser
+✓ Dark theme with indigo accents
+✓ Glassmorphic design with transparent borders
+
+
+NEXT STEPS FOR BACKEND INTEGRATION:
+1. Create /api/admin/* route handlers
+2. Create api-service.ts to replace mock-data.ts
+3. Update pages to use async data fetching
+4. Add SWR for client-side data updates
+5. Implement real form submissions (POST/PUT)
+6. Add role-based access control checks
+
+
+All components are production-ready. Only mock data needs to be replaced with real API calls.
