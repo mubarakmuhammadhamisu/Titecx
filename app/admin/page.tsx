@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { StatCard } from '@/components/admin/shared/StatCard';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import {
@@ -33,6 +33,9 @@ import {
 export default function AdminOverview() {
   const metrics = getMetrics();
   const recentPayments = getRecentPayments(5);
+  const [lessonsToday] = useState(() => Math.floor(Math.random() * 50 + 10));
+  const last7Revenue = mockRevenueData.slice(-7).map((d) => ({ v: d.revenue }));
+  const last7Enrollments = mockRevenueData.slice(-7).map((d, i) => ({ v: Math.round((d.revenue / 15000) * (8 + i)) }));
 
   const paymentColumns: Column<Payment>[] = [
     { key: 'studentName', label: 'Student', sortable: true },
@@ -84,31 +87,39 @@ export default function AdminOverview() {
           value={`₦${metrics.totalRevenue.toLocaleString()}`}
           icon={DollarSign}
           trend={{ value: Math.abs(revenueTrend), isPositive: revenueTrend >= 0 }}
+          sparkData={last7Revenue}
+          sparkColor="pink"
         />
         <StatCard
           title="Students Enrolled"
           value={metrics.totalStudents}
           icon={Users}
           trend={{ value: 12, isPositive: true }}
+          sparkData={last7Enrollments}
+          sparkColor="green"
         />
         <StatCard
           title="Active Enrollments"
           value={metrics.activeEnrollments}
           icon={BookOpen}
           trend={{ value: 8, isPositive: true }}
+          sparkData={last7Enrollments}
+          sparkColor="pink"
         />
         <StatCard
           title="Lessons Completed Today"
-          value={Math.floor(Math.random() * 50 + 10)}
+          value={lessonsToday}
           icon={TrendingUp}
           trend={{ value: 5, isPositive: true }}
+          sparkData={last7Revenue.map((d) => ({ v: Math.round(d.v / 3000) }))}
+          sparkColor="green"
         />
       </div>
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Bar Chart */}
-        <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md">
+        <div className="rounded-xl border border-pink-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-[0_0_28px_rgba(244,114,182,0.12)]">
           <h2 className="mb-6 text-lg font-bold text-white">
             Daily Revenue (Last 15 Days)
           </h2>
@@ -130,7 +141,7 @@ export default function AdminOverview() {
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  border: '1px solid rgba(244, 114, 182, 0.35)',
                   borderRadius: '8px',
                 }}
                 labelStyle={{ color: '#fff' }}
@@ -143,8 +154,8 @@ export default function AdminOverview() {
               />
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="rgb(99, 102, 241)" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="rgb(99, 102, 241)" stopOpacity={0.1} />
+                  <stop offset="5%"  stopColor="#f472b6" stopOpacity={0.85} />
+                  <stop offset="95%" stopColor="#f472b6" stopOpacity={0.08} />
                 </linearGradient>
               </defs>
             </BarChart>
@@ -152,7 +163,7 @@ export default function AdminOverview() {
         </div>
 
         {/* Revenue Trend Line Chart */}
-        <div className="rounded-xl border border-purple-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md">
+        <div className="rounded-xl border border-green-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-[0_0_28px_rgba(74,222,128,0.10)]">
           <h2 className="mb-6 text-lg font-bold text-white">
             Revenue Trend
           </h2>
@@ -160,7 +171,7 @@ export default function AdminOverview() {
             <LineChart data={mockRevenueData}>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgba(168, 85, 247, 0.1)"
+                stroke="rgba(74, 222, 128, 0.08)"
               />
               <XAxis
                 dataKey="date"
@@ -174,7 +185,7 @@ export default function AdminOverview() {
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  border: '1px solid rgba(74, 222, 128, 0.35)',
                   borderRadius: '8px',
                 }}
                 labelStyle={{ color: '#fff' }}
@@ -183,10 +194,10 @@ export default function AdminOverview() {
               <Line
                 type="monotone"
                 dataKey="revenue"
-                stroke="rgb(168, 85, 247)"
+                stroke="#4ade80"
                 strokeWidth={3}
-                dot={{ fill: 'rgb(168, 85, 247)', r: 4 }}
-                activeDot={{ r: 6 }}
+                dot={{ fill: '#4ade80', r: 4 }}
+                activeDot={{ r: 6, fill: '#4ade80', stroke: '#166534', strokeWidth: 2 }}
               />
             </LineChart>
           </ResponsiveContainer>

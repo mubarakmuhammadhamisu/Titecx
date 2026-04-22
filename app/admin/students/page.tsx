@@ -27,8 +27,11 @@ export default function StudentsPage() {
       sortable: true,
       render: (value, student) => (
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center border border-indigo-500/20">
-            <User size={20} className="text-indigo-400" />
+          <div className="relative h-10 w-10 shrink-0">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-pink-500/40 to-indigo-500/40 blur-[6px] opacity-70" />
+            <div className="relative h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500/40 to-purple-500/40 flex items-center justify-center border border-pink-400/40 ring-2 ring-pink-500/20">
+              <User size={18} className="text-indigo-300" />
+            </div>
           </div>
           <div>
             <p className="font-medium text-white">{value}</p>
@@ -117,11 +120,14 @@ export default function StudentsPage() {
               <div
                 key={student.id}
                 onClick={() => handleRowClick(student)}
-                className="group rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md cursor-pointer transition-all duration-300 hover:border-indigo-400/60 hover:shadow-lg hover:shadow-indigo-500/20"
+                className="group rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md cursor-pointer transition-all duration-300 hover:border-indigo-400/60 hover:shadow-lg hover:shadow-[0_8px_30px_rgba(244,114,182,0.12),0_4px_16px_rgba(99,102,241,0.10)]"
               >
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center border border-indigo-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <User size={32} className="text-indigo-400" />
+                  <div className="relative h-16 w-16 shrink-0">
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-pink-500/50 to-indigo-500/40 blur-[8px] opacity-60 group-hover:opacity-90 transition-opacity duration-300" />
+                    <div className="relative h-16 w-16 rounded-full bg-gradient-to-br from-indigo-500/40 to-purple-500/30 flex items-center justify-center border-2 border-pink-400/40 ring-2 ring-pink-500/15 group-hover:border-pink-400/70 group-hover:ring-pink-500/35 transition-all duration-300">
+                      <User size={28} className="text-indigo-300" />
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-white truncate">{student.name}</h3>
