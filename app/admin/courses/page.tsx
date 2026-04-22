@@ -3,21 +3,24 @@
 import React, { useState, useMemo } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
+import { Modal } from '@/components/admin/shared/Modal';
 import { mockCourses, Course } from '@/components/admin/mock-data';
 import { useRouter } from 'next/navigation';
-import { ToggleLeft, ToggleRight, BookOpen } from 'lucide-react';
+import { ToggleLeft, ToggleRight, BookOpen, Trash2 } from 'lucide-react';
 
 export default function CoursesPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [publishedFilter, setPublishedFilter] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [courses, setCourses] = useState<Course[]>(mockCourses);
+  const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
   const [toggledCourses, setToggledCourses] = useState<{ [key: string]: boolean }>(
     {}
   );
 
   const filteredCourses = useMemo(() => {
-    return mockCourses.filter((course) => {
+    return courses.filter((course) => {
       const matchesSearch = course.title
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
@@ -29,13 +32,19 @@ export default function CoursesPage() {
             : !course.published;
       return matchesSearch && matchesPublished;
     });
-  }, [searchTerm, publishedFilter]);
+  }, [courses, searchTerm, publishedFilter]);
 
   const handleToggle = (courseId: string) => {
     setToggledCourses((prev) => ({
       ...prev,
       [courseId]: !prev[courseId],
     }));
+  };
+
+  const handleDeleteCourse = () => {
+    if (!deleteTarget) return;
+    setCourses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+    setDeleteTarget(null);
   };
 
   const courseColumns: Column<Course>[] = [
@@ -104,6 +113,21 @@ export default function CoursesPage() {
         );
       },
     },
+    {
+      key: 'id',
+      label: 'Actions',
+      render: (_, course) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => setDeleteTarget(course)}
+            className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
+          >
+            <Trash2 size={13} />
+            Delete
+          </button>
+        </div>
+      ),
+    },
   ];
 
   const handleRowClick = (course: Course) => {
@@ -138,9 +162,9 @@ export default function CoursesPage() {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-400">
-            Showing {filteredCourses.length} of {mockCourses.length} courses
-          </p>
+        <p className="text-sm text-gray-400">
+          Showing {filteredCourses.length} of {courses.length} courses
+        </p>
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('table')}
@@ -250,6 +274,33 @@ export default function CoursesPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Course Modal */}
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete Course"
+        footer={
+          <>
+            <button
+              onClick={() => setDeleteTarget(null)}
+              className="flex-1 rounded-lg border border-gray-600 px-4 py-2 font-medium text-gray-300 hover:bg-gray-800 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteCourse}
+              className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 font-medium text-white transition"
+            >
+              Delete
+            </button>
+          </>
+        }
+      >
+        <p className="text-gray-300 text-sm">
+          Are you sure you want to delete <span className="font-bold text-white">{deleteTarget?.title}</span>? This will remove the course and cannot be undone.
+        </p>
+      </Modal>
     </div>
   );
 }
