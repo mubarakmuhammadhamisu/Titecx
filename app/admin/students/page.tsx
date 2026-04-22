@@ -199,6 +199,26 @@ export default function StudentsPage() {
                     <span className="font-semibold text-emerald-400">₦{student.amountPaid.toLocaleString()}</span>
                   </div>
                 </div>
+
+                {/* Action buttons — stop propagation so card click (go to detail) doesn't fire */}
+                <div className="mt-4 pt-4 border-t border-indigo-500/10 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => setBanTarget(student)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-lg border transition ${
+                      student.isBanned
+                        ? 'border-emerald-500/30 text-emerald-400 hover:border-emerald-500/60 hover:bg-emerald-500/10'
+                        : 'border-amber-500/30 text-amber-400 hover:border-amber-500/60 hover:bg-amber-500/10'
+                    }`}
+                  >
+                    {student.isBanned ? <><CheckCircle size={13} /> Unban</> : <><Ban size={13} /> Ban</>}
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(student)}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
+                  >
+                    <Trash2 size={13} /> Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>
