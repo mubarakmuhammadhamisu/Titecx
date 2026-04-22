@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { LucideIcon } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 interface StatCardProps {
   title: string;
@@ -11,9 +12,11 @@ interface StatCardProps {
     value: number;
     isPositive: boolean;
   };
+  sparkData?: { v: number }[];
+  sparkColor?: 'pink' | 'green';
 }
 
-export function StatCard({ title, value, icon: Icon, trend }: StatCardProps) {
+export function StatCard({ title, value, icon: Icon, trend, sparkData, sparkColor }: StatCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -45,6 +48,29 @@ export function StatCard({ title, value, icon: Icon, trend }: StatCardProps) {
             >
               {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}% vs last month
             </p>
+          )}
+          {sparkData && sparkData.length > 0 && (
+            <div className="mt-4 -mx-1">
+              <ResponsiveContainer width="100%" height={44}>
+                <AreaChart data={sparkData} margin={{ top: 2, right: 2, left: 2, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id={`spark-${sparkColor ?? 'pink'}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor={sparkColor === 'green' ? '#4ade80' : '#f472b6'} stopOpacity={0.35} />
+                      <stop offset="95%" stopColor={sparkColor === 'green' ? '#4ade80' : '#f472b6'} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <Area
+                    type="monotone"
+                    dataKey="v"
+                    stroke={sparkColor === 'green' ? '#4ade80' : '#f472b6'}
+                    strokeWidth={1.5}
+                    fill={`url(#spark-${sparkColor ?? 'pink'})`}
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
         <div className={`rounded-lg bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 p-3 transition-transform duration-300 ${
