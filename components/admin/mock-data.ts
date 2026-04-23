@@ -9,6 +9,7 @@ export interface Student {
   enrollmentCount: number;
   amountPaid: number;
   referralCount: number;
+  isBanned: boolean;
 }
 
 export interface Course {
@@ -80,6 +81,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 3,
     amountPaid: 45000,
     referralCount: 2,
+    isBanned: false,
   },
   {
     id: '2',
@@ -89,6 +91,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 2,
     amountPaid: 30000,
     referralCount: 0,
+    isBanned: false,
   },
   {
     id: '3',
@@ -98,6 +101,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 4,
     amountPaid: 60000,
     referralCount: 3,
+    isBanned: false,
   },
   {
     id: '4',
@@ -107,6 +111,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 1,
     amountPaid: 15000,
     referralCount: 1,
+    isBanned: false,
   },
   {
     id: '5',
@@ -116,6 +121,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 3,
     amountPaid: 45000,
     referralCount: 2,
+    isBanned: false,
   },
   {
     id: '6',
@@ -125,6 +131,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 2,
     amountPaid: 30000,
     referralCount: 0,
+    isBanned: false,
   },
   {
     id: '7',
@@ -134,6 +141,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 5,
     amountPaid: 75000,
     referralCount: 4,
+    isBanned: false,
   },
   {
     id: '8',
@@ -143,6 +151,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 2,
     amountPaid: 30000,
     referralCount: 1,
+    isBanned: false,
   },
   {
     id: '9',
@@ -152,6 +161,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 3,
     amountPaid: 45000,
     referralCount: 2,
+    isBanned: false,
   },
   {
     id: '10',
@@ -161,6 +171,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 1,
     amountPaid: 15000,
     referralCount: 0,
+    isBanned: true,
   },
   {
     id: '11',
@@ -170,6 +181,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 4,
     amountPaid: 60000,
     referralCount: 3,
+    isBanned: false,
   },
   {
     id: '12',
@@ -179,6 +191,7 @@ export const mockStudents: Student[] = [
     enrollmentCount: 2,
     amountPaid: 30000,
     referralCount: 1,
+    isBanned: false,
   },
 ];
 

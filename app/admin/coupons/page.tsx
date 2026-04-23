@@ -5,11 +5,13 @@ import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
 import { mockCoupons, Coupon } from '@/components/admin/mock-data';
-import { Plus, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
 
 export default function CouponsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [coupons, setCoupons] = useState<Coupon[]>(mockCoupons);
+  const [deleteTarget, setDeleteTarget] = useState<Coupon | null>(null);
   const [toggledCoupons, setToggledCoupons] = useState<{ [key: string]: boolean }>({});
   const [formData, setFormData] = useState({
     code: '',
@@ -19,16 +21,22 @@ export default function CouponsPage() {
   });
 
   const filteredCoupons = useMemo(() => {
-    return mockCoupons.filter((coupon) =>
+    return coupons.filter((coupon) =>
       coupon.code.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [searchTerm]);
+  }, [coupons, searchTerm]);
 
   const handleToggle = (couponId: string) => {
     setToggledCoupons((prev) => ({
       ...prev,
       [couponId]: !prev[couponId],
     }));
+  };
+
+  const handleDeleteCoupon = () => {
+    if (!deleteTarget) return;
+    setCoupons((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+    setDeleteTarget(null);
   };
 
   const handleCreateCoupon = () => {
@@ -98,6 +106,19 @@ export default function CouponsPage() {
         );
       },
     },
+    {
+      key: 'id',
+      label: 'Actions',
+      render: (_, coupon) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); setDeleteTarget(coupon); }}
+          className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
+        >
+          <Trash2 size={13} />
+          Delete
+        </button>
+      ),
+    },
   ];
 
   return (
@@ -126,7 +147,7 @@ export default function CouponsPage() {
 
       <div className="space-y-4">
         <p className="text-sm text-gray-400">
-          Showing {filteredCoupons.length} of {mockCoupons.length} coupons
+          Showing {filteredCoupons.length} of {coupons.length} coupons
         </p>
         <AdminTable columns={couponColumns} data={filteredCoupons} />
       </div>
@@ -210,6 +231,33 @@ export default function CouponsPage() {
             />
           </div>
         </div>
+      </Modal>
+
+      {/* Delete Coupon Modal */}
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete Coupon"
+        footer={
+          <>
+            <button
+              onClick={() => setDeleteTarget(null)}
+              className="flex-1 rounded-lg border border-gray-600 px-4 py-2 font-medium text-gray-300 hover:bg-gray-800 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteCoupon}
+              className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 font-medium text-white transition"
+            >
+              Delete
+            </button>
+          </>
+        }
+      >
+        <p className="text-gray-300 text-sm">
+          Are you sure you want to delete coupon <span className="font-bold text-white">{deleteTarget?.code}</span>? This action cannot be undone.
+        </p>
       </Modal>
     </div>
   );

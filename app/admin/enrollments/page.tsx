@@ -3,17 +3,22 @@
 import React, { useState, useMemo } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
-import { mockEnrollments, mockCourses, Enrollment } from '@/components/admin/mock-data';
-import { Download } from 'lucide-react';
+import { Modal } from '@/components/admin/shared/Modal';
+import { mockEnrollments, mockCourses, mockStudents, Enrollment, Student } from '@/components/admin/mock-data';
+import { Download, Trash2, UserPlus } from 'lucide-react';
 
 export default function EnrollmentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
+  const [enrollments, setEnrollments] = useState<Enrollment[]>(mockEnrollments);
+  const [removeTarget, setRemoveTarget] = useState<Enrollment | null>(null);
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const [enrollForm, setEnrollForm] = useState({ studentId: '', courseId: '' });
 
   const filteredEnrollments = useMemo(() => {
-    return mockEnrollments.filter((enrollment) => {
+    return enrollments.filter((enrollment) => {
       const matchesSearch =
         enrollment.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         enrollment.courseName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -23,7 +28,7 @@ export default function EnrollmentsPage() {
         paymentFilter === '' || enrollment.paymentType === paymentFilter;
       return matchesSearch && matchesStatus && matchesCourse && matchesPayment;
     });
-  }, [searchTerm, statusFilter, courseFilter, paymentFilter]);
+  }, [enrollments, searchTerm, statusFilter, courseFilter, paymentFilter]);
 
   const enrollmentColumns: Column<Enrollment>[] = [
     { key: 'studentName', label: 'Student', sortable: true },
@@ -83,7 +88,47 @@ export default function EnrollmentsPage() {
         </span>
       ),
     },
+    {
+      key: 'id',
+      label: 'Action',
+      render: (_, enrollment) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); setRemoveTarget(enrollment); }}
+          className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
+        >
+          <Trash2 size={13} />
+          Remove
+        </button>
+      ),
+    },
   ];
+
+  const handleRemoveEnrollment = () => {
+    if (!removeTarget) return;
+    setEnrollments((prev) => prev.filter((e) => e.id !== removeTarget.id));
+    setRemoveTarget(null);
+  };
+
+  const handleManualEnroll = () => {
+    if (!enrollForm.studentId || !enrollForm.courseId) return;
+    const student = mockStudents.find((s) => s.id === enrollForm.studentId);
+    const course = mockCourses.find((c) => c.id === enrollForm.courseId);
+    if (!student || !course) return;
+    const newEnrollment: Enrollment = {
+      id: `manual-${Date.now()}`,
+      studentId: student.id,
+      studentName: student.name,
+      courseId: course.id,
+      courseName: course.title,
+      dateEnrolled: new Date().toISOString().split('T')[0],
+      progress: 0,
+      paymentType: 'free',
+      status: 'in-progress',
+    };
+    setEnrollments((prev) => [newEnrollment, ...prev]);
+    setEnrollForm({ studentId: '', courseId: '' });
+    setIsEnrollModalOpen(false);
+  };
 
   const handleExportCSV = () => {
     const headers = ['Student', 'Course', 'Enrolled Date', 'Progress', 'Status', 'Payment Type'];
@@ -159,19 +204,109 @@ export default function EnrollmentsPage() {
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-400">
-          Showing {filteredEnrollments.length} of {mockEnrollments.length}{' '}
+          Showing {filteredEnrollments.length} of {enrollments.length}{' '}
           enrollments
         </p>
-        <button
-          onClick={handleExportCSV}
-          className="flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 px-4 py-2 text-sm font-medium text-indigo-300 hover:border-indigo-500/70 hover:from-indigo-500/30 hover:to-indigo-600/20 transition-all duration-300"
-        >
-          <Download size={16} />
-          Export CSV
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setIsEnrollModalOpen(true)}
+            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 text-sm font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 shadow-lg shadow-indigo-500/30"
+          >
+            <UserPlus size={16} />
+            Enroll Student
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 px-4 py-2 text-sm font-medium text-indigo-300 hover:border-indigo-500/70 hover:from-indigo-500/30 hover:to-indigo-600/20 transition-all duration-300"
+          >
+            <Download size={16} />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       <AdminTable columns={enrollmentColumns} data={filteredEnrollments} />
+
+      {/* Remove Enrollment Modal */}
+      <Modal
+        isOpen={!!removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        title="Remove Enrollment"
+        footer={
+          <>
+            <button
+              onClick={() => setRemoveTarget(null)}
+              className="flex-1 rounded-lg border border-gray-600 px-4 py-2 font-medium text-gray-300 hover:bg-gray-800 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleRemoveEnrollment}
+              className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 font-medium text-white transition"
+            >
+              Remove
+            </button>
+          </>
+        }
+      >
+        <p className="text-gray-300 text-sm">
+          Remove <span className="font-bold text-white">{removeTarget?.studentName}</span> from <span className="font-bold text-white">{removeTarget?.courseName}</span>? Their progress will be lost.
+        </p>
+      </Modal>
+
+      {/* Enroll Student Modal */}
+      <Modal
+        isOpen={isEnrollModalOpen}
+        onClose={() => setIsEnrollModalOpen(false)}
+        title="Manually Enroll Student"
+        footer={
+          <>
+            <button
+              onClick={() => setIsEnrollModalOpen(false)}
+              className="flex-1 rounded-lg border border-gray-600 px-4 py-2 font-medium text-gray-300 hover:bg-gray-800 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleManualEnroll}
+              disabled={!enrollForm.studentId || !enrollForm.courseId}
+              className="flex-1 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Enroll
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Student</label>
+            <select
+              value={enrollForm.studentId}
+              onChange={(e) => setEnrollForm({ ...enrollForm, studentId: e.target.value })}
+              className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white outline-none focus:border-indigo-500/60"
+            >
+              <option value="">Select a student...</option>
+              {mockStudents.map((s) => (
+                <option key={s.id} value={s.id}>{s.name} — {s.email}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Course</label>
+            <select
+              value={enrollForm.courseId}
+              onChange={(e) => setEnrollForm({ ...enrollForm, courseId: e.target.value })}
+              className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white outline-none focus:border-indigo-500/60"
+            >
+              <option value="">Select a course...</option>
+              {mockCourses.map((c) => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-gray-500">This enrollment will be marked as free and start at 0% progress.</p>
+        </div>
+      </Modal>
     </div>
   );
 }
