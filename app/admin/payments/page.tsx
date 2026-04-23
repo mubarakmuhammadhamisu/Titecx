@@ -186,7 +186,67 @@ export default function PaymentsPage() {
         <p className="text-sm text-gray-400">
           Showing {filteredPayments.length} of {mockPayments.length} payments
         </p>
-        <AdminTable columns={paymentColumns} data={filteredPayments} />
+        
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <AdminTable columns={paymentColumns} data={filteredPayments} />
+        </div>
+
+        {/* Mobile Grid Cards */}
+        <div className="md:hidden space-y-3">
+          {filteredPayments.length > 0 ? (
+            filteredPayments.map((payment) => (
+              <div key={payment.id} className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-4 backdrop-blur-sm">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="text-base font-bold text-white">{payment.studentName}</p>
+                    <p className="text-xs text-gray-500">{payment.courseName}</p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                    payment.status === 'success'
+                      ? 'bg-green-500/10 text-green-400'
+                      : payment.status === 'pending'
+                        ? 'bg-yellow-500/10 text-yellow-400'
+                        : 'bg-red-500/10 text-red-400'
+                  }`}>
+                    <CheckCircle size={12} />
+                    {String(payment.status).charAt(0).toUpperCase() + String(payment.status).slice(1)}
+                  </span>
+                </div>
+
+                {/* Body - Key/Value pairs */}
+                <div className="space-y-2 mb-4 text-sm border-t border-indigo-500/10 pt-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Amount</span>
+                    <span className="font-semibold text-indigo-400">₦{payment.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Reference</span>
+                    <span className="font-mono text-xs text-gray-300">{payment.reference}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Date</span>
+                    <span className="font-semibold text-gray-300">{format(new Date(payment.date), 'MMM d, yyyy')}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <button
+                  onClick={() => handleVerifyPayment(payment.id)}
+                  disabled={verifying === payment.id}
+                  className="w-full text-xs py-2 rounded-lg border border-indigo-500/30 text-indigo-400 hover:border-indigo-500/60 hover:bg-indigo-500/10 transition disabled:opacity-50"
+                >
+                  {verifying === payment.id ? 'Verifying...' : 'Verify Payment'}
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-lg border border-gray-700 p-8 text-center">
+              <p className="text-gray-400">No payments found</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 backdrop-blur-sm">

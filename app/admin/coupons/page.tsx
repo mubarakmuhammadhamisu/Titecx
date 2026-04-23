@@ -191,7 +191,78 @@ export default function CouponsPage() {
         <p className="text-sm text-gray-400">
           Showing {filteredCoupons.length} of {coupons.length} coupons
         </p>
-        <AdminTable columns={couponColumns} data={filteredCoupons} />
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <AdminTable columns={couponColumns} data={filteredCoupons} />
+        </div>
+
+        {/* Mobile Grid Cards */}
+        <div className="md:hidden space-y-3">
+          {filteredCoupons.length > 0 ? (
+            filteredCoupons.map((coupon) => {
+              const isActive = toggledCoupons[coupon.id] !== undefined ? toggledCoupons[coupon.id] : coupon.active;
+              return (
+                <div key={coupon.id} className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-4 backdrop-blur-sm">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-lg font-bold text-white">{coupon.code}</p>
+                      <p className="text-xs text-gray-500">Created {new Date(coupon.createdDate).toLocaleDateString()}</p>
+                    </div>
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-600/20 text-gray-400'}`}>
+                      {isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+
+                  {/* Body - Key/Value pairs */}
+                  <div className="space-y-2 mb-4 text-sm border-t border-indigo-500/10 pt-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Discount</span>
+                      <span className="font-semibold text-indigo-400">{coupon.discountPercentage}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Used / Max</span>
+                      <span className="font-semibold text-gray-300">{coupon.timesUsed} / {coupon.maxUses}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Expires</span>
+                      <span className="font-semibold text-gray-300">{new Date(coupon.expiryDate).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditTarget(coupon);
+                        setFormData({
+                          code: coupon.code,
+                          discount: String(coupon.discountPercentage),
+                          maxUses: String(coupon.maxUses),
+                          expiryDate: coupon.expiryDate,
+                        });
+                        setIsModalOpen(true);
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1 text-xs px-3 py-2 rounded-lg border border-indigo-500/30 text-indigo-400 hover:border-indigo-500/60 hover:bg-indigo-500/10 transition"
+                    >
+                      <Pencil size={13} /> Edit
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(coupon)}
+                      className="flex-1 flex items-center justify-center gap-1 text-xs px-3 py-2 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
+                    >
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="rounded-lg border border-gray-700 p-8 text-center">
+              <p className="text-gray-400">No coupons found</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Create/Edit Coupon Modal */}

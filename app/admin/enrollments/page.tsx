@@ -242,7 +242,74 @@ export default function EnrollmentsPage() {
         </div>
       </div>
 
-      <AdminTable columns={enrollmentColumns} data={filteredEnrollments} />
+      {/* Desktop Table */}
+      <div className="hidden md:block">
+        <AdminTable columns={enrollmentColumns} data={filteredEnrollments} />
+      </div>
+
+      {/* Mobile Grid Cards */}
+      <div className="md:hidden space-y-3">
+        {filteredEnrollments.length > 0 ? (
+          filteredEnrollments.map((enrollment) => (
+            <div key={enrollment.id} className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-4 backdrop-blur-sm">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="text-base font-bold text-white">{enrollment.studentName}</p>
+                  <p className="text-xs text-gray-500">{enrollment.courseName}</p>
+                </div>
+                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                  enrollment.status === 'completed'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : enrollment.status === 'dropped'
+                      ? 'bg-red-500/20 text-red-400'
+                      : 'bg-blue-500/20 text-blue-400'
+                }`}>
+                  {String(enrollment.status).charAt(0).toUpperCase() + String(enrollment.status).slice(1)}
+                </span>
+              </div>
+
+              {/* Body - Key/Value pairs */}
+              <div className="space-y-2 mb-4 text-sm border-t border-indigo-500/10 pt-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Progress</span>
+                  <span className="font-semibold text-indigo-400">{enrollment.progress}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Payment</span>
+                  <span className="font-semibold text-gray-300">{String(enrollment.paymentType).charAt(0).toUpperCase() + String(enrollment.paymentType).slice(1)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Enrolled</span>
+                  <span className="font-semibold text-gray-300">{new Date(enrollment.dateEnrolled).toLocaleDateString()}</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                {enrollment.status !== 'completed' && (
+                  <button
+                    onClick={() => handleMarkComplete(enrollment.id)}
+                    className="flex-1 text-xs py-2 rounded-lg border border-emerald-500/30 text-emerald-400 hover:border-emerald-500/60 hover:bg-emerald-500/10 transition"
+                  >
+                    Complete
+                  </button>
+                )}
+                <button
+                  onClick={() => setRemoveTarget(enrollment)}
+                  className="flex-1 text-xs py-2 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-lg border border-gray-700 p-8 text-center">
+            <p className="text-gray-400">No enrollments found</p>
+          </div>
+        )}
+      </div>
 
       {/* Remove Enrollment Modal */}
       <Modal

@@ -6,6 +6,7 @@ export interface Student {
   name: string;
   email: string;
   joinDate: string;
+  lastLogin: string;
   enrollmentCount: number;
   amountPaid: number;
   referralCount: number;
@@ -78,6 +79,7 @@ export const mockStudents: Student[] = [
     name: 'Amina Hassan',
     email: 'amina.hassan@email.com',
     joinDate: '2024-01-15',
+    lastLogin: '2024-04-20',
     enrollmentCount: 3,
     amountPaid: 45000,
     referralCount: 2,
@@ -88,6 +90,7 @@ export const mockStudents: Student[] = [
     name: 'Ibrahim Musa',
     email: 'ibrahim.musa@email.com',
     joinDate: '2024-01-20',
+    lastLogin: '2024-02-10',
     enrollmentCount: 2,
     amountPaid: 30000,
     referralCount: 0,
@@ -98,6 +101,7 @@ export const mockStudents: Student[] = [
     name: 'Zainab Adeyemi',
     email: 'zainab.adeyemi@email.com',
     joinDate: '2024-02-10',
+    lastLogin: '2024-04-18',
     enrollmentCount: 4,
     amountPaid: 60000,
     referralCount: 3,
@@ -108,6 +112,7 @@ export const mockStudents: Student[] = [
     name: 'Chukwu Okonkwo',
     email: 'chukwu.okonkwo@email.com',
     joinDate: '2024-02-15',
+    lastLogin: '2024-01-15',
     enrollmentCount: 1,
     amountPaid: 15000,
     referralCount: 1,
@@ -118,6 +123,7 @@ export const mockStudents: Student[] = [
     name: 'Fatima Mohammed',
     email: 'fatima.mohammed@email.com',
     joinDate: '2024-03-01',
+    lastLogin: '2024-04-19',
     enrollmentCount: 3,
     amountPaid: 45000,
     referralCount: 2,
@@ -128,6 +134,7 @@ export const mockStudents: Student[] = [
     name: 'Chisom Eze',
     email: 'chisom.eze@email.com',
     joinDate: '2024-03-10',
+    lastLogin: '2024-03-20',
     enrollmentCount: 2,
     amountPaid: 30000,
     referralCount: 0,
@@ -138,6 +145,7 @@ export const mockStudents: Student[] = [
     name: 'Aisha Bello',
     email: 'aisha.bello@email.com',
     joinDate: '2024-03-15',
+    lastLogin: '2024-04-22',
     enrollmentCount: 5,
     amountPaid: 75000,
     referralCount: 4,
@@ -148,6 +156,7 @@ export const mockStudents: Student[] = [
     name: 'Tunde Oluwafemi',
     email: 'tunde.oluwafemi@email.com',
     joinDate: '2024-03-20',
+    lastLogin: '2024-02-05',
     enrollmentCount: 2,
     amountPaid: 30000,
     referralCount: 1,
@@ -158,6 +167,7 @@ export const mockStudents: Student[] = [
     name: 'Mariam Suleiman',
     email: 'mariam.suleiman@email.com',
     joinDate: '2024-04-01',
+    lastLogin: '2024-04-21',
     enrollmentCount: 3,
     amountPaid: 45000,
     referralCount: 2,
@@ -168,6 +178,7 @@ export const mockStudents: Student[] = [
     name: 'Eze Nwankwo',
     email: 'eze.nwankwo@email.com',
     joinDate: '2024-04-05',
+    lastLogin: '2024-04-10',
     enrollmentCount: 1,
     amountPaid: 15000,
     referralCount: 0,
@@ -178,6 +189,7 @@ export const mockStudents: Student[] = [
     name: 'Halima Abdullahi',
     email: 'halima.abdullahi@email.com',
     joinDate: '2024-04-10',
+    lastLogin: '2024-04-23',
     enrollmentCount: 4,
     amountPaid: 60000,
     referralCount: 3,
@@ -188,6 +200,7 @@ export const mockStudents: Student[] = [
     name: 'Segun Adebayo',
     email: 'segun.adebayo@email.com',
     joinDate: '2024-04-15',
+    lastLogin: '2024-03-10',
     enrollmentCount: 2,
     amountPaid: 30000,
     referralCount: 1,
