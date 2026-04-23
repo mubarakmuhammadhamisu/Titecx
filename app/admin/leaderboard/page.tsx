@@ -5,21 +5,25 @@ import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
 import { mockLeaderboard, Leaderboard } from '@/components/admin/mock-data';
-import { RotateCcw, Trophy } from 'lucide-react';
+import { RotateCcw, Trophy, CheckCircle } from 'lucide-react';
 
 export default function LeaderboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<Leaderboard[]>(mockLeaderboard);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   const filteredLeaderboard = useMemo(() => {
-    return mockLeaderboard.filter((entry) =>
+    return leaderboard.filter((entry) =>
       entry.studentName.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [searchTerm]);
+  }, [leaderboard, searchTerm]);
 
   const handleResetLeaderboard = () => {
-    alert('Leaderboard reset! (Mock: data not actually cleared)');
+    setLeaderboard([]);
     setIsResetModalOpen(false);
+    setResetSuccess(true);
+    setTimeout(() => setResetSuccess(false), 3000);
   };
 
   const leaderboardColumns: Column<Leaderboard>[] = [
@@ -73,6 +77,12 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-6">
+      {resetSuccess && (
+        <div className="flex items-center gap-3 px-5 py-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+          <CheckCircle size={18} />
+          <span className="text-sm font-medium">Leaderboard has been reset for the new month.</span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Leaderboard</h1>

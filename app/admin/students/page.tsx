@@ -12,17 +12,23 @@ export default function StudentsPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [banFilter, setBanFilter] = useState<'all' | 'active' | 'banned'>('all');
   const [students, setStudents] = useState<Student[]>(mockStudents);
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
   const [banTarget, setBanTarget] = useState<Student | null>(null);
 
   const filteredStudents = useMemo(() => {
-    return students.filter(
-      (student) =>
+    return students.filter((student) => {
+      const matchesSearch =
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [students, searchTerm]);
+        student.email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesBan =
+        banFilter === 'all' ? true :
+        banFilter === 'banned' ? student.isBanned :
+        !student.isBanned;
+      return matchesSearch && matchesBan;
+    });
+  }, [students, searchTerm, banFilter]);
 
   const studentColumns: Column<Student>[] = [
     {
@@ -124,9 +130,29 @@ export default function StudentsPage() {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-400">
-            Showing {filteredStudents.length} of {students.length} students
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-gray-400">
+              Showing {filteredStudents.length} of {students.length} students
+            </p>
+            {/* Ban status filter pills */}
+            <div className="flex gap-1.5">
+              {(['all', 'active', 'banned'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setBanFilter(f)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                    banFilter === f
+                      ? f === 'banned'
+                        ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                        : 'bg-indigo-500/30 border-indigo-500/50 text-indigo-200'
+                      : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-indigo-500/30'
+                  }`}
+                >
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('table')}

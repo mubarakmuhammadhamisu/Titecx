@@ -5,7 +5,7 @@ import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
 import { mockEnrollments, mockCourses, mockStudents, Enrollment, Student } from '@/components/admin/mock-data';
-import { Download, Trash2, UserPlus } from 'lucide-react';
+import { Download, Trash2, UserPlus, CheckCircle } from 'lucide-react';
 
 export default function EnrollmentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -90,18 +90,35 @@ export default function EnrollmentsPage() {
     },
     {
       key: 'id',
-      label: 'Action',
+      label: 'Actions',
       render: (_, enrollment) => (
-        <button
-          onClick={(e) => { e.stopPropagation(); setRemoveTarget(enrollment); }}
-          className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
-        >
-          <Trash2 size={13} />
-          Remove
-        </button>
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {enrollment.status !== 'completed' && (
+            <button
+              onClick={() => handleMarkComplete(enrollment.id)}
+              className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-emerald-500/30 text-emerald-400 hover:border-emerald-500/60 hover:bg-emerald-500/10 transition"
+            >
+              <CheckCircle size={13} /> Complete
+            </button>
+          )}
+          <button
+            onClick={() => setRemoveTarget(enrollment)}
+            className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
+          >
+            <Trash2 size={13} /> Remove
+          </button>
+        </div>
       ),
     },
   ];
+
+  const handleMarkComplete = (enrollmentId: string) => {
+    setEnrollments(prev => prev.map(e =>
+      e.id === enrollmentId
+        ? { ...e, status: 'completed', progress: 100, completionDate: new Date().toISOString().split('T')[0] }
+        : e
+    ));
+  };
 
   const handleRemoveEnrollment = () => {
     if (!removeTarget) return;

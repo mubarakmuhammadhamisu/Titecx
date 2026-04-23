@@ -4,13 +4,16 @@ import React, { useState, useMemo } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { mockPayments, Payment } from '@/components/admin/mock-data';
-import { CheckCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [verifying, setVerifying] = useState<string | null>(null);
+  const [verifyResult, setVerifyResult] = useState<{ id: string; success: boolean } | null>(null);
 
   const filteredPayments = useMemo(() => {
     return mockPayments.filter((payment) => {
@@ -19,17 +22,19 @@ export default function PaymentsPage() {
         payment.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.courseName.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === '' || payment.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const paymentDate = new Date(payment.date);
+      const matchesFrom = !dateFrom || paymentDate >= new Date(dateFrom);
+      const matchesTo = !dateTo || paymentDate <= new Date(dateTo);
+      return matchesSearch && matchesStatus && matchesFrom && matchesTo;
     });
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, dateFrom, dateTo]);
 
   const handleVerifyPayment = (paymentId: string) => {
     setVerifying(paymentId);
     setTimeout(() => {
-      alert(
-        'Verified: Payment verification simulated. In real backend, this would call Paystack API.'
-      );
       setVerifying(null);
+      setVerifyResult({ id: paymentId, success: true });
+      setTimeout(() => setVerifyResult(null), 3000);
     }, 1500);
   };
 
@@ -147,6 +152,36 @@ export default function PaymentsPage() {
         placeholder="Search by reference, student, or course..."
       />
 
+      <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-lg border border-indigo-500/20 bg-gray-900/50">
+        <span className="text-xs text-gray-400 font-medium">Date range:</span>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500">From</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-1.5 text-sm text-white outline-none focus:border-indigo-500/60"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500">To</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            className="rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-1.5 text-sm text-white outline-none focus:border-indigo-500/60"
+          />
+        </div>
+        {(dateFrom || dateTo) && (
+          <button
+            onClick={() => { setDateFrom(''); setDateTo(''); }}
+            className="text-xs text-gray-500 hover:text-gray-300 transition flex items-center gap-1"
+          >
+            <X size={12} /> Clear dates
+          </button>
+        )}
+      </div>
+
       <div className="space-y-4">
         <p className="text-sm text-gray-400">
           Showing {filteredPayments.length} of {mockPayments.length} payments
@@ -163,6 +198,13 @@ export default function PaymentsPage() {
           </p>
         </div>
       </div>
+
+      {verifyResult && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shadow-xl backdrop-blur-md">
+          <CheckCircle size={18} />
+          <span className="text-sm font-medium">Payment verified successfully (mock)</span>
+        </div>
+      )}
     </div>
   );
 }
