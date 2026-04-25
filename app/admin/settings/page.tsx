@@ -23,7 +23,6 @@ export default function SettingsPage() {
   };
 
   const handleSave = () => {
-    alert('Settings saved! (Mock: changes not persisted)');
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };

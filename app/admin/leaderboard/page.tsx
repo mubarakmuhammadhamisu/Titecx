@@ -5,21 +5,25 @@ import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
 import { mockLeaderboard, Leaderboard } from '@/components/admin/mock-data';
-import { RotateCcw, Trophy } from 'lucide-react';
+import { RotateCcw, Trophy, CheckCircle } from 'lucide-react';
 
 export default function LeaderboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<Leaderboard[]>(mockLeaderboard);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   const filteredLeaderboard = useMemo(() => {
-    return mockLeaderboard.filter((entry) =>
+    return leaderboard.filter((entry) =>
       entry.studentName.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [searchTerm]);
+  }, [leaderboard, searchTerm]);
 
   const handleResetLeaderboard = () => {
-    alert('Leaderboard reset! (Mock: data not actually cleared)');
+    setLeaderboard([]);
     setIsResetModalOpen(false);
+    setResetSuccess(true);
+    setTimeout(() => setResetSuccess(false), 3000);
   };
 
   const leaderboardColumns: Column<Leaderboard>[] = [
@@ -68,11 +72,18 @@ export default function LeaderboardPage() {
     },
   ];
 
-  const topStudent = filteredLeaderboard[0];
+  const top3 = filteredLeaderboard.slice(0, 3);
+  const restLeaderboard = filteredLeaderboard.slice(3);
   const totalPoints = filteredLeaderboard.reduce((sum, entry) => sum + entry.points, 0);
 
   return (
     <div className="space-y-6">
+      {resetSuccess && (
+        <div className="flex items-center gap-3 px-5 py-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+          <CheckCircle size={18} />
+          <span className="text-sm font-medium">Leaderboard has been reset for the new month.</span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Leaderboard</h1>
@@ -89,24 +100,47 @@ export default function LeaderboardPage() {
         </button>
       </div>
 
-      {/* Top Performer */}
-      {topStudent && (
-        <div className="relative overflow-hidden rounded-xl border border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 to-amber-500/5 p-6 backdrop-blur-md shadow-lg shadow-yellow-500/10">
-          <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-transparent pointer-events-none" />
-          <div className="relative flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-yellow-400">🏆 Top Performer This Month</p>
-              <p className="mt-3 text-3xl font-bold text-white">
-                {topStudent.studentName}
-              </p>
-              <p className="mt-1 text-lg font-bold text-yellow-400">
-                {topStudent.points} points
-              </p>
-              <p className="mt-1 text-sm text-gray-400">
-                {topStudent.coursesCompleted} course{topStudent.coursesCompleted !== 1 ? 's' : ''} completed
-              </p>
+      {/* Top 3 Podium */}
+      {top3.length > 0 && (
+        <div className="space-y-4">
+          {/* 1st Place Card */}
+          {top3[0] && (
+            <div className="relative overflow-hidden rounded-xl border border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 to-amber-500/5 p-6 backdrop-blur-md shadow-lg shadow-yellow-500/10">
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-transparent pointer-events-none" />
+              <div className="relative flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-yellow-400">🏆 1st Place</p>
+                  <p className="mt-3 text-3xl font-bold text-white">{top3[0].studentName}</p>
+                  <p className="mt-1 text-lg font-bold text-yellow-400">{top3[0].points} points</p>
+                  <p className="mt-1 text-sm text-gray-400">{top3[0].coursesCompleted} course{top3[0].coursesCompleted !== 1 ? 's' : ''} completed</p>
+                </div>
+                <div className="text-6xl drop-shadow-lg">🥇</div>
+              </div>
             </div>
-            <div className="text-7xl drop-shadow-lg">🥇</div>
+          )}
+
+          {/* 2nd & 3rd Place Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {top3[1] && (
+              <div className="relative overflow-hidden rounded-xl border border-gray-400/30 bg-gradient-to-br from-gray-400/10 to-gray-500/5 p-5 backdrop-blur-md shadow-lg shadow-gray-400/10">
+                <div className="relative">
+                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400">🥈 2nd Place</p>
+                  <p className="mt-2 text-xl font-bold text-white">{top3[1].studentName}</p>
+                  <p className="mt-1 text-base font-bold text-gray-400">{top3[1].points} points</p>
+                  <p className="mt-1 text-xs text-gray-500">{top3[1].coursesCompleted} course{top3[1].coursesCompleted !== 1 ? 's' : ''} completed</p>
+                </div>
+              </div>
+            )}
+            {top3[2] && (
+              <div className="relative overflow-hidden rounded-xl border border-orange-400/30 bg-gradient-to-br from-orange-400/10 to-orange-500/5 p-5 backdrop-blur-md shadow-lg shadow-orange-400/10">
+                <div className="relative">
+                  <p className="text-xs font-bold uppercase tracking-wider text-orange-400">🥉 3rd Place</p>
+                  <p className="mt-2 text-xl font-bold text-white">{top3[2].studentName}</p>
+                  <p className="mt-1 text-base font-bold text-orange-400">{top3[2].points} points</p>
+                  <p className="mt-1 text-xs text-gray-500">{top3[2].coursesCompleted} course{top3[2].coursesCompleted !== 1 ? 's' : ''} completed</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -135,7 +169,13 @@ export default function LeaderboardPage() {
         <p className="text-sm text-gray-400">
           Showing {filteredLeaderboard.length} of {mockLeaderboard.length} students
         </p>
-        <AdminTable columns={leaderboardColumns} data={filteredLeaderboard} />
+        {restLeaderboard.length > 0 ? (
+          <AdminTable columns={leaderboardColumns} data={restLeaderboard} />
+        ) : (
+          <div className="rounded-lg border border-gray-700 p-8 text-center">
+            <p className="text-gray-400">No more students in leaderboard</p>
+          </div>
+        )}
       </div>
 
       {/* Reset Modal */}

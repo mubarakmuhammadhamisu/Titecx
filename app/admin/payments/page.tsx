@@ -4,13 +4,16 @@ import React, { useState, useMemo } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { mockPayments, Payment } from '@/components/admin/mock-data';
-import { CheckCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [verifying, setVerifying] = useState<string | null>(null);
+  const [verifyResult, setVerifyResult] = useState<{ id: string; success: boolean } | null>(null);
 
   const filteredPayments = useMemo(() => {
     return mockPayments.filter((payment) => {
@@ -19,17 +22,19 @@ export default function PaymentsPage() {
         payment.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.courseName.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === '' || payment.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const paymentDate = new Date(payment.date);
+      const matchesFrom = !dateFrom || paymentDate >= new Date(dateFrom);
+      const matchesTo = !dateTo || paymentDate <= new Date(dateTo);
+      return matchesSearch && matchesStatus && matchesFrom && matchesTo;
     });
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, dateFrom, dateTo]);
 
   const handleVerifyPayment = (paymentId: string) => {
     setVerifying(paymentId);
     setTimeout(() => {
-      alert(
-        'Verified: Payment verification simulated. In real backend, this would call Paystack API.'
-      );
       setVerifying(null);
+      setVerifyResult({ id: paymentId, success: true });
+      setTimeout(() => setVerifyResult(null), 3000);
     }, 1500);
   };
 
@@ -147,11 +152,101 @@ export default function PaymentsPage() {
         placeholder="Search by reference, student, or course..."
       />
 
+      <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-lg border border-indigo-500/20 bg-gray-900/50">
+        <span className="text-xs text-gray-400 font-medium">Date range:</span>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500">From</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-1.5 text-sm text-white outline-none focus:border-indigo-500/60"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500">To</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            className="rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-1.5 text-sm text-white outline-none focus:border-indigo-500/60"
+          />
+        </div>
+        {(dateFrom || dateTo) && (
+          <button
+            onClick={() => { setDateFrom(''); setDateTo(''); }}
+            className="text-xs text-gray-500 hover:text-gray-300 transition flex items-center gap-1"
+          >
+            <X size={12} /> Clear dates
+          </button>
+        )}
+      </div>
+
       <div className="space-y-4">
         <p className="text-sm text-gray-400">
           Showing {filteredPayments.length} of {mockPayments.length} payments
         </p>
-        <AdminTable columns={paymentColumns} data={filteredPayments} />
+        
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <AdminTable columns={paymentColumns} data={filteredPayments} />
+        </div>
+
+        {/* Mobile Grid Cards */}
+        <div className="md:hidden space-y-3">
+          {filteredPayments.length > 0 ? (
+            filteredPayments.map((payment) => (
+              <div key={payment.id} className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-4 backdrop-blur-sm">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="text-base font-bold text-white">{payment.studentName}</p>
+                    <p className="text-xs text-gray-500">{payment.courseName}</p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                    payment.status === 'success'
+                      ? 'bg-green-500/10 text-green-400'
+                      : payment.status === 'pending'
+                        ? 'bg-yellow-500/10 text-yellow-400'
+                        : 'bg-red-500/10 text-red-400'
+                  }`}>
+                    <CheckCircle size={12} />
+                    {String(payment.status).charAt(0).toUpperCase() + String(payment.status).slice(1)}
+                  </span>
+                </div>
+
+                {/* Body - Key/Value pairs */}
+                <div className="space-y-2 mb-4 text-sm border-t border-indigo-500/10 pt-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Amount</span>
+                    <span className="font-semibold text-indigo-400">₦{payment.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Reference</span>
+                    <span className="font-mono text-xs text-gray-300">{payment.reference}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Date</span>
+                    <span className="font-semibold text-gray-300">{format(new Date(payment.date), 'MMM d, yyyy')}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <button
+                  onClick={() => handleVerifyPayment(payment.id)}
+                  disabled={verifying === payment.id}
+                  className="w-full text-xs py-2 rounded-lg border border-indigo-500/30 text-indigo-400 hover:border-indigo-500/60 hover:bg-indigo-500/10 transition disabled:opacity-50"
+                >
+                  {verifying === payment.id ? 'Verifying...' : 'Verify Payment'}
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-lg border border-gray-700 p-8 text-center">
+              <p className="text-gray-400">No payments found</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 backdrop-blur-sm">
@@ -163,6 +258,13 @@ export default function PaymentsPage() {
           </p>
         </div>
       </div>
+
+      {verifyResult && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shadow-xl backdrop-blur-md">
+          <CheckCircle size={18} />
+          <span className="text-sm font-medium">Payment verified successfully (mock)</span>
+        </div>
+      )}
     </div>
   );
 }

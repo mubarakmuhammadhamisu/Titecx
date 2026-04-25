@@ -1,16 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Mail, Calendar, Award } from 'lucide-react';
+import { ArrowLeft, Mail, Calendar, Award, Ban, CheckCircle, Trash2 } from 'lucide-react';
 import {
   mockStudents,
   mockEnrollments,
   mockPayments,
   Enrollment,
   Payment,
+  Student,
 } from '@/components/admin/mock-data';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
+import { Modal } from '@/components/admin/shared/Modal';
 import { format } from 'date-fns';
 
 export default function StudentDetailPage() {
@@ -18,7 +20,21 @@ export default function StudentDetailPage() {
   const params = useParams();
   const studentId = params.id as string;
 
-  const student = mockStudents.find((s) => s.id === studentId);
+  const [student, setStudent] = useState<Student | null>(
+    mockStudents.find((s) => s.id === studentId) ?? null
+  );
+  const [banTarget, setBanTarget] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+  const handleToggleBan = () => {
+    setStudent(prev => prev ? { ...prev, isBanned: !prev.isBanned } : null);
+    setBanTarget(false);
+  };
+
+  const handleDelete = () => {
+    router.replace('/admin/students');
+  };
+
   const studentEnrollments = mockEnrollments.filter(
     (e) => e.studentId === studentId
   );
@@ -129,27 +145,26 @@ export default function StudentDetailPage() {
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row gap-8 items-start">
             {/* Profile Picture */}
-            <div className="flex-shrink-0">
-              <div className="h-32 w-32 rounded-2xl bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center border-2 border-indigo-500/30 overflow-hidden">
-                <img
-                  src="https://api.placeholder.com/128/128?text=PROFILE"
-                  alt={student.name}
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <Award size={40} className="text-indigo-400 mx-auto mb-2" />
-                    <p className="text-xs text-gray-400">Profile</p>
-                  </div>
-                </div>
+            <div className="relative h-32 w-32 shrink-0">
+              {/* Glow halo */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-pink-500/50 to-indigo-500/40 blur-[12px] opacity-60" />
+              {/* Circle avatar */}
+              <div className="relative h-32 w-32 rounded-full bg-gradient-to-br from-indigo-500/40 to-purple-500/30 flex items-center justify-center border-2 border-pink-400/40 ring-2 ring-pink-500/20 overflow-hidden">
+                {/* Show initials — when backend is connected, swap this for a real avatar_url */}
+                <span className="text-4xl font-bold text-white">
+                  {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                </span>
               </div>
             </div>
 
             {/* Student Info */}
             <div className="flex-1">
+              {student.isBanned && (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 mb-4">
+                  <Ban size={14} className="text-red-400" />
+                  <span className="text-sm text-red-400 font-medium">This account is currently banned</span>
+                </div>
+              )}
               <h1 className="text-4xl font-bold text-white">{student.name}</h1>
               <div className="mt-4 flex flex-wrap gap-4 text-gray-400">
                 <div className="flex items-center gap-2">
@@ -166,6 +181,26 @@ export default function StudentDetailPage() {
                   <Award size={18} className="text-indigo-400" />
                   <span>{completedCourses} courses completed</span>
                 </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => setBanTarget(true)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                    student.isBanned
+                      ? 'border-emerald-500/30 text-emerald-400 hover:border-emerald-500/60 hover:bg-emerald-500/10'
+                      : 'border-amber-500/30 text-amber-400 hover:border-amber-500/60 hover:bg-amber-500/10'
+                  }`}
+                >
+                  {student.isBanned ? <><CheckCircle size={15} /> Unban Student</> : <><Ban size={15} /> Ban Student</>}
+                </button>
+                <button
+                  onClick={() => setDeleteConfirm(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 text-sm font-medium transition"
+                >
+                  <Trash2 size={15} /> Delete Student
+                </button>
               </div>
             </div>
           </div>
@@ -216,6 +251,49 @@ export default function StudentDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Ban Modal */}
+      {student && (
+        <Modal
+          isOpen={banTarget}
+          onClose={() => setBanTarget(false)}
+          title={student.isBanned ? 'Unban Student' : 'Ban Student'}
+          footer={
+            <>
+              <button onClick={() => setBanTarget(false)} className="flex-1 rounded-lg border border-gray-600 px-4 py-2 text-gray-300 hover:bg-gray-800 transition">Cancel</button>
+              <button onClick={handleToggleBan} className={`flex-1 rounded-lg px-4 py-2 font-medium text-white transition ${student.isBanned ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700'}`}>
+                {student.isBanned ? 'Yes, Unban' : 'Yes, Ban'}
+              </button>
+            </>
+          }
+        >
+          <p className="text-gray-300 text-sm">
+            {student.isBanned
+              ? <>Unban <span className="font-bold text-white">{student.name}</span>? They will regain platform access.</>
+              : <>Ban <span className="font-bold text-white">{student.name}</span>? They will lose platform access immediately.</>
+            }
+          </p>
+        </Modal>
+      )}
+
+      {/* Delete Modal */}
+      {student && (
+        <Modal
+          isOpen={deleteConfirm}
+          onClose={() => setDeleteConfirm(false)}
+          title="Delete Student"
+          footer={
+            <>
+              <button onClick={() => setDeleteConfirm(false)} className="flex-1 rounded-lg border border-gray-600 px-4 py-2 text-gray-300 hover:bg-gray-800 transition">Cancel</button>
+              <button onClick={handleDelete} className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 font-medium text-white transition">Delete</button>
+            </>
+          }
+        >
+          <p className="text-gray-300 text-sm">
+            Permanently delete <span className="font-bold text-white">{student.name}</span>? All their data will be removed.
+          </p>
+        </Modal>
+      )}
     </div>
   );
 }

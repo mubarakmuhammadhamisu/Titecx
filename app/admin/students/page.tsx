@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
-import { mockStudents, Student } from '@/components/admin/mock-data';
+import { mockStudents, mockEnrollments, Student } from '@/components/admin/mock-data';
 import { useRouter } from 'next/navigation';
 import { User, Trash2, Ban, CheckCircle } from 'lucide-react';
 
@@ -12,17 +12,38 @@ export default function StudentsPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [banFilter, setBanFilter] = useState<'all' | 'active' | 'banned' | 'inactive'>('all');
   const [students, setStudents] = useState<Student[]>(mockStudents);
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
   const [banTarget, setBanTarget] = useState<Student | null>(null);
 
+  // Helper: Check if student is inactive (not logged in for 30+ days OR 0% progress across all courses)
+  const isInactiveStudent = (student: Student): boolean => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const lastLoginDate = new Date(student.lastLogin);
+    
+    // Get enrollments for this student to check progress
+    const studentEnrollments = mockEnrollments.filter(e => e.studentId === student.id);
+    const hasZeroProgress = studentEnrollments.length > 0 && studentEnrollments.every(e => e.progress === 0);
+    
+    // Inactive if: (1) no login for 30+ days OR (2) has enrollments but all at 0%
+    return lastLoginDate < thirtyDaysAgo || (studentEnrollments.length > 0 && hasZeroProgress);
+  };
+
   const filteredStudents = useMemo(() => {
-    return students.filter(
-      (student) =>
+    return students.filter((student) => {
+      const matchesSearch =
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [students, searchTerm]);
+        student.email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesBan =
+        banFilter === 'all' ? true :
+        banFilter === 'banned' ? student.isBanned :
+        banFilter === 'inactive' ? isInactiveStudent(student) :
+        !student.isBanned && !isInactiveStudent(student); // active = not banned AND not inactive
+      return matchesSearch && matchesBan;
+    });
+  }, [students, searchTerm, banFilter]);
 
   const studentColumns: Column<Student>[] = [
     {
@@ -124,9 +145,31 @@ export default function StudentsPage() {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-400">
-            Showing {filteredStudents.length} of {students.length} students
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-gray-400">
+              Showing {filteredStudents.length} of {students.length} students
+            </p>
+            {/* Ban status filter pills */}
+            <div className="flex gap-1.5 flex-wrap">
+              {(['all', 'active', 'banned', 'inactive'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setBanFilter(f)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                    banFilter === f
+                      ? f === 'banned'
+                        ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                        : f === 'inactive'
+                          ? 'bg-orange-500/20 border-orange-500/50 text-orange-400'
+                          : 'bg-indigo-500/30 border-indigo-500/50 text-indigo-200'
+                      : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-indigo-500/30'
+                  }`}
+                >
+                  {f === 'inactive' ? 'Inactive' : f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('table')}

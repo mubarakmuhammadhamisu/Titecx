@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import {
   ToggleLeft, ToggleRight, BookOpen, Plus, Trash2,
   ArrowLeft, Save, Eye, EyeOff, GripVertical,
-  Video, FileText, HelpCircle, X, ChevronDown, ChevronUp, Check,
+  Video, FileText, HelpCircle, X, ChevronDown, ChevronUp, Check, Pencil,
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 

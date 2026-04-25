@@ -10,11 +10,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // For now, we allow all authenticated users. In real backend:
-  // Check if user.role === 'admin' and redirect to 403 if not
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (isLoading) return;
+    if (!user) {
       router.replace('/login?redirect=/admin');
+      return;
+    }
+    if (user.role !== 'admin') {
+      // Authenticated but not admin — send back to their dashboard
+      router.replace('/dashboard');
     }
   }, [user, isLoading, router]);
 
@@ -29,7 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!user) return null;
+  if (!user || user.role !== 'admin') return null;
 
   return (
     <div className="min-h-screen bg-gray-950">

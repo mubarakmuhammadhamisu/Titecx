@@ -5,14 +5,16 @@ import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
 import { mockCoupons, Coupon } from '@/components/admin/mock-data';
-import { Plus, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Trash2, Pencil } from 'lucide-react';
 
 export default function CouponsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [coupons, setCoupons] = useState<Coupon[]>(mockCoupons);
   const [deleteTarget, setDeleteTarget] = useState<Coupon | null>(null);
+  const [editTarget, setEditTarget] = useState<Coupon | null>(null);
   const [toggledCoupons, setToggledCoupons] = useState<{ [key: string]: boolean }>({});
+  const [createError, setCreateError] = useState('');
   const [formData, setFormData] = useState({
     code: '',
     discount: '',
@@ -41,12 +43,36 @@ export default function CouponsPage() {
 
   const handleCreateCoupon = () => {
     if (!formData.code || !formData.discount || !formData.maxUses) {
-      alert('Please fill in all fields');
+      setCreateError('Please fill in all required fields.');
       return;
     }
-    alert(
-      `Coupon "${formData.code}" created with ${formData.discount}% discount! (Mock: not saved)`
-    );
+    setCreateError('');
+
+    if (editTarget) {
+      // EDIT MODE
+      setCoupons(prev => prev.map(c => c.id === editTarget.id ? {
+        ...c,
+        code: formData.code.toUpperCase(),
+        discountPercentage: Number(formData.discount),
+        maxUses: Number(formData.maxUses),
+        expiryDate: formData.expiryDate || c.expiryDate,
+      } : c));
+      setEditTarget(null);
+    } else {
+      // CREATE MODE
+      const newCoupon: Coupon = {
+        id: `new-${Date.now()}`,
+        code: formData.code.toUpperCase(),
+        discountPercentage: Number(formData.discount),
+        timesUsed: 0,
+        maxUses: Number(formData.maxUses),
+        expiryDate: formData.expiryDate || '2099-12-31',
+        active: true,
+        createdDate: new Date().toISOString().split('T')[0],
+      };
+      setCoupons(prev => [newCoupon, ...prev]);
+    }
+
     setFormData({ code: '', discount: '', maxUses: '', expiryDate: '' });
     setIsModalOpen(false);
   };
@@ -110,13 +136,29 @@ export default function CouponsPage() {
       key: 'id',
       label: 'Actions',
       render: (_, coupon) => (
-        <button
-          onClick={(e) => { e.stopPropagation(); setDeleteTarget(coupon); }}
-          className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
-        >
-          <Trash2 size={13} />
-          Delete
-        </button>
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => {
+              setEditTarget(coupon);
+              setFormData({
+                code: coupon.code,
+                discount: String(coupon.discountPercentage),
+                maxUses: String(coupon.maxUses),
+                expiryDate: coupon.expiryDate,
+              });
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-indigo-500/30 text-indigo-400 hover:border-indigo-500/60 hover:bg-indigo-500/10 transition"
+          >
+            <Pencil size={13} /> Edit
+          </button>
+          <button
+            onClick={() => setDeleteTarget(coupon)}
+            className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
+          >
+            <Trash2 size={13} /> Delete
+          </button>
+        </div>
       ),
     },
   ];
@@ -131,7 +173,7 @@ export default function CouponsPage() {
           </p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => { setEditTarget(null); setFormData({ code: '', discount: '', maxUses: '', expiryDate: '' }); setIsModalOpen(true); }}
           className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 shadow-lg shadow-indigo-500/30"
         >
           <Plus size={18} />
@@ -149,84 +191,142 @@ export default function CouponsPage() {
         <p className="text-sm text-gray-400">
           Showing {filteredCoupons.length} of {coupons.length} coupons
         </p>
-        <AdminTable columns={couponColumns} data={filteredCoupons} />
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <AdminTable columns={couponColumns} data={filteredCoupons} />
+        </div>
+
+        {/* Mobile Grid Cards */}
+        <div className="md:hidden space-y-3">
+          {filteredCoupons.length > 0 ? (
+            filteredCoupons.map((coupon) => {
+              const isActive = toggledCoupons[coupon.id] !== undefined ? toggledCoupons[coupon.id] : coupon.active;
+              return (
+                <div key={coupon.id} className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-4 backdrop-blur-sm">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-lg font-bold text-white">{coupon.code}</p>
+                      <p className="text-xs text-gray-500">Created {new Date(coupon.createdDate).toLocaleDateString()}</p>
+                    </div>
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-600/20 text-gray-400'}`}>
+                      {isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+
+                  {/* Body - Key/Value pairs */}
+                  <div className="space-y-2 mb-4 text-sm border-t border-indigo-500/10 pt-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Discount</span>
+                      <span className="font-semibold text-indigo-400">{coupon.discountPercentage}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Used / Max</span>
+                      <span className="font-semibold text-gray-300">{coupon.timesUsed} / {coupon.maxUses}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Expires</span>
+                      <span className="font-semibold text-gray-300">{new Date(coupon.expiryDate).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditTarget(coupon);
+                        setFormData({
+                          code: coupon.code,
+                          discount: String(coupon.discountPercentage),
+                          maxUses: String(coupon.maxUses),
+                          expiryDate: coupon.expiryDate,
+                        });
+                        setIsModalOpen(true);
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1 text-xs px-3 py-2 rounded-lg border border-indigo-500/30 text-indigo-400 hover:border-indigo-500/60 hover:bg-indigo-500/10 transition"
+                    >
+                      <Pencil size={13} /> Edit
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(coupon)}
+                      className="flex-1 flex items-center justify-center gap-1 text-xs px-3 py-2 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
+                    >
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="rounded-lg border border-gray-700 p-8 text-center">
+              <p className="text-gray-400">No coupons found</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Create Coupon Modal */}
+      {/* Create/Edit Coupon Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Create New Coupon"
+        onClose={() => { setIsModalOpen(false); setEditTarget(null); setFormData({ code: '', discount: '', maxUses: '', expiryDate: '' }); setCreateError(''); }}
+        title={editTarget ? 'Edit Coupon' : 'Create New Coupon'}
         footer={
           <>
             <button
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => { setIsModalOpen(false); setEditTarget(null); setFormData({ code: '', discount: '', maxUses: '', expiryDate: '' }); setCreateError(''); }}
               className="flex-1 rounded-lg border border-gray-600 px-4 py-2 font-medium text-gray-300 hover:bg-gray-800 transition"
             >
               Cancel
             </button>
             <button
               onClick={handleCreateCoupon}
-              className="flex-1 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300"
+              className="flex-1 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition"
             >
-              Create
+              {editTarget ? 'Save Changes' : 'Create'}
             </button>
           </>
         }
       >
+        {createError && (
+          <p className="text-sm text-red-400 mb-4">{createError}</p>
+        )}
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Coupon Code
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Code</label>
             <input
               type="text"
               value={formData.code}
-              onChange={(e) =>
-                setFormData({ ...formData, code: e.target.value.toUpperCase() })
-              }
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
               placeholder="e.g., SAVE20"
-              className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white placeholder:text-gray-500 outline-none focus:border-indigo-500/60"
+              className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white outline-none focus:border-indigo-500/60"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Discount %
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Discount %</label>
             <input
               type="number"
               value={formData.discount}
-              onChange={(e) =>
-                setFormData({ ...formData, discount: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
               placeholder="e.g., 20"
-              className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white placeholder:text-gray-500 outline-none focus:border-indigo-500/60"
+              className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white outline-none focus:border-indigo-500/60"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Max Uses
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Max Uses</label>
             <input
               type="number"
               value={formData.maxUses}
-              onChange={(e) =>
-                setFormData({ ...formData, maxUses: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, maxUses: e.target.value })}
               placeholder="e.g., 100"
-              className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white placeholder:text-gray-500 outline-none focus:border-indigo-500/60"
+              className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white outline-none focus:border-indigo-500/60"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Expiry Date
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Expiry Date (Optional)</label>
             <input
               type="date"
               value={formData.expiryDate}
-              onChange={(e) =>
-                setFormData({ ...formData, expiryDate: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
               className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white outline-none focus:border-indigo-500/60"
             />
           </div>
