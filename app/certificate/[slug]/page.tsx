@@ -20,7 +20,7 @@ import Navbar from '@/components/ui/Navbar';
 import Footer from '@/components/ui/Footer';
 import CopyLinkButton from '@/components/ui/CopyLinkButton';
 import { getCourseBySlug } from '@/lib/courses';
-import { Award, CheckCircle2, Shield, Hash } from 'lucide-react';
+import { Award, CheckCircle2, Shield, Hash, Package, Trophy } from 'lucide-react';
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -48,6 +48,7 @@ export default async function CertificatePage({ params }: PageProps) {
   // enrollments and profiles tables doesn't block the join.
   let studentName: string | null = null;
   let verificationId: string | null = null;
+  let isPremium = false;
 
   if (user) {
     const adminClient = createClient(
@@ -60,7 +61,7 @@ export default async function CertificatePage({ params }: PageProps) {
     // between enrollments.user_id → profiles.id.
     const { data: enrollment } = await adminClient
       .from('enrollments')
-      .select('id, progress, completed_at, profiles(name)')
+      .select('id, progress, completed_at, purchase_type, profiles(name)')
       .eq('user_id', user.id)
       .eq('course_slug', slug)
       .maybeSingle();
@@ -70,11 +71,10 @@ export default async function CertificatePage({ params }: PageProps) {
       (enrollment.progress >= 100 || enrollment.completed_at);
 
     if (isCompleted) {
-      // Verification ID = first 8 chars of the DB UUID, uppercased.
       verificationId = enrollment.id.slice(0, 8).toUpperCase();
-      // The join returns profiles as an object; cast because nested select types are broad.
       const profileData = enrollment.profiles as { name?: string } | null;
       studentName = profileData?.name ?? null;
+      isPremium = enrollment.purchase_type === 'premium';
     }
   }
 
@@ -86,23 +86,36 @@ export default async function CertificatePage({ params }: PageProps) {
 
         {/* Verification badge */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          <Shield size={16} className="text-emerald-400" />
-          <span className="text-emerald-400 text-sm font-medium tracking-wide uppercase">
-            Verified Certificate
+          <Shield size={16} className={isPremium ? 'text-pink-400' : 'text-emerald-400'} />
+          <span className={`text-sm font-medium tracking-wide uppercase ${isPremium ? 'text-pink-400' : 'text-emerald-400'}`}>
+            {isPremium ? 'Premium Certificate' : 'Verified Certificate'}
           </span>
         </div>
 
         {/* Certificate card */}
-        <div className="relative rounded-3xl border-2 border-indigo-500/40 bg-gray-900
-                        shadow-[0_0_60px_rgba(99,102,241,0.15)] overflow-hidden">
+        <div className={`relative rounded-3xl border-2 bg-gray-900 overflow-hidden ${
+          isPremium
+            ? 'border-pink-500/50 shadow-[0_0_80px_rgba(236,72,153,0.20)]'
+            : 'border-indigo-500/40 shadow-[0_0_60px_rgba(99,102,241,0.15)]'
+        }`}>
 
           {/* Top accent bar */}
-          <div className="h-2 bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-500" />
+          <div className={`h-2 ${isPremium ? 'bg-gradient-to-r from-pink-500 via-fuchsia-500 to-pink-500' : 'bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-500'}`} />
 
           <div className="px-8 py-12 text-center space-y-6">
 
+            {/* Premium exclusive badge */}
+            {isPremium && (
+              <div className="flex items-center justify-center gap-2">
+                <span className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500/20 to-fuchsia-500/20 border border-pink-500/40 text-pink-300 text-xs font-bold px-4 py-1.5 rounded-full">
+                  <Trophy size={12} />
+                  Premium Completion — Challenge Completed
+                </span>
+              </div>
+            )}
+
             {/* Issuer */}
-            <p className="text-xs font-bold text-indigo-400 tracking-[0.25em] uppercase">
+            <p className={`text-xs font-bold tracking-[0.25em] uppercase ${isPremium ? 'text-pink-400' : 'text-indigo-400'}`}>
               TITECX Academy
             </p>
 
@@ -112,24 +125,24 @@ export default async function CertificatePage({ params }: PageProps) {
               <p className="text-gray-400 text-sm">This certifies successful completion of</p>
             </div>
 
-            {/* Course title — the centrepiece */}
+            {/* Course title */}
             <h1 className="text-3xl md:text-4xl font-extrabold text-white leading-tight">
               {course.title}
             </h1>
 
-            {/* Student name — only shown when the logged-in viewer owns this cert */}
+            {/* Student name */}
             {studentName && (
               <div className="space-y-1">
                 <p className="text-gray-400 text-sm">Awarded to</p>
-                <p className="text-2xl font-bold text-indigo-300">{studentName}</p>
+                <p className={`text-2xl font-bold ${isPremium ? 'text-pink-300' : 'text-indigo-300'}`}>{studentName}</p>
               </div>
             )}
 
             {/* Divider */}
             <div className="flex items-center gap-4 justify-center">
-              <div className="h-px flex-1 bg-indigo-500/20" />
-              <Award size={24} className="text-indigo-400" />
-              <div className="h-px flex-1 bg-indigo-500/20" />
+              <div className={`h-px flex-1 ${isPremium ? 'bg-pink-500/20' : 'bg-indigo-500/20'}`} />
+              <Award size={24} className={isPremium ? 'text-pink-400' : 'text-indigo-400'} />
+              <div className={`h-px flex-1 ${isPremium ? 'bg-pink-500/20' : 'bg-indigo-500/20'}`} />
             </div>
 
             {/* Course details */}
@@ -148,27 +161,40 @@ export default async function CertificatePage({ params }: PageProps) {
 
             {/* Verified checkmark */}
             <div className="flex items-center justify-center gap-2 pt-2">
-              <CheckCircle2 size={18} className="text-emerald-400" />
-              <span className="text-sm text-emerald-400 font-medium">
+              <CheckCircle2 size={18} className={isPremium ? 'text-pink-400' : 'text-emerald-400'} />
+              <span className={`text-sm font-medium ${isPremium ? 'text-pink-400' : 'text-emerald-400'}`}>
                 Issued by TITECX · {(process.env.NEXT_PUBLIC_APP_URL ?? 'titecx-mb.vercel.app').replace(/^https?:\/\//, '')}
               </span>
             </div>
 
-            {/* Verification ID — only shown when the viewer owns this cert */}
+            {/* Premium physical reward note */}
+            {isPremium && verificationId && (
+              <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-pink-500/10 border border-pink-500/20 mx-auto max-w-sm">
+                <Package size={14} className="text-pink-400 shrink-0" />
+                <span className="text-xs text-pink-200">
+                  Your printed certificate & mystery box are being processed.
+                </span>
+              </div>
+            )}
+
+            {/* Verification ID */}
             {verificationId && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg
-                              bg-indigo-500/10 border border-indigo-500/20 mx-auto">
-                <Hash size={14} className="text-indigo-400 shrink-0" />
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg mx-auto border ${
+                isPremium
+                  ? 'bg-pink-500/10 border-pink-500/20'
+                  : 'bg-indigo-500/10 border-indigo-500/20'
+              }`}>
+                <Hash size={14} className={isPremium ? 'text-pink-400 shrink-0' : 'text-indigo-400 shrink-0'} />
                 <span className="text-xs text-gray-400 font-mono">
                   Verification ID:{' '}
-                  <span className="text-indigo-300 font-bold">{verificationId}</span>
+                  <span className={`font-bold ${isPremium ? 'text-pink-300' : 'text-indigo-300'}`}>{verificationId}</span>
                 </span>
               </div>
             )}
           </div>
 
           {/* Bottom accent bar */}
-          <div className="h-1 bg-linear-to-r from-indigo-500/0 via-indigo-500/40 to-indigo-500/0" />
+          <div className={`h-1 ${isPremium ? 'bg-gradient-to-r from-pink-500/0 via-pink-500/40 to-pink-500/0' : 'bg-linear-to-r from-indigo-500/0 via-indigo-500/40 to-indigo-500/0'}`} />
         </div>
 
         {/* Actions */}

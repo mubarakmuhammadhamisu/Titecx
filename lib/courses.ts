@@ -21,6 +21,10 @@ interface CourseRow {
   curriculum: string[];
   modules: Module[];
   is_published: boolean;
+  // 1. Add these fields to the interface
+  premium_price: string;
+  premium_deadline_days: number;
+  premium_perks: string[];
 }
 
 function rowToCourse(row: CourseRow): CourseSchema {
@@ -37,9 +41,13 @@ function rowToCourse(row: CourseRow): CourseSchema {
     thumbnail:        row.thumbnail,
     gradientFrom:     row.gradient_from,
     gradientTo:       row.gradient_to,
-    features:         Array.isArray(row.features)  ? row.features  : [],
+    features:         Array.isArray(row.features)   ? row.features   : [],
     curriculum:       Array.isArray(row.curriculum) ? row.curriculum : [],
     modules:          Array.isArray(row.modules)    ? row.modules    : [],
+    // 2. Map the database row properties to the schema properties
+    premiumPrice:        row.premium_price,
+    premiumDeadlineDays: row.premium_deadline_days,
+    premiumPerks:        Array.isArray(row.premium_perks) ? row.premium_perks : [],
   };
 }
 

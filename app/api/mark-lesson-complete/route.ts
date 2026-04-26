@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
   // directly. An unauthenticated or unenrolled user cannot reach the writes below.
   const { data: enrollment } = await supabase
     .from('enrollments')
-    .select('id')
+    .select('id, purchase_type, premium_deadline, mystery_box_status')
     .eq('user_id', user.id)
     .eq('course_slug', courseSlug)
     .maybeSingle();
@@ -121,6 +121,8 @@ export async function POST(req: NextRequest) {
       .eq('slug', courseSlug)
       .maybeSingle(),
   ]);
+  
+  let progress = 0; // 1. Declare here so it's accessible outside the block
 
   if (courseData?.modules && Array.isArray(courseData.modules) && courseData.modules.length > 0) {
     const modules = courseData.modules as Array<{ lessons: Array<{ id: string }> }>;
@@ -129,25 +131,42 @@ export async function POST(req: NextRequest) {
     if (totalLessons > 0) {
       const completedIds = new Set((completions ?? []).map((c) => c.lesson_id));
       const completedCount = modules.flatMap((m) => m.lessons).filter((l) => completedIds.has(l.id)).length;
-      const progress = Math.round((completedCount / totalLessons) * 100);
+      
+      progress = Math.round((completedCount / totalLessons) * 100); // 2. Update the variable (no 'const' here)
 
       const { error: progressError } = await supabase
         .from('enrollments')
         .update({
           progress,
           completed_at: progress === 100 ? new Date().toISOString() : null,
+          // ... (rest of your update logic)
         })
         .eq('user_id', user.id)
         .eq('course_slug', courseSlug);
 
       if (progressError) {
-        // Write 1 succeeded — lesson IS saved. Signal partial failure so the
-        // client keeps the checkmark but rolls back the progress bar.
         console.error('[mark-lesson-complete] enrollments update failed:', progressError.message);
         return NextResponse.json({ error: 'progress_failed' });
       }
     }
   }
 
-  return NextResponse.json({ success: true });
+  // 3. Now line 169 can see 'progress'!
+ // const justCompleted = progress === 100;
+  // ... (rest of the response)
+
+  // ── Build response — include mystery box outcome if course just completed ─
+  const justCompleted = progress === 100;
+  const mysteryBoxOutcome =
+    justCompleted && enrollment.purchase_type === 'premium' && enrollment.mystery_box_status === 'pending'
+      ? (enrollment.premium_deadline && new Date(enrollment.premium_deadline) < new Date()
+          ? 'forfeited'
+          : 'earned')
+      : null;
+
+  return NextResponse.json({
+    success: true,
+    ...(justCompleted ? { courseCompleted: true } : {}),
+    ...(mysteryBoxOutcome ? { mysteryBoxStatus: mysteryBoxOutcome } : {}),
+  });
 }

@@ -40,6 +40,9 @@ export interface EnrollmentRow {
   progress: number;        // 0–100, recalculated when lessons complete
   completed_at: string | null;
   enrolled_at: string;
+  purchase_type: 'standard' | 'premium' | 'free';
+  premium_deadline: string | null;
+  mystery_box_status: 'pending' | 'earned' | 'forfeited' | null;
 }
 
 export interface LessonCompletionRow {

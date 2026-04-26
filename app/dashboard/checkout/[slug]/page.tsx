@@ -94,6 +94,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
     [courses, unwrapped.slug]
   );
 
+  // Premium plan selection — only relevant when course.premiumPrice is set
+  const [selectedPlan, setSelectedPlan] = useState<'standard' | 'premium'>('standard');
+
   const [coupon, setCoupon] = useState('');
   const [couponApplied, setCouponApplied] = useState(false);
   const [discountPercent, setDiscountPercent] = useState(0); // real % from DB
@@ -190,8 +193,21 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
 
   // ── Price calculation ────────────────────────────────────────────────────
   const isFree = course.price === 'Free';
-  const rawPrice = course.price.replace(/[^\d]/g, '');
+  const hasPremium = !!course.premiumPrice;
+
+  // Base price depends on which plan is selected
+  const activePriceString = (hasPremium && selectedPlan === 'premium')
+    ? course.premiumPrice!
+    : course.price;
+  const rawPrice = activePriceString.replace(/[^\d]/g, '');
   const numericPrice = rawPrice ? parseInt(rawPrice, 10) : 0;
+
+  // Standard price for display in the plan cards
+  const rawStandardPrice = course.price.replace(/[^\d]/g, '');
+  const numericStandardPrice = rawStandardPrice ? parseInt(rawStandardPrice, 10) : 0;
+  const rawPremiumPrice = (course.premiumPrice ?? '').replace(/[^\d]/g, '');
+  const numericPremiumPrice = rawPremiumPrice ? parseInt(rawPremiumPrice, 10) : 0;
+
   // discountPercent comes from the DB (via /api/validate-coupon) — not hardcoded.
   const discount = couponApplied ? Math.floor(numericPrice * discountPercent / 100) : 0;
   const total = numericPrice - discount;
@@ -284,6 +300,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
       ref,
       metadata: {
         course_slug: course.slug,
+        purchase_type: hasPremium ? selectedPlan : 'standard',
         // Include coupon_code in metadata so the redirect-mode callback
         // (/api/paystack/callback) can validate a discounted payment amount.
         // Never includes sensitive data — just the code string for DB lookup.
@@ -291,6 +308,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
         custom_fields: [
           { display_name: 'Course', variable_name: 'course', value: course.title },
           { display_name: 'Student', variable_name: 'student', value: user.name },
+          { display_name: 'Plan', variable_name: 'plan', value: hasPremium ? selectedPlan : 'standard' },
         ],
       },
 
@@ -305,6 +323,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
         enrollWithTimeout({
           reference: response.reference,
           courseSlug: course.slug,
+          purchaseType: hasPremium ? selectedPlan : 'standard',
           couponCode: couponApplied ? coupon : undefined,
         })
           .then((data) => {
@@ -461,7 +480,105 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
             /* PAID COURSE — Paystack popup */
             <div className="space-y-5">
 
-              {/* What Paystack handles */}
+            {/* PLAN SELECTOR — only shown when course has a premium option */}
+            {hasPremium && (
+              <div className="space-y-3">
+                <h2 className="text-base font-bold text-white">Choose Your Plan</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                  {/* Standard Plan */}
+                  <button
+                    onClick={() => { setSelectedPlan('standard'); setCouponApplied(false); setDiscountPercent(0); setCoupon(''); }}
+                    className={`relative text-left rounded-2xl border-2 p-5 transition-all duration-200 ${
+                      selectedPlan === 'standard'
+                        ? 'border-indigo-500 bg-indigo-500/10'
+                        : 'border-gray-700 bg-gray-900 hover:border-gray-600'
+                    }`}
+                  >
+                    {selectedPlan === 'standard' && (
+                      <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center">
+                        <CheckCircle2 size={13} className="text-white" />
+                      </div>
+                    )}
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Standard</p>
+                    <p className="text-2xl font-extrabold text-white mb-3">
+                      ₦{numericStandardPrice.toLocaleString()}
+                    </p>
+                    <div className="space-y-1.5">
+                      {['Full course access', 'Digital certificate', 'Lifetime access'].map(perk => (
+                        <div key={perk} className="flex items-center gap-2 text-xs text-gray-300">
+                          <CheckCircle2 size={12} className="text-indigo-400 shrink-0" />
+                          {perk}
+                        </div>
+                      ))}
+                    </div>
+                  </button>
+
+                  {/* Premium Plan */}
+                  <button
+                    onClick={() => { setSelectedPlan('premium'); setCouponApplied(false); setDiscountPercent(0); setCoupon(''); }}
+                    className={`relative text-left rounded-2xl border-2 p-5 transition-all duration-200 ${
+                      selectedPlan === 'premium'
+                        ? 'border-pink-500 bg-pink-500/10 shadow-lg shadow-pink-500/15'
+                        : 'border-gray-700 bg-gray-900 hover:border-pink-500/50'
+                    }`}
+                  >
+                    {/* Popular badge */}
+                    <div className="absolute -top-3 left-4">
+                      <span className="bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white text-xs font-bold px-3 py-0.5 rounded-full shadow-md">
+                        🎁 MYSTERY BOX
+                      </span>
+                    </div>
+
+                    {selectedPlan === 'premium' && (
+                      <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
+                        <CheckCircle2 size={13} className="text-white" />
+                      </div>
+                    )}
+
+                    <p className="text-xs font-semibold text-pink-400 uppercase tracking-wide mb-1 mt-1">Premium</p>
+                    <p className="text-2xl font-extrabold text-white mb-1">
+                      ₦{numericPremiumPrice.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-pink-300 mb-3 flex items-center gap-1">
+                      <Clock size={11} />
+                      Complete within {course.premiumDeadlineDays} days
+                    </p>
+
+                    <div className="space-y-1.5">
+                      {(course.premiumPerks.length > 0
+                        ? course.premiumPerks
+                        : [
+                            'Everything in Standard',
+                            'Premium certificate design',
+                            'Printed physical certificate',
+                            'Mystery box delivered to you',
+                            'Free delivery in supported states',
+                          ]
+                      ).map(perk => (
+                        <div key={perk} className="flex items-center gap-2 text-xs text-gray-300">
+                          <CheckCircle2 size={12} className="text-pink-400 shrink-0" />
+                          {perk}
+                        </div>
+                      ))}
+                    </div>
+                  </button>
+                </div>
+
+                {/* Premium deadline info banner */}
+                {selectedPlan === 'premium' && (
+                  <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-pink-500/10 border border-pink-500/20">
+                    <Award size={16} className="text-pink-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-pink-200 leading-relaxed">
+                      Complete the course within <span className="font-bold">{course.premiumDeadlineDays} days</span> of purchase to unlock your mystery box and printed certificate.
+                      If you don't finish in time, you keep the premium certificate design but lose the physical rewards.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* PAYMENT SECTION */}
               <div className="rounded-2xl bg-gray-900 border border-indigo-500/20 p-5 space-y-4">
                 <h2 className="text-base font-bold text-white flex items-center gap-2">
                   <Lock size={15} className="text-indigo-400" />
@@ -555,6 +672,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                     ? 'Processing...'
                     : !paystackReady
                     ? 'Loading payment system...'
+                    : selectedPlan === 'premium'
+                    ? `Pay ₦${total.toLocaleString()} — Premium Plan 🎁`
                     : `Pay ₦${total.toLocaleString()} — Secure Checkout`}
                 </button>
 
@@ -618,7 +737,18 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
           {/* Price breakdown */}
           {!isFree && (
             <div className="rounded-2xl bg-gray-900 border border-indigo-500/20 p-4 space-y-2.5">
-              <h3 className="text-sm font-bold text-white mb-3">Order Summary</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-white">Order Summary</h3>
+                {hasPremium && (
+                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                    selectedPlan === 'premium'
+                      ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30'
+                      : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                  }`}>
+                    {selectedPlan === 'premium' ? '🎁 Premium' : 'Standard'}
+                  </span>
+                )}
+              </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Course Price</span>
                 <span className="text-white">₦{numericPrice.toLocaleString()}</span>
@@ -631,8 +761,16 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
               )}
               <div className="border-t border-indigo-500/20 pt-2.5 flex justify-between items-center">
                 <span className="text-white font-bold">Total</span>
-                <span className="text-2xl font-extrabold text-indigo-400">₦{total.toLocaleString()}</span>
+                <span className={`text-2xl font-extrabold ${selectedPlan === 'premium' ? 'text-pink-400' : 'text-indigo-400'}`}>
+                  ₦{total.toLocaleString()}
+                </span>
               </div>
+              {hasPremium && selectedPlan === 'premium' && (
+                <p className="text-xs text-pink-300 text-center pt-1 flex items-center justify-center gap-1">
+                  <Clock size={11} />
+                  {course.premiumDeadlineDays}-day completion challenge starts after payment
+                </p>
+              )}
             </div>
           )}
 

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import DashboardError from '@/components/ui/DashboardError';
 import GlowCard from '@/components/AppShell/GlowCard';
-import { BookOpen, Clock, Users, ChevronRight, Play, Search, AlertCircle } from 'lucide-react';
+import { BookOpen, Clock, Users, ChevronRight, Play, Search, AlertCircle, Award, Package, Trophy } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 type Filter = 'all' | 'in-progress' | 'completed';
@@ -20,6 +20,14 @@ const PAYSTACK_ERROR_MESSAGES: Record<string, string> = {
   missing_data:          'Payment data was incomplete. Please try enrolling again.',
   enrollment_failed:     'Your payment was received but enrollment failed. Please contact support with your payment reference.',
 };
+
+// Returns days remaining until a deadline ISO string, or null if no deadline
+function daysRemaining(deadline: string | null | undefined): number | null {
+  if (!deadline) return null;
+  const diff = new Date(deadline).getTime() - Date.now();
+  if (diff <= 0) return 0;
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
 
 export default function MyCoursesPage() {
   const { user, enrolledCourses, courses, loadError, isLoading } = useAuth();
@@ -172,6 +180,12 @@ export default function MyCoursesPage() {
                       {course.progress === 100 && (
                         <div className="absolute top-2 right-2 bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">✓ Completed</div>
                       )}
+                      {/* Premium badge on thumbnail */}
+                      {course.purchaseType === 'premium' && course.progress < 100 && (
+                        <div className="absolute top-2 left-2 bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
+                          🎁 Premium
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1 min-w-0 pr-2">
@@ -188,14 +202,54 @@ export default function MyCoursesPage() {
                         <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/25 text-indigo-400 text-xs font-medium">Early Access</span>
                       )}
                     </div>
+
+                    {/* Premium countdown timer */}
+                    {course.purchaseType === 'premium' && course.progress < 100 && course.mysteryBoxStatus === 'pending' && (() => {
+                      const days = daysRemaining(course.premiumDeadline);
+                      if (days === null) return null;
+                      const urgent = days <= 7;
+                      return (
+                        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg mb-3 text-xs font-medium ${
+                          urgent
+                            ? 'bg-red-500/10 border border-red-500/20 text-red-300'
+                            : 'bg-pink-500/10 border border-pink-500/20 text-pink-300'
+                        }`}>
+                          <Clock size={12} className={urgent ? 'text-red-400' : 'text-pink-400'} />
+                          {days === 0
+                            ? '⚠️ Deadline passed — mystery box forfeited'
+                            : `${days} day${days === 1 ? '' : 's'} left to earn mystery box`}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Mystery box status banners */}
+                    {course.mysteryBoxStatus === 'earned' && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-medium">
+                        <Package size={12} className="text-emerald-400" />
+                        🎉 Mystery box earned! Check your email.
+                      </div>
+                    )}
+                    {course.mysteryBoxStatus === 'forfeited' && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3 bg-gray-700/40 border border-gray-600/40 text-gray-400 text-xs">
+                        <Package size={12} />
+                        Mystery box deadline passed
+                      </div>
+                    )}
+
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs">
                         <span className="text-gray-400">Progress</span>
-                        <span className={`font-semibold ${course.progress === 100 ? 'text-emerald-400' : 'text-indigo-400'}`}>{course.progress}%</span>
+                        <span className={`font-semibold ${course.progress === 100 ? 'text-emerald-400' : course.purchaseType === 'premium' ? 'text-pink-400' : 'text-indigo-400'}`}>{course.progress}%</span>
                       </div>
                       <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all ${course.progress === 100 ? 'bg-emerald-500' : 'bg-linear-to-r from-indigo-500 to-purple-500'}`}
+                          className={`h-full rounded-full transition-all ${
+                            course.progress === 100
+                              ? 'bg-emerald-500'
+                              : course.purchaseType === 'premium'
+                              ? 'bg-gradient-to-r from-pink-500 to-fuchsia-500'
+                              : 'bg-linear-to-r from-indigo-500 to-purple-500'
+                          }`}
                           style={{ width: `${course.progress}%` }}
                         />
                       </div>
