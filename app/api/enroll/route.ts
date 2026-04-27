@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
     isFree?: boolean;
     reference?: string;
     couponCode?: string;
+    purchaseType?: 'standard' | 'premium';
   };
   try {
     body = await req.json();
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { courseSlug, isFree, reference, couponCode } = body;
+  const { courseSlug, isFree, reference, couponCode, purchaseType = 'standard' } = body;
 
   if (!courseSlug) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -115,7 +116,14 @@ export async function POST(req: NextRequest) {
 
     const { data: newEnrollment, error } = await supabase
       .from('enrollments')
-      .insert({ user_id: userId, course_slug: courseSlug, progress: 0 })
+      .insert({
+        user_id: userId,
+        course_slug: courseSlug,
+        progress: 0,
+        purchase_type: 'free',
+        premium_deadline: null,
+        mystery_box_status: null,
+      })
       .select('id')
       .single();
 
@@ -269,6 +277,44 @@ export async function POST(req: NextRequest) {
   if (rpcError) {
     console.error('[enroll] Payment+enrollment transaction failed:', rpcError.message);
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
+  }
+
+  // ── Patch enrollment with purchase type and premium deadline ─────────────
+  // The RPC creates the enrollment row but doesn't know about premium tiers.
+  // We update it immediately after. The default purchase_type in the DB is
+  // 'standard' so this is additive — no data is ever in a broken state.
+  const safePurchaseType = purchaseType === 'premium' ? 'premium' : 'standard';
+
+  let premiumDeadline: string | null = null;
+  if (safePurchaseType === 'premium') {
+    // Fetch the course's deadline_days to compute the exact deadline timestamp.
+    const { data: courseForDeadline } = await supabase
+      .from('courses')
+      .select('premium_deadline_days')
+      .eq('slug', paystackData.validatedSlug)
+      .maybeSingle();
+
+    const deadlineDays = courseForDeadline?.premium_deadline_days ?? 60;
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + deadlineDays);
+    premiumDeadline = deadline.toISOString();
+  }
+
+  const { error: patchError } = await supabase
+    .from('enrollments')
+    .update({
+      purchase_type: safePurchaseType,
+      premium_deadline: premiumDeadline,
+      mystery_box_status: safePurchaseType === 'premium' ? 'pending' : null,
+    })
+    .eq('user_id', userId)
+    .eq('course_slug', paystackData.validatedSlug);
+
+  if (patchError) {
+    // Enrollment succeeded — this is non-fatal. Log it but don't fail the response.
+    // The student is enrolled. The purchase_type defaults to 'standard' in DB
+    // so we log for manual correction if this ever fires on a premium purchase.
+    console.error('[enroll] Failed to patch purchase_type on enrollment:', patchError.message);
   }
 
   // ── Return the real DB enrollment ID ─────────────────────────────────────

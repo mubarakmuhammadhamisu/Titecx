@@ -17,6 +17,7 @@ import {
   Trophy,
   Settings,
   LogOut,
+  Package,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import TitecxForgeLogo from '../ui/TitecxForgeLogo';
@@ -28,6 +29,7 @@ const adminNavItems = [
   { href: '/admin/enrollments', label: 'Enrollments', icon: LogIn },
   { href: '/admin/payments', label: 'Payments', icon: CreditCard },
   { href: '/admin/coupons', label: 'Coupons', icon: Ticket },
+  { href: '/admin/mystery-box', label: 'Mystery Box', icon: Package },
   { href: '/admin/leaderboard', label: 'Leaderboard', icon: Trophy },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];

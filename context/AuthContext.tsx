@@ -11,6 +11,7 @@ interface CourseRow {
   description: string; level: string; duration: string; price: string;
   instructor: string; thumbnail: string; gradient_from: string; gradient_to: string;
   features: string[]; curriculum: string[]; modules: Module[]; is_published: boolean;
+  premium_price: string | null; premium_deadline_days: number; premium_perks: string[];
 }
 
 function rowToCourse(row: CourseRow): CourseSchema {
@@ -21,6 +22,9 @@ function rowToCourse(row: CourseRow): CourseSchema {
     instructor: row.instructor, thumbnail: row.thumbnail,
     gradientFrom: row.gradient_from, gradientTo: row.gradient_to,
     features: row.features ?? [], curriculum: row.curriculum ?? [], modules: row.modules ?? [],
+    premiumPrice: row.premium_price ?? null,
+    premiumDeadlineDays: row.premium_deadline_days ?? 60,
+    premiumPerks: row.premium_perks ?? [],
   };
 }
 
@@ -85,6 +89,9 @@ function buildEnrolledCourses(
         students: 0, thumbnail: schema.thumbnail,
         gradientFrom: schema.gradientFrom, gradientTo: schema.gradientTo,
         nextLessonId: nextLesson?.id, completedAt: row.completed_at, enrolledAt: row.enrolled_at,
+        purchaseType: row.purchase_type ?? 'standard',
+        premiumDeadline: row.premium_deadline ?? null,
+        mysteryBoxStatus: row.mystery_box_status ?? null,
       } as EnrolledCourse;
     })
     .filter(Boolean) as EnrolledCourse[];

@@ -72,6 +72,10 @@ export interface CourseSchema {
   features: string[];
   curriculum: string[];
   modules: Module[];
+  // Premium tier — null means this course has no premium option
+  premiumPrice: string | null;
+  premiumDeadlineDays: number;       // days from purchase to complete for mystery box
+  premiumPerks: string[];            // bullet points shown on checkout
 }
 
 export interface EnrolledCourse {
@@ -88,4 +92,8 @@ export interface EnrolledCourse {
   nextLessonId?: string;
   completedAt?: string | null;
   enrolledAt?: string;
+  // Premium tier tracking
+  purchaseType?: 'standard' | 'premium' | 'free';
+  premiumDeadline?: string | null;   // ISO timestamp — null for standard purchases
+  mysteryBoxStatus?: 'pending' | 'earned' | 'forfeited' | null;
 }
