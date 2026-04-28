@@ -69,7 +69,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function buildEnrolledCourses(
   enrollments: EnrollmentRow[],
   completions: LessonCompletionRow[],
-  courseList: CourseSchema[],       // now passed in, not read from a static file
+  courseList: CourseSchema[],
 ): EnrolledCourse[] {
   return enrollments
     .map((row) => {
@@ -103,12 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading]             = useState(true);
-  // Separate from isLoading: true when the data fetch failed for a transient
-  // reason. We do NOT redirect to /login on a transient error — the session
-  // is still valid. We show a "Reload" UI instead.
   const [loadError, setLoadError]             = useState(false);
-  // Non-null when markLessonComplete fails to save to DB.
-  // AppShellLayout renders this as a fixed toast.
   const [progressSaveError, setProgressSaveError] = useState<string | null>(null);
   const clearProgressSaveError = () => setProgressSaveError(null);
   const router = useRouter();
@@ -117,23 +112,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadUserData = useCallback(async (userId: string) => {
     setLoadError(false);
     try {
-      // Fetch all four in one round trip
+      // ── FIX 3: Race the Promise.all against a 15-second hard timeout. ─────
+      // Before this fix, if any of the 4 Supabase queries stalled (connection
+      // pool exhaustion, flaky desktop network), Promise.all never resolved,
+      // loadUserData never returned, and the loading spinner ran forever.
+      // Promise.race ensures we always exit within 15 s — the catch block below
+      // sets loadError=true so the user sees the "Reload" UI instead of a
+      // spinner that never stops.
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 15_000)
+      );
+
       const [
         { data: profile,     error: profileError  },
         { data: enrollments, error: enrollError   },
         { data: completions, error: compError     },
         { data: coursesData, error: coursesError  },
-      ] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('enrollments').select('*').eq('user_id', userId),
-        supabase.from('lesson_completions').select('*').eq('user_id', userId),
-        supabase.from('courses').select('*').eq('is_published', true).order('created_at', { ascending: true }),
+      ] = await Promise.race([
+        Promise.all([
+          supabase.from('profiles').select('*').eq('id', userId).single(),
+          supabase.from('enrollments').select('*').eq('user_id', userId),
+          supabase.from('lesson_completions').select('*').eq('user_id', userId),
+          supabase.from('courses').select('*').eq('is_published', true).order('created_at', { ascending: true }),
+        ]),
+        timeoutPromise,
       ]);
 
       // Profile and courses are critical. A failure here is almost always a
       // transient Supabase/network error — NOT an invalid session.
       // We set loadError=true WITHOUT redirecting to /login.
-      // Invalid sessions are handled by the proxy + AuthGuard via JWT.
       if (profileError || coursesError) {
         console.error(
           '[loadUserData] critical query failed:',
@@ -170,30 +177,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setEnrolledCourses(buildEnrolledCourses(enrollments ?? [], comp, courseList));
 
     } catch (err: unknown) {
-      // Unexpected throw (network failure that threw rather than returning an
-      // error object). Same treatment: set loadError, do not redirect.
-      console.error('[loadUserData] unexpected error:', err);
+      // Catches both unexpected throws AND the 15-second timeout rejection.
+      // Either way: surface the error UI, do not redirect to /login.
+      console.error('[loadUserData] unexpected error or timeout:', err);
       setLoadError(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // setters from useState are stable; supabase is a module-level singleton
 
   useEffect(() => {
-    // getUser() validates the JWT with Supabase's servers on every call.
-    // getSession() only reads from local storage/cookies without server
-    // validation — a stale or tampered token would be accepted as valid.
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (user) {
-        loadedUserIdRef.current = user.id;
-        await loadUserData(user.id);
-      }
-      setIsLoading(false);
-    });
+    // ── FIX 1 & 2: Guaranteed setIsLoading(false) via .finally() ─────────────
+    //
+    // ROOT CAUSE OF THE INFINITE LOADING BUG:
+    //   Before this fix, setIsLoading(false) was ONLY inside .then(). If
+    //   getUser() was blocked or slow (desktop ad-blockers / privacy extensions
+    //   can delay Supabase auth network calls), .then() never ran, and the
+    //   loading spinner ran forever — even if onAuthStateChange had already
+    //   loaded all the data successfully.
+    //
+    // Fix 1: Move setIsLoading(false) into .finally() so it runs regardless
+    //   of whether getUser() succeeds, fails, or throws.
+    //
+    // Fix 2: Also call setIsLoading(false) inside onAuthStateChange when
+    //   there is no session. This covers the fast path where the user is
+    //   not logged in — previously isLoading stayed true until getUser()
+    //   completed its network roundtrip even though we already knew the
+    //   user was absent.
+    supabase.auth.getUser()
+      .then(async ({ data: { user } }) => {
+        if (user) {
+          loadedUserIdRef.current = user.id;
+          await loadUserData(user.id);
+        }
+      })
+      .catch((err) => {
+        // getUser() itself rejected (network error, SDK throw, etc.)
+        console.error('[AuthProvider] session init error:', err);
+        setLoadError(true);
+      })
+      .finally(() => {
+        // Guaranteed to run: resolves the loading state no matter what happened above.
+        setIsLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!session?.user) {
         loadedUserIdRef.current = null;
         setUser(null); setEnrolledCourses([]); setCompletedLessonIds(new Set()); setCourses([]);
+        // FIX 2: Resolve loading on the "not logged in" path so we don't wait
+        // for the getUser() network roundtrip to finish before showing the
+        // login page. onAuthStateChange reads from cookies synchronously and
+        // knows immediately when there is no session.
+        setIsLoading(false);
         return;
       }
       if (loadedUserIdRef.current === session.user.id) return;
@@ -211,9 +246,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const register = async (name: string, email: string, password: string) => {
-    // ── Client-side email format check ────────────────────────────────────
-    // Saves a round-trip to Supabase on slow connections.
-    // Regex requires: non-empty local part @ non-empty domain with a dot.
     const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!EMAIL_RE.test(email.trim())) {
       return { error: 'Please enter a valid email address.' };
@@ -244,7 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const enroll = (slug: string, enrollmentId?: string) => {
     if (!user || enrolledCourses.some((c) => c.slug === slug)) return;
-    const schema = courses.find((c) => c.slug === slug); // reads from context state
+    const schema = courses.find((c) => c.slug === slug);
     if (!schema) return;
     const allLessons = schema.modules.flatMap((m) => m.lessons);
     setEnrolledCourses((prev) => [...prev, {
@@ -257,13 +289,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } as EnrolledCourse]);
   };
 
-  // Ref to hold the active toast auto-dismiss timer.
-  // Using a ref (not state) means clearing/resetting it never triggers a re-render.
-  // Without this, completing two lessons quickly creates two timers — the first
-  // fires 5 s after click 1, dismissing the toast that was set by click 2.
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Show the progress error toast and (re)start a single 5-second dismiss timer.
   const showProgressError = (msg: string) => {
     setProgressSaveError(msg);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -279,14 +306,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const schema = courses.find((c) => c.slug === courseSlug);
 
-    // ── Optimistic update ────────────────────────────────────────────────────
-    // Update the UI immediately so the user gets instant feedback.
-    // We compute the new state once and reuse it across both the optimistic
-    // update and the rollback, avoiding any state drift.
     const optimisticCompleted = new Set([...completedLessonIds, lessonId]);
 
     const optimisticProgress = (() => {
-      if (!schema || schema.modules.length === 0) return null; // cannot compute
+      if (!schema || schema.modules.length === 0) return null;
       const totalLessons = schema.modules.flatMap((m) => m.lessons).length;
       const completedCount = schema.modules
         .flatMap((m) => m.lessons)
@@ -294,7 +317,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
     })();
 
-    // Apply optimistic state — checkmark and progress bar update instantly
     setCompletedLessonIds(optimisticCompleted);
     if (schema && optimisticProgress !== null) {
       setEnrolledCourses((prev) =>
@@ -307,10 +329,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     }
 
-    // ── Server-side write: lesson completion + progress update ──────────────
-    // The API route verifies enrollment, upserts lesson_completions (Write 1),
-    // then recomputes and updates the enrollment progress % (Write 2).
-    // Rollback logic below mirrors the previous two-write error handling exactly.
     let apiResult: { success?: boolean; error?: string } = {};
     try {
       const res = await fetch('/api/mark-lesson-complete', {
@@ -319,7 +337,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ courseSlug, lessonId }),
       });
       apiResult = await res.json().catch(() => ({ error: 'parse_failed' }));
-      // Non-2xx and not a progress_failed (200) → treat as a completion failure
       if (!res.ok && apiResult.error !== 'progress_failed') {
         apiResult = { error: apiResult.error ?? 'completion_failed' };
       }
@@ -328,9 +345,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (apiResult.error === 'progress_failed') {
-      // Write 1 succeeded — lesson IS saved. Keep the checkmark (it's true).
-      // Write 2 failed — the progress % in DB is stale.
-      // Roll back the progress bar only; do NOT remove the checkmark.
       console.error('[markLessonComplete] enrollments update failed (server)');
       if (schema && optimisticProgress !== null) {
         setEnrolledCourses((prev) =>
@@ -353,18 +367,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (apiResult.error) {
-      // Write 1 failed (or network/parse error) — roll back both checkmark and progress bar.
-      // The lesson is NOT saved; the UI must reflect that.
       console.error('[markLessonComplete] lesson_completions write failed:', apiResult.error);
-      setCompletedLessonIds(completedLessonIds); // restore original set
+      setCompletedLessonIds(completedLessonIds);
       if (schema && optimisticProgress !== null) {
         setEnrolledCourses((prev) =>
           prev.map((c) => {
             if (c.slug !== courseSlug) return c;
-            // Restore original nextLessonId using the pre-optimistic completedLessonIds
             const allLessons = schema.modules.flatMap((m) => m.lessons);
             const nextLesson = allLessons.find((l) => !completedLessonIds.has(l.id));
-            // progress is read from the enrollment row — restore using original completed count
             const originalCount = schema.modules
               .flatMap((m) => m.lessons)
               .filter((l) => completedLessonIds.has(l.id)).length;
@@ -384,14 +394,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateProfile = async (data: Partial<Pick<AppUser, 'name' | 'phone' | 'bio' | 'location'>>) => {
     if (!user) return { error: 'Not logged in.' };
-    // Input validation — runs before any Supabase call so invalid data is never written.
-    // Build a sanitized copy — validated and trimmed values replace the originals.
     const sanitized = { ...data };
     if (sanitized.name !== undefined) {
       const trimmedName = sanitized.name.trim();
       if (!trimmedName) return { error: 'Name cannot be empty.' };
       if (trimmedName.length > 100) return { error: 'Name must be 100 characters or fewer.' };
-      sanitized.name = trimmedName; // store the trimmed value, not the raw input
+      sanitized.name = trimmedName;
     }
     if (sanitized.bio !== undefined && sanitized.bio.length > 500) {
       return { error: 'Bio must be 500 characters or fewer.' };
@@ -430,10 +438,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updatePassword = async (currentPassword: string, newPassword: string) => {
-    // Password change is now handled server-side — the API route re-authenticates
-    // the user with their current password before allowing the update.
-    // This prevents an attacker with a hijacked session from changing the password
-    // without knowing the current one.
     const res = await fetch('/api/change-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
@@ -446,10 +450,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = async () => {
     if (!user) return { error: 'Not logged in.' };
-    // All data deletion (lesson_completions, enrollments, payments, profiles)
-    // now happens server-side in /api/delete-account using the service role key.
-    // Previously these ran client-side BEFORE the API confirmed the auth
-    // account was deleted — if the API failed the user's data was already gone.
     const res = await fetch('/api/delete-account', { method: 'POST', headers: { 'x-csrf-protection': '1' } });
     if (!res.ok) return { error: 'Failed to delete account. Please contact support.' };
     await supabase.auth.signOut();
