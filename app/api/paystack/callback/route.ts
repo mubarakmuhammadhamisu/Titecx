@@ -79,9 +79,12 @@ export async function GET(req: NextRequest) {
   const email      = verifyData.data.customer?.email;
   const courseSlug = verifyData.data.metadata?.course_slug as string | undefined;
   const amount     = verifyData.data.amount;
-  // coupon_code is set by the checkout page into Paystack metadata when a
-  // coupon was applied. Only used for amount-floor calculation below.
   const rawCouponCode = verifyData.data.metadata?.coupon_code as string | undefined;
+  // points_applied from metadata — sanitised: must be a non-negative integer
+  const rawPointsApplied = verifyData.data.metadata?.points_applied;
+  const pointsApplied = (typeof rawPointsApplied === 'number' && Number.isInteger(rawPointsApplied) && rawPointsApplied >= 0)
+    ? rawPointsApplied
+    : 0;
 
   if (!email || !courseSlug) {
     console.error('[callback] Missing email or course_slug from verify response');
@@ -230,6 +233,8 @@ export async function GET(req: NextRequest) {
     p_paystack_reference: reference,
     p_amount_kobo:        amount,
     p_status:             'success',
+    p_points_applied:     pointsApplied,
+    p_purchase_type:      'standard',
   });
 
   if (enrollError) {

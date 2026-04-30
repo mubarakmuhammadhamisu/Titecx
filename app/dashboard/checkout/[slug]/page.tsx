@@ -87,7 +87,7 @@ async function enrollWithTimeout(
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
   const unwrapped = use(params);
-  const { user, enroll, courses } = useAuth();
+  const { user, enroll, courses, refreshBalance } = useAuth();
 
   const course = useMemo(
     () => courses.find((c) => c.slug === unwrapped.slug),
@@ -101,6 +101,11 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
   const [couponApplied, setCouponApplied] = useState(false);
   const [discountPercent, setDiscountPercent] = useState(0); // real % from DB
   const [couponError, setCouponError] = useState('');
+  // ── Points state ─────────────────────────────────────────────────────────
+  const [pointsInput, setPointsInput]     = useState('');
+  const [pointsToApply, setPointsToApply] = useState(0);
+  const [pointsError, setPointsError]     = useState('');
+  const [pointsEnabled, setPointsEnabled] = useState(true); // server-driven
   const [agreed, setAgreed] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [done, setDone] = useState(false);
@@ -116,6 +121,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
   // Native alert() is blocking, unstyled, and on Android looks like a scam popup.
   const [paymentError, setPaymentError] = useState('');
 
+  // ── Price calculation (moved here to avoid dependency array issues) ────────────
+  const isFree = course?.price === 'Free';
+
   // Load the Paystack script once when the checkout page mounts.
   useEffect(() => {
     // Already loaded from a previous page visit — no need to add another tag.
@@ -130,25 +138,25 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
     );
 
     let didLoad = false;
-    const timeout = setTimeout(() =>{
+    const timeout = setTimeout(() => {
       if (!didLoad) {
         setPaystackLoadError(true);
       }
-    },7000);
+    }, 7000);
 
     
     if (existing) {
-      const onLoad = () =>{
+      const onLoad = () => {
          didLoad = true;
          clearTimeout(timeout);
         setPaystackReady(true);
-      }
+      };
       
-      const onError = () =>{
+      const onError = () => {
          didLoad = true;
          clearTimeout(timeout);
         setPaystackLoadError(true);
-      }
+      };
       existing.addEventListener('load', onLoad);
       existing.addEventListener('error', onError);
       return () => {
@@ -161,24 +169,35 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
     const script = document.createElement('script');
     script.src = 'https://js.paystack.co/v1/inline.js';
     script.async = true;
-    script.onload = () =>
-      {
+    script.onload = () => {
         didLoad = true;
         clearTimeout(timeout);
-      setPaystackReady(true);
-      }
-    script.onerror = () =>
-      {
+        setPaystackReady(true);
+    };
+    script.onerror = () => {
         didLoad = true;
         clearTimeout(timeout);
         setPaystackLoadError(true);
-      }
+    };
     document.body.appendChild(script);
     // Do not remove the script on unmount — PaystackPop stays in window scope.
     return () => {
       clearTimeout(timeout);
     } 
   }, []);
+
+  // ── Fetch points balance + pointsEnabled flag from server ─────────────────
+
+  useEffect(() => {
+    if (!user || isFree) return;
+    fetch('/api/points/balance')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (d) setPointsEnabled(d.pointsEnabled ?? false);
+      })
+      .catch(() => {}); // non-fatal: fall back to showing the input (server validates anyway)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isFree]);
 
   if (!course) {
     return (
@@ -192,8 +211,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
   }
 
   // ── Price calculation ────────────────────────────────────────────────────
-  const isFree = course.price === 'Free';
-  const hasPremium = !!course.premiumPrice;
+  const hasPremium = !!course?.premiumPrice;
 
   // Base price depends on which plan is selected
   const activePriceString = (hasPremium && selectedPlan === 'premium')
@@ -202,16 +220,32 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
   const rawPrice = activePriceString.replace(/[^\d]/g, '');
   const numericPrice = rawPrice ? parseInt(rawPrice, 10) : 0;
 
-  // Standard price for display in the plan cards
+  // Standard/premium price for display in plan cards
   const rawStandardPrice = course.price.replace(/[^\d]/g, '');
   const numericStandardPrice = rawStandardPrice ? parseInt(rawStandardPrice, 10) : 0;
   const rawPremiumPrice = (course.premiumPrice ?? '').replace(/[^\d]/g, '');
   const numericPremiumPrice = rawPremiumPrice ? parseInt(rawPremiumPrice, 10) : 0;
 
-  // discountPercent comes from the DB (via /api/validate-coupon) — not hardcoded.
-  const discount = couponApplied ? Math.floor(numericPrice * discountPercent / 100) : 0;
-  const total = numericPrice - discount;
-  const totalKobo = total * 100;
+  // Unified pricing memo — single source of truth for all price display + Paystack amount
+  const pricing = useMemo(() => {
+    const couponDiscount = couponApplied ? Math.floor(numericPrice * discountPercent / 100) : 0;
+    const afterCoupon    = numericPrice - couponDiscount;
+    // Points can only reduce post-coupon price; can't go below ₦0
+    const pointsDiscount = Math.min(pointsToApply, afterCoupon);
+    const finalNaira     = afterCoupon - pointsDiscount;
+    return {
+      couponDiscount,
+      afterCoupon,
+      pointsDiscount,
+      finalNaira,
+      finalKobo: finalNaira * 100,
+    };
+  }, [numericPrice, couponApplied, discountPercent, pointsToApply]);
+
+  // Keep backward-compat aliases used throughout JSX
+  const discount   = pricing.couponDiscount;
+  const total      = pricing.finalNaira;
+  const totalKobo  = pricing.finalKobo;
 
   const applyCoupon = async () => {
     setCouponError('');
@@ -235,6 +269,34 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
     } catch {
       setCouponError('Could not validate coupon. Please try again.');
     }
+  };
+
+  // ── Points helpers ────────────────────────────────────────────────────────
+  const handleMaxPoints = () => {
+    if (!user) return;
+    const maxApplicable = Math.min(user.creditBalance, pricing.afterCoupon);
+    setPointsToApply(maxApplicable);
+    setPointsInput(String(maxApplicable));
+    setPointsError('');
+  };
+
+  const applyPoints = () => {
+    setPointsError('');
+    const val = parseInt(pointsInput.trim(), 10);
+    if (!pointsInput.trim() || isNaN(val) || val <= 0) {
+      setPointsError('Please enter a valid number of points.');
+      return;
+    }
+    if (!user) return;
+    if (val > user.creditBalance) {
+      setPointsError(`You only have ${user.creditBalance.toLocaleString()} points available.`);
+      return;
+    }
+    if (val > pricing.afterCoupon) {
+      setPointsError(`Max ${pricing.afterCoupon.toLocaleString()} points can be applied to this purchase.`);
+      return;
+    }
+    setPointsToApply(val);
   };
 
   // ── Free course enrollment ───────────────────────────────────────────────
@@ -325,6 +387,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
           courseSlug: course.slug,
           purchaseType: hasPremium ? selectedPlan : 'standard',
           couponCode: couponApplied ? coupon : undefined,
+          pointsApplied: pointsToApply > 0 ? pointsToApply : undefined,
         })
           .then((data) => {
             if (data.enrolled) {
@@ -525,7 +588,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                   >
                     {/* Popular badge */}
                     <div className="absolute -top-3 left-4">
-                      <span className="bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white text-xs font-bold px-3 py-0.5 rounded-full shadow-md">
+                      <span className="bg-linear-to-r from-pink-500 to-fuchsia-500 text-white text-xs font-bold px-3 py-0.5 rounded-full shadow-md">
                         🎁 MYSTERY BOX
                       </span>
                     </div>
@@ -637,6 +700,53 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                 {couponError && <p className="text-xs text-red-400">{couponError}</p>}
               </div>
 
+
+              {/* ── Points Redemption ── */}
+              {pointsEnabled && user && user.creditBalance > 0 && (
+                <div className="rounded-2xl bg-gray-900 border border-indigo-500/20 p-5 space-y-3">
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <Zap size={16} className="text-yellow-400" /> Use Points
+                    <span className="ml-auto text-xs font-normal text-gray-400">
+                      Balance: <span className="text-yellow-300 font-semibold">{user.creditBalance.toLocaleString()} pts</span>
+                    </span>
+                  </h2>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max={user.creditBalance}
+                      placeholder="Enter points to apply"
+                      value={pointsInput}
+                      onChange={(e) => {
+                        setPointsInput(e.target.value);
+                        setPointsError('');
+                        if (!e.target.value) setPointsToApply(0);
+                      }}
+                      className="flex-1 px-4 py-2.5 rounded-lg bg-gray-800 border border-indigo-500/20 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-yellow-500/60 transition"
+                    />
+                    <button
+                      onClick={handleMaxPoints}
+                      className="px-3 py-2.5 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 text-xs font-bold border border-yellow-500/30 transition whitespace-nowrap"
+                    >
+                      MAX
+                    </button>
+                    <button
+                      onClick={applyPoints}
+                      className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition whitespace-nowrap"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {pointsToApply > 0 && (
+                    <p className="text-xs text-yellow-400 flex items-center gap-1.5">
+                      <CheckCircle2 size={13} /> {pointsToApply.toLocaleString()} pts applied (−₦{pointsToApply.toLocaleString()})
+                    </p>
+                  )}
+                  {pointsError && <p className="text-xs text-red-400">{pointsError}</p>}
+                  <p className="text-xs text-gray-500">1 point = ₦1 · Points are applied after any coupon discount</p>
+                </div>
+              )}
+
               {/* Terms + Pay button */}
               <div className="rounded-2xl bg-gray-900 border border-indigo-500/20 p-5 space-y-4">
                 <label className="flex items-start gap-3 cursor-pointer group">
@@ -662,6 +772,38 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                   </div>
                 )}
 
+                {/* Zero-amount path: full discount via points + coupon */}
+                {totalKobo === 0 ? (
+                  <button
+                    onClick={() => {
+                      if (!agreed || !user || processing) return;
+                      setPaymentError('');
+                      setProcessing(true);
+                      enrollWithTimeout({
+                        courseSlug: course.slug,
+                        purchaseType: hasPremium ? selectedPlan : 'standard',
+                        couponCode: couponApplied ? coupon : undefined,
+                        pointsApplied: pointsToApply > 0 ? pointsToApply : undefined,
+                      }).then((data) => {
+                        if (data.enrolled) {
+                          enroll(course.slug, data.enrollmentId ?? undefined);
+                          refreshBalance();
+                          setDone(true);
+                        } else {
+                          setPaymentError(data.error ?? 'Enrollment failed. Please try again.');
+                        }
+                      }).catch((err: unknown) => {
+                        const isTimeout = err instanceof Error && err.message === 'TIMEOUT';
+                        setPaymentError(isTimeout ? 'Request timed out. Please try again.' : 'Network error. Please try again.');
+                      }).finally(() => setProcessing(false));
+                    }}
+                    disabled={!agreed || processing}
+                    className="w-full py-4 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-base transition shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {processing ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} />}
+                    {processing ? 'Enrolling...' : 'Complete Enrollment — Free with Points'}
+                  </button>
+                ) : (
                 <button
                   onClick={handlePaystackPay}
                   disabled={!agreed || !paystackReady || processing}
@@ -676,6 +818,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                     ? `Pay ₦${total.toLocaleString()} — Premium Plan 🎁`
                     : `Pay ₦${total.toLocaleString()} — Secure Checkout`}
                 </button>
+                )}
 
                 <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
                   <ShieldCheck size={13} className="text-indigo-400" />
@@ -757,6 +900,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
                 <div className="flex justify-between text-sm">
                   <span className="text-emerald-400 flex items-center gap-1"><Tag size={12} /> Promo Code Applied</span>
                   <span className="text-emerald-400">−₦{discount.toLocaleString()}</span>
+                </div>
+              )}
+              {pointsToApply > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-yellow-400 flex items-center gap-1"><Zap size={12} /> Points Applied</span>
+                  <span className="text-yellow-400">−₦{pricing.pointsDiscount.toLocaleString()}</span>
                 </div>
               )}
               <div className="border-t border-indigo-500/20 pt-2.5 flex justify-between items-center">
