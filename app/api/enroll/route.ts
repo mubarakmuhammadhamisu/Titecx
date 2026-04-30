@@ -1,27 +1,7 @@
-// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/enroll
-//
-// Called by the checkout page AFTER Paystack popup returns success.
-// It verifies the Paystack reference with Paystack's own API using the
-// SECRET key (never exposed to the browser), then enrolls the user.
-//
-// Coupon support (Phase 4):
-//   If the request body includes a couponCode, this route:
-//   1. Re-validates the coupon from the DB (is_active, not expired, under limit).
-//   2. Calculates the discounted expected price.
-//   3. Passes that as minimumAmountKoboOverride to verifyPaystackPayment so the
-//      paid amount is compared to the discounted price, not the full price.
-//   4. After successful enrollment, atomically increments the coupon's used_count.
-//
-// Flow:
-//   Client pays → Paystack popup returns reference → client calls this route
-//   → we call Paystack /transaction/verify/:reference → if paid → enroll
-//   → if coupon was used → increment used_count
-//
-// The webhook handles the fallback case where the browser closes before this
-// route is called (no coupon increment in that path — coupon use isn't tracked
-// for webhook-triggered enrollments, which is an acceptable trade-off).
-// ─────────────────────────────────────────────────────────────────────────────
+// Extended to handle points redemption alongside existing coupon logic.
+// Points flow: server re-validates balance → passes p_points_applied to RPC
+// → RPC atomically deducts balance + awards referral commission if eligible.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -39,11 +19,9 @@ function getAdminClient() {
 }
 
 export async function POST(req: NextRequest) {
-  // ── CSRF: reject cross-site requests missing the custom header ───────────
   const csrfError = checkCsrfHeader(req);
   if (csrfError) return csrfError;
 
-  // ── Step 0: Verify session — never trust userId from the request body ────
   const cookieStore = await cookies();
   const sessionClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -56,7 +34,6 @@ export async function POST(req: NextRequest) {
   }
   const userId = user.id;
 
-  // ── Rate limit: 10 enroll attempts per user per minute ───────────────────
   const { allowed } = checkRateLimit(`enroll:${userId}`, 10, 60_000);
   if (!allowed) {
     return NextResponse.json({ error: 'Too many requests. Please wait a minute.' }, {
@@ -71,6 +48,7 @@ export async function POST(req: NextRequest) {
     reference?: string;
     couponCode?: string;
     purchaseType?: 'standard' | 'premium';
+    pointsApplied?: number;
   };
   try {
     body = await req.json();
@@ -78,11 +56,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { courseSlug, isFree, reference, couponCode, purchaseType = 'standard' } = body;
+  const {
+    courseSlug,
+    isFree,
+    reference,
+    couponCode,
+    purchaseType = 'standard',
+    pointsApplied: rawPointsApplied = 0,
+  } = body;
 
   if (!courseSlug) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
+
+  // Sanitise pointsApplied: must be a non-negative integer
+  const pointsApplied = Number.isInteger(rawPointsApplied) && rawPointsApplied >= 0
+    ? rawPointsApplied
+    : 0;
 
   const supabase = getAdminClient();
 
@@ -107,23 +97,12 @@ export async function POST(req: NextRequest) {
       .eq('is_published', true)
       .maybeSingle();
 
-    if (!courseData) {
-      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
-    }
-    if (courseData.price !== 'Free') {
-      return NextResponse.json({ error: 'Course is not free' }, { status: 400 });
-    }
+    if (!courseData) return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+    if (courseData.price !== 'Free') return NextResponse.json({ error: 'Course is not free' }, { status: 400 });
 
     const { data: newEnrollment, error } = await supabase
       .from('enrollments')
-      .insert({
-        user_id: userId,
-        course_slug: courseSlug,
-        progress: 0,
-        purchase_type: 'free',
-        premium_deadline: null,
-        mystery_box_status: null,
-      })
+      .insert({ user_id: userId, course_slug: courseSlug, progress: 0, purchase_type: 'free' })
       .select('id')
       .single();
 
@@ -131,27 +110,68 @@ export async function POST(req: NextRequest) {
       console.error('[enroll] Free enrollment DB error:', error.message);
       return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
     }
-
     return NextResponse.json({ enrolled: true, enrollmentId: newEnrollment.id });
   }
 
-  // ── Paid course path ──────────────────────────────────────────────────────
-  if (!reference) {
+  // ── Points-only path (finalTotal = ₦0 after coupon + points) ─────────────
+  // If the full discount covers the price, no Paystack reference is needed.
+  // We verify points + coupon math server-side before calling the RPC.
+  const isPointsOnly = !reference && pointsApplied > 0;
+
+  if (!reference && !isPointsOnly) {
     return NextResponse.json({ error: 'Payment reference required for paid course' }, { status: 400 });
   }
 
-  // ── Coupon validation (if a code was submitted) ───────────────────────────
-  // We re-validate here even though the checkout page already called
-  // /api/validate-coupon. Time may have passed; another student may have
-  // consumed the last slot between validation and payment. This is the only
-  // authoritative check — the client result is advisory only.
-  //
-  // Security note: .eq() with uppercased input is used instead of .ilike()
-  // to prevent SQL LIKE wildcard injection (e.g. '%' matching all rows).
+  // ── Server-side points validation ────────────────────────────────────────
+  // Always validate balance from DB — never trust the client's reported balance.
+  let verifiedPointsApplied = 0;
+  let pointsEnabled = false;
+
+  if (pointsApplied > 0) {
+    const [profileResult, settingResult] = await Promise.all([
+      supabase.from('profiles').select('credit_balance').eq('id', userId).single(),
+      supabase.from('platform_settings').select('value').eq('key', 'points_enabled').maybeSingle(),
+    ]);
+
+    pointsEnabled = settingResult.data?.value === 'true';
+
+    if (!pointsEnabled) {
+      // Points feature is disabled — treat as 0 points applied
+      verifiedPointsApplied = 0;
+    } else if (profileResult.error) {
+      return NextResponse.json({ error: 'Could not verify points balance' }, { status: 500 });
+    } else {
+      const balance = profileResult.data.credit_balance ?? 0;
+      if (pointsApplied > balance) {
+        return NextResponse.json({
+          error: `Insufficient points balance. You have ${balance} points.`,
+        }, { status: 400 });
+      }
+      verifiedPointsApplied = pointsApplied;
+    }
+  }
+
+  // ── Coupon validation ──────────────────────────────────────────────────────
   let minimumAmountKoboOverride: number | undefined;
   let validatedCouponId: string | null = null;
   let validatedCouponMaxUsage: number | null = null;
-  let validatedCouponUsedCount: number | null = null; // for optimistic-lock claim
+  let validatedCouponUsedCount: number | null = null;
+  let couponDiscountKobo = 0;
+  let fullPriceKobo = 0;
+
+  // Always fetch course price (needed for points + coupon math verification)
+  const { data: courseForPrice } = await supabase
+    .from('courses')
+    .select('price')
+    .eq('slug', courseSlug)
+    .eq('is_published', true)
+    .maybeSingle();
+
+  if (!courseForPrice) {
+    return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+  }
+
+  fullPriceKobo = Number(courseForPrice.price.replace(/[^\d]/g, '') ?? 0) * 100;
 
   if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
     const { data: couponRow, error: couponError } = await supabase
@@ -161,53 +181,97 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (couponError) {
-      console.error('[enroll] Coupon DB lookup error:', couponError.message);
       return NextResponse.json({ error: 'Could not validate coupon. Please try again.' }, { status: 500 });
     }
-
     if (!couponRow || !couponRow.is_active) {
       return NextResponse.json({ error: 'Invalid or inactive coupon code.' }, { status: 400 });
     }
-
     if (couponRow.expires_at && new Date(couponRow.expires_at) < new Date()) {
       return NextResponse.json({ error: 'Coupon has expired.' }, { status: 400 });
     }
-
     if (couponRow.used_count >= couponRow.max_usage) {
       return NextResponse.json({ error: 'Coupon has reached its usage limit.' }, { status: 400 });
     }
 
-    // Fetch the course price to calculate the discounted floor.
-    const { data: courseForPrice } = await supabase
-      .from('courses')
-      .select('price')
-      .eq('slug', courseSlug)
-      .eq('is_published', true)
-      .maybeSingle();
+    couponDiscountKobo = Math.floor(fullPriceKobo * couponRow.discount_percent / 100);
+    const afterCouponKobo = fullPriceKobo - couponDiscountKobo;
 
-    if (!courseForPrice) {
-      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
-    }
+    // Points can only reduce the post-coupon amount, not go below ₦0
+    const pointsKobo = Math.min(verifiedPointsApplied * 100, afterCouponKobo);
+    minimumAmountKoboOverride = Math.max(0, afterCouponKobo - pointsKobo);
 
-    // Strip non-digits from price string (e.g. "₦9,999" → 9999), convert to kobo.
-    const fullPriceKobo = Number(courseForPrice.price.replace(/[^\d]/g, '') ?? 0) * 100;
-    const discountKobo  = Math.floor(fullPriceKobo * couponRow.discount_percent / 100);
-    minimumAmountKoboOverride = fullPriceKobo - discountKobo;
-
-    // Store for optimistic-lock claim below — executed BEFORE enrollment.
     validatedCouponId        = couponRow.id;
     validatedCouponMaxUsage  = couponRow.max_usage;
     validatedCouponUsedCount = couponRow.used_count;
+  } else {
+    // No coupon: minimum is full price minus points
+    const pointsKobo = Math.min(verifiedPointsApplied * 100, fullPriceKobo);
+    minimumAmountKoboOverride = Math.max(0, fullPriceKobo - pointsKobo);
   }
 
-  // ── Verify payment with Paystack ──────────────────────────────────────────
+  // ── Points-only enrollment (no Paystack, total ₦0) ───────────────────────
+  if (isPointsOnly || minimumAmountKoboOverride === 0) {
+    if (verifiedPointsApplied === 0) {
+      return NextResponse.json({ error: 'Points required for zero-amount enrollment' }, { status: 400 });
+    }
+
+    // Claim coupon slot if applicable
+    if (validatedCouponId !== null && validatedCouponUsedCount !== null && validatedCouponMaxUsage !== null) {
+      const { data: claimedRow } = await supabase
+        .from('coupons')
+        .update({ used_count: validatedCouponUsedCount + 1 })
+        .eq('id', validatedCouponId)
+        .eq('used_count', validatedCouponUsedCount)
+        .lt('used_count', validatedCouponMaxUsage)
+        .select('id')
+        .maybeSingle();
+
+      if (!claimedRow) {
+        return NextResponse.json(
+          { error: 'This coupon has just reached its usage limit. Please try without it or contact support.' },
+          { status: 409 }
+        );
+      }
+    }
+
+    // RPC handles points deduction + referral commission atomically
+    const { error: rpcError } = await supabase.rpc('enroll_after_payment', {
+      p_user_id:            userId,
+      p_course_slug:        courseSlug,
+      p_paystack_reference: `POINTS-${userId.slice(0, 8)}-${Date.now()}`,
+      p_amount_kobo:        0,
+      p_status:             'points_only',
+      p_points_applied:     verifiedPointsApplied,
+      p_purchase_type:      purchaseType === 'premium' ? 'premium' : 'standard',
+    });
+
+    if (rpcError) {
+      console.error('[enroll] Points-only RPC failed:', rpcError.message);
+      return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
+    }
+
+    const { data: newEnrollment } = await supabase
+      .from('enrollments')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('course_slug', courseSlug)
+      .maybeSingle();
+
+    return NextResponse.json({ enrolled: true, enrollmentId: newEnrollment?.id ?? null });
+  }
+
+  // ── Paid path — verify with Paystack ─────────────────────────────────────
+  if (!reference) {
+    return NextResponse.json({ error: 'Payment reference required' }, { status: 400 });
+  }
+
   let paystackData: PaystackTransactionData & { validatedSlug: string };
   try {
     paystackData = await verifyPaystackPayment(
       reference,
       courseSlug,
       supabase,
-      minimumAmountKoboOverride,  // undefined = compare against full price (no coupon)
+      minimumAmountKoboOverride,
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : '';
@@ -219,81 +283,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Could not verify payment' }, { status: 502 });
   }
 
-  // ── Guard: reference must be for THIS course, not a different one ─────────
   const paystackCourseSlug = paystackData.metadata?.course_slug as string | undefined;
   if (paystackCourseSlug && paystackCourseSlug !== courseSlug) {
-    console.warn('[enroll] Reference course_slug mismatch:', paystackCourseSlug, '!=', courseSlug);
     return NextResponse.json({ error: 'Reference is for a different course' }, { status: 400 });
   }
 
-  // ── Claim coupon slot BEFORE enrollment ──────────────────────────────────
-  // This UPDATE runs BEFORE the enrollment RPC so that if the slot is already
-  // gone (race condition), we fail here rather than enrolling without enforcing
-  // the limit.
-  //
-  // Optimistic-lock pattern:
-  //   SET used_count = [known_value + 1]
-  //   WHERE id = [id]
-  //     AND used_count = [known_value]   ← only succeeds if nobody changed it
-  //     AND used_count < max_usage       ← hard cap enforcement
-  //
-  // If another request incremented first, used_count no longer matches the
-  // snapshot we read, so 0 rows are updated and we return 409 immediately.
+  // Claim coupon slot before enrollment
   if (validatedCouponId !== null && validatedCouponUsedCount !== null && validatedCouponMaxUsage !== null) {
-    const { data: claimedRow, error: claimErr } = await supabase
+    const { data: claimedRow } = await supabase
       .from('coupons')
       .update({ used_count: validatedCouponUsedCount + 1 })
       .eq('id', validatedCouponId)
-      .eq('used_count', validatedCouponUsedCount)      // optimistic lock
-      .lt('used_count', validatedCouponMaxUsage)       // hard max_usage cap
+      .eq('used_count', validatedCouponUsedCount)
+      .lt('used_count', validatedCouponMaxUsage)
       .select('id')
       .maybeSingle();
 
-    if (claimErr) {
-      console.error('[enroll] Coupon claim update error:', claimErr.message);
-      return NextResponse.json({ error: 'Could not claim coupon. Please try again.' }, { status: 500 });
-    }
-
     if (!claimedRow) {
-      // 0 rows updated — coupon was exhausted by a concurrent request
-      // between our validation read and now.
-      console.warn('[enroll] Coupon exhausted by concurrent claim:', validatedCouponId);
       return NextResponse.json(
         { error: 'This coupon has just reached its usage limit. Please try without it or contact support.' },
-        { status: 409 },
+        { status: 409 }
       );
     }
   }
 
-  // ── Record payment and enroll atomically via DB transaction (RPC) ─────────
+  // RPC: payment + enrollment + points deduction + referral commission (all atomic)
   const { error: rpcError } = await supabase.rpc('enroll_after_payment', {
     p_user_id:            userId,
     p_course_slug:        paystackData.validatedSlug,
     p_paystack_reference: reference,
     p_amount_kobo:        paystackData.amount,
     p_status:             'success',
+    p_points_applied:     verifiedPointsApplied,
+    p_purchase_type:      purchaseType === 'premium' ? 'premium' : 'standard',
   });
 
   if (rpcError) {
-    console.error('[enroll] Payment+enrollment transaction failed:', rpcError.message);
+    console.error('[enroll] Payment+enrollment RPC failed:', rpcError.message);
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 });
   }
 
-  // ── Patch enrollment with purchase type and premium deadline ─────────────
-  // The RPC creates the enrollment row but doesn't know about premium tiers.
-  // We update it immediately after. The default purchase_type in the DB is
-  // 'standard' so this is additive — no data is ever in a broken state.
+  // Patch premium-specific fields (RPC doesn't know about premium tiers)
   const safePurchaseType = purchaseType === 'premium' ? 'premium' : 'standard';
-
   let premiumDeadline: string | null = null;
   if (safePurchaseType === 'premium') {
-    // Fetch the course's deadline_days to compute the exact deadline timestamp.
     const { data: courseForDeadline } = await supabase
-      .from('courses')
-      .select('premium_deadline_days')
-      .eq('slug', paystackData.validatedSlug)
-      .maybeSingle();
-
+      .from('courses').select('premium_deadline_days').eq('slug', paystackData.validatedSlug).maybeSingle();
     const deadlineDays = courseForDeadline?.premium_deadline_days ?? 60;
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + deadlineDays);
@@ -303,21 +338,17 @@ export async function POST(req: NextRequest) {
   const { error: patchError } = await supabase
     .from('enrollments')
     .update({
-      purchase_type: safePurchaseType,
-      premium_deadline: premiumDeadline,
+      purchase_type:      safePurchaseType,
+      premium_deadline:   premiumDeadline,
       mystery_box_status: safePurchaseType === 'premium' ? 'pending' : null,
     })
     .eq('user_id', userId)
     .eq('course_slug', paystackData.validatedSlug);
 
   if (patchError) {
-    // Enrollment succeeded — this is non-fatal. Log it but don't fail the response.
-    // The student is enrolled. The purchase_type defaults to 'standard' in DB
-    // so we log for manual correction if this ever fires on a premium purchase.
-    console.error('[enroll] Failed to patch purchase_type on enrollment:', patchError.message);
+    console.error('[enroll] Failed to patch purchase_type:', patchError.message);
   }
 
-  // ── Return the real DB enrollment ID ─────────────────────────────────────
   const { data: newEnrollment } = await supabase
     .from('enrollments')
     .select('id')

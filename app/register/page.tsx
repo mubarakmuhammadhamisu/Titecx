@@ -26,6 +26,7 @@ const RegisterContent = () => {
   // Sanitise: only allow relative paths starting with /  — reject absolute
   // URLs like https://evil.com and protocol-relative URLs like //evil.com.
   const raw = searchParams.get('redirect') ?? '/dashboard';
+  const refCode = (searchParams.get('ref') ?? '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
   const redirect = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/dashboard';
 
   const [name, setName]                   = useState('');
@@ -85,7 +86,7 @@ const RegisterContent = () => {
     }
 
     setLoading(true);
-    const result = await register(name.trim(), email, password);
+    const result = await register(name.trim(), email, password, refCode || undefined);
     setLoading(false);
     if (result.error) { setError(result.error); } else { setSuccess(true); }
   }
