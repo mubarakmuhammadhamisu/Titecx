@@ -187,7 +187,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
   }, []);
 
   // ── Fetch points balance + pointsEnabled flag from server ─────────────────
-
   useEffect(() => {
     if (!user || isFree) return;
     fetch('/api/points/balance')
@@ -211,7 +210,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
   }
 
   // ── Price calculation ────────────────────────────────────────────────────
-  const hasPremium = !!course?.premiumPrice;
+  const hasPremium = !!course.premiumPrice;
 
   // Base price depends on which plan is selected
   const activePriceString = (hasPremium && selectedPlan === 'premium')
