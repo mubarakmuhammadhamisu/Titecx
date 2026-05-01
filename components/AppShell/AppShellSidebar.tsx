@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Home, BookOpen, User, BarChart3, Award, LogOut } from 'lucide-react';
+import { Menu, X, Home, BookOpen, User, BarChart3, Award, LogOut, Trophy, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import TitecxForgeLogo from '../ui/TitecxForgeLogo';
 
@@ -14,6 +14,8 @@ const navItems = [
   { href: '/dashboard/my-courses', label: 'My Courses', icon: BookOpen },
   { href: '/dashboard/progress', label: 'Progress', icon: BarChart3 },
   { href: '/dashboard/achievements', label: 'Achievements', icon: Award },
+  { href: '/dashboard/leaderboard', label: 'Credits Leaderboard', icon: Trophy },
+  { href: '/dashboard/referral', label: 'Referrals & Points', icon: Zap },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
 ];
 
