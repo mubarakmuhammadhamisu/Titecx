@@ -237,6 +237,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
+    // Discard any pending referral cookie — referrals are only for new registrations.
+    try { document.cookie = 'titecx_ref=; Max-Age=0; path=/; SameSite=Lax'; } catch {}
     return {};
   };
 
@@ -261,7 +263,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (referralCode) {
-      try { localStorage.setItem(REF_STORAGE_KEY, referralCode.toUpperCase()); } catch { /* private browsing */ }
+      try {
+        localStorage.setItem(REF_STORAGE_KEY, referralCode.toUpperCase());
+        // Cookie served its purpose (persistence across navigation) — clear it
+        // now so it isn't reused if the user registers a second account later.
+        document.cookie = 'titecx_ref=; Max-Age=0; path=/; SameSite=Lax';
+      } catch { /* private browsing */ }
     }
 
     return {};

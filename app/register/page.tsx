@@ -26,7 +26,23 @@ const RegisterContent = () => {
   // Sanitise: only allow relative paths starting with /  — reject absolute
   // URLs like https://evil.com and protocol-relative URLs like //evil.com.
   const raw = searchParams.get('redirect') ?? '/dashboard';
-  const refCode = (searchParams.get('ref') ?? '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  // Priority: URL param (?ref=) → cookie (titecx_ref, set by proxy.ts) → empty
+  // The cookie survives navigation away from the referral landing URL, so
+  // Landing → About → Register still correctly attributes the referral.
+  const [refCode, setRefCode] = useState(
+    () => (searchParams.get('ref') ?? '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '')
+  );
+  useEffect(() => {
+    if (refCode) return; // URL param already provided — cookie not needed
+    try {
+      const match = document.cookie.match(/(?:^|;\s*)titecx_ref=([^;]+)/);
+      if (match) {
+        const cookieCode = decodeURIComponent(match[1]).trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+        if (/^[A-Z]{4}-[A-Z0-9]{4}$/i.test(cookieCode)) setRefCode(cookieCode);
+      }
+    } catch { /* private browsing or cookie access blocked */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const redirect = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/dashboard';
 
   const [name, setName]                   = useState('');

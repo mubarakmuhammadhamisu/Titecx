@@ -51,6 +51,41 @@ export async function proxy(req: NextRequest) {
   }
 
   // ---------------------------------------------------------------------------
+  // STEP 1 — Capture referral code from ?ref= query param and persist it as
+  // a cookie for the duration of the session (7 days).
+  //
+  // WHY HERE: The landing page is a Server Component — it cannot set cookies
+  // directly. Capturing in the proxy means any page (?ref= on /, /about,
+  // /courses, etc.) correctly stores the code before the page even renders.
+  //
+  // Rules:
+  //   - Only set when the param exists and passes the format check.
+  //   - Redirect to the same URL without ?ref= so the code is not visible
+  //     in the address bar after the first load (cleaner UX, prevents replay).
+  //   - Cookie is NOT HttpOnly so the register page can read it client-side.
+  //   - If the user logs in successfully, AuthContext clears this cookie.
+  //   - If the user registers, AuthContext reads + clears this cookie.
+  // ---------------------------------------------------------------------------
+  const REF_CODE_RE = /^[A-Z]{4}-[A-Z0-9]{4}$/i;
+  const refParam = req.nextUrl.searchParams.get('ref');
+
+  if (refParam) {
+    const cleanRef = refParam.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    if (REF_CODE_RE.test(cleanRef)) {
+      const redirectUrl = req.nextUrl.clone();
+      redirectUrl.searchParams.delete('ref');
+      const refResponse = NextResponse.redirect(redirectUrl);
+      refResponse.cookies.set('titecx_ref', cleanRef, {
+        httpOnly: false,      // must be readable by register page JS
+        sameSite: 'lax',
+        maxAge:   60 * 60 * 24 * 7, // 7 days
+        path:     '/',
+      });
+      return refResponse;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // STEP 1 — Create a response object FIRST, before anything else.  
   // ---------------------------------------------------------------------------
   let res = NextResponse.next({ request: req });
