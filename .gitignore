@@ -13,7 +13,7 @@ tttest
 
 # testing
 /coverage
-
+1proxy.ts
 # next.js
 /.next/
 /out/
