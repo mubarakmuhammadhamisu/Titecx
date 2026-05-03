@@ -13,6 +13,7 @@ export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [banFilter, setBanFilter] = useState<'all' | 'active' | 'banned' | 'inactive'>('all');
+  const [hasCreditsFilter, setHasCreditsFilter] = useState(false);
   const [students, setStudents] = useState<Student[]>(mockStudents);
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
   const [banTarget, setBanTarget] = useState<Student | null>(null);
@@ -40,10 +41,11 @@ export default function StudentsPage() {
         banFilter === 'all' ? true :
         banFilter === 'banned' ? student.isBanned :
         banFilter === 'inactive' ? isInactiveStudent(student) :
-        !student.isBanned && !isInactiveStudent(student); // active = not banned AND not inactive
-      return matchesSearch && matchesBan;
+        !student.isBanned && !isInactiveStudent(student);
+      const matchesCredits = !hasCreditsFilter || student.credit_balance > 0;
+      return matchesSearch && matchesBan && matchesCredits;
     });
-  }, [students, searchTerm, banFilter]);
+  }, [students, searchTerm, banFilter, hasCreditsFilter]);
 
   const studentColumns: Column<Student>[] = [
     {
@@ -81,7 +83,31 @@ export default function StudentsPage() {
       key: 'amountPaid',
       label: 'Total Paid',
       sortable: true,
-      render: (value) => `₦${value.toLocaleString()}`,
+      render: (value) => `₦${Number(value).toLocaleString()}`,
+    },
+    {
+      key: 'credit_balance',
+      label: 'Credits',
+      sortable: true,
+      render: (value) =>
+        Number(value) > 0 ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
+            ₦{Number(value).toLocaleString()}
+          </span>
+        ) : (
+          <span className="text-gray-600 text-xs">—</span>
+        ),
+    },
+    {
+      key: 'referrals_converted',
+      label: 'Referrals',
+      sortable: true,
+      render: (value, student) => (
+        <span className="text-xs text-gray-300">
+          <span className="text-emerald-400 font-semibold">{Number(value)}</span>
+          <span className="text-gray-600"> / {student.referrals_sent}</span>
+        </span>
+      ),
     },
     {
       key: 'id',
@@ -168,6 +194,16 @@ export default function StudentsPage() {
                   {f === 'inactive' ? 'Inactive' : f.charAt(0).toUpperCase() + f.slice(1)}
                 </button>
               ))}
+              <button
+                onClick={() => setHasCreditsFilter(!hasCreditsFilter)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                  hasCreditsFilter
+                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                    : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-amber-500/30'
+                }`}
+              >
+                💰 Has Unused Credits
+              </button>
             </div>
           </div>
           <div className="flex gap-2">

@@ -7,6 +7,7 @@ import {
   getMetrics,
   getRecentPayments,
   mockRevenueData,
+  mockReferralConversions,
   Payment,
 } from '@/components/admin/mock-data';
 import {
@@ -15,6 +16,8 @@ import {
   BookOpen,
   TrendingUp,
   CheckCircle,
+  GitBranch,
+  Zap,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -114,6 +117,22 @@ export default function AdminOverview() {
           sparkData={last7Revenue.map((d) => ({ v: Math.round(d.v / 3000) }))}
           sparkColor="green"
         />
+        <StatCard
+          title="Credits Issued This Month"
+          value={`₦${metrics.creditsIssuedThisMonth.toLocaleString()}`}
+          icon={Zap}
+          trend={{ value: 4, isPositive: true }}
+          sparkData={last7Revenue.map((d) => ({ v: Math.round(d.v / 10000) }))}
+          sparkColor="green"
+        />
+        <StatCard
+          title="Pending Referrals"
+          value={metrics.pendingReferrals}
+          icon={GitBranch}
+          trend={{ value: 2, isPositive: false }}
+          sparkData={last7Enrollments}
+          sparkColor="pink"
+        />
       </div>
 
       {/* Charts Grid */}
@@ -200,6 +219,31 @@ export default function AdminOverview() {
                 activeDot={{ r: 6, fill: '#4ade80', stroke: '#166534', strokeWidth: 2 }}
               />
             </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Referral Conversions Chart */}
+        <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-[0_0_28px_rgba(52,211,153,0.08)]">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <GitBranch size={18} className="text-emerald-400" /> Referral Conversions (Last 7 Days)
+            </h2>
+            <span className="text-xs text-gray-500">
+              {metrics.referralConversionsLast7Days.reduce((s, d) => s + d.conversions, 0)} total
+            </span>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={mockReferralConversions}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" />
+              <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#111827', border: '1px solid rgba(52,211,153,0.2)', borderRadius: '8px' }}
+                labelStyle={{ color: '#9ca3af' }}
+                itemStyle={{ color: '#34d399' }}
+              />
+              <Bar dataKey="conversions" fill="rgba(52,211,153,0.7)" radius={[4, 4, 0, 0]} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </div>

@@ -10,6 +10,16 @@ export default function SettingsPage() {
     supportEmail: 'support@titecx.com',
     platformName: 'Titecx',
     paystackMode: 'test',
+    // Referral program
+    referralEnabled: true,
+    referralCommissionRate: 10,
+    referralCookieExpiryDays: 7,
+    referralLinkBaseUrl: 'https://titecx.com',
+    // Points system
+    completedCoursePoints: 800,
+    inProgressCoursePoints: 200,
+    pointsDisplayName: 'Learning Points',
+    creditToNairaRate: 1,
   });
 
   const [saved, setSaved] = useState(false);
@@ -151,6 +161,68 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+      
+
+        {/* Referral Program Settings */}
+        <div className="border-b border-indigo-500/10 pb-8">
+          <h2 className="text-xl font-bold text-white mb-1">Referral Program</h2>
+          <p className="text-sm text-gray-500 mb-6">Control the referral engine that drives credit commissions.</p>
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-white">Enable Referral Program</p>
+                <p className="text-sm text-gray-400 mt-1">When disabled, no commissions will be awarded to referrers.</p>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={settings.referralEnabled} onChange={(e) => handleChange('referralEnabled', e.target.checked)} className="w-5 h-5 rounded border-indigo-500 bg-gray-800 text-indigo-500 cursor-pointer" />
+                <span className="text-sm text-gray-300">{settings.referralEnabled ? 'Enabled' : 'Disabled'}</span>
+              </label>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Commission Rate (%)</label>
+              <input type="number" min={0} max={100} value={settings.referralCommissionRate} onChange={(e) => handleChange('referralCommissionRate', Number(e.target.value))} className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-4 py-2 text-white outline-none focus:border-indigo-500/60" />
+              <p className="text-xs text-gray-500 mt-1">Percentage of the course price awarded to the referrer as credits.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Referral Cookie Expiry (days)</label>
+              <input type="number" min={1} max={365} value={settings.referralCookieExpiryDays} onChange={(e) => handleChange('referralCookieExpiryDays', Number(e.target.value))} className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-4 py-2 text-white outline-none focus:border-indigo-500/60" />
+              <p className="text-xs text-gray-500 mt-1">How long the referral cookie persists in the browser after clicking a referral link.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Referral Link Base URL</label>
+              <input type="text" value={settings.referralLinkBaseUrl} onChange={(e) => handleChange('referralLinkBaseUrl', e.target.value)} className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-4 py-2 text-white outline-none focus:border-indigo-500/60" />
+              <p className="text-xs text-gray-500 mt-1">The base URL used when generating referral links (e.g. https://titecx.com).</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Points System Settings */}
+        <div>
+          <h2 className="text-xl font-bold text-white mb-1">Points System</h2>
+          <p className="text-sm text-gray-500 mb-6">Configure the learning point values and credit conversion rate.</p>
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Completed Course Points</label>
+              <input type="number" min={0} value={settings.completedCoursePoints} onChange={(e) => handleChange('completedCoursePoints', Number(e.target.value))} className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-4 py-2 text-white outline-none focus:border-indigo-500/60" />
+              <p className="text-xs text-gray-500 mt-1">Points awarded on the learning leaderboard for a fully completed course (progress = 100%).</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">In-Progress Course Points</label>
+              <input type="number" min={0} value={settings.inProgressCoursePoints} onChange={(e) => handleChange('inProgressCoursePoints', Number(e.target.value))} className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-4 py-2 text-white outline-none focus:border-indigo-500/60" />
+              <p className="text-xs text-gray-500 mt-1">Points awarded for any course with 1%–99% progress.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Points Display Name</label>
+              <input type="text" value={settings.pointsDisplayName} onChange={(e) => handleChange('pointsDisplayName', e.target.value)} className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-4 py-2 text-white outline-none focus:border-indigo-500/60" />
+              <p className="text-xs text-gray-500 mt-1">The label shown to students for Track B points (e.g. &quot;Learning Points&quot;).</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Credit to Naira Rate (₦ per credit)</label>
+              <input type="number" min={1} value={settings.creditToNairaRate} onChange={(e) => handleChange('creditToNairaRate', Number(e.target.value))} className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-4 py-2 text-white outline-none focus:border-indigo-500/60" />
+              <p className="text-xs text-gray-500 mt-1">How many Naira 1 credit is worth when applied at checkout. Default: 1 credit = ₦1.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Save Button */}
@@ -180,6 +252,6 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
-    </div>
+        </div>
   );
 }

@@ -5,7 +5,7 @@ import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
 import { mockEnrollments, mockCourses, mockStudents, Enrollment, Student } from '@/components/admin/mock-data';
-import { Download, Trash2, UserPlus, CheckCircle } from 'lucide-react';
+import { Download, Trash2, UserPlus, CheckCircle, BookOpen, GitBranch } from 'lucide-react';
 
 export default function EnrollmentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -89,6 +89,39 @@ export default function EnrollmentsPage() {
       ),
     },
     {
+      key: 'learning_points',
+      label: 'Learning Pts',
+      sortable: true,
+      render: (_value, enrollment) => {
+        const pts =
+          enrollment.progress === 100 ? 800 :
+          enrollment.progress > 0    ? 200 : 0;
+        return (
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${
+            pts === 800
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+              : pts === 200
+                ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                : 'bg-gray-800 border-gray-700 text-gray-600'
+          }`}>
+            <BookOpen size={10} />{pts} pts
+          </span>
+        );
+      },
+    },
+    {
+      key: 'referral_triggered',
+      label: 'Source',
+      render: (_value, enrollment) =>
+        enrollment.referral_triggered ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold" title={`Referred by ${enrollment.referrer_name ?? 'unknown'}`}>
+            <GitBranch size={10} /> Via Referral
+          </span>
+        ) : (
+          <span className="text-gray-600 text-xs">Organic</span>
+        ),
+    },
+    {
       key: 'id',
       label: 'Actions',
       render: (_, enrollment) => (
@@ -141,6 +174,9 @@ export default function EnrollmentsPage() {
       progress: 0,
       paymentType: 'free',
       status: 'in-progress',
+      learning_points: 0,
+      referral_triggered: false,
+      referrer_name: null,
     };
     setEnrollments((prev) => [newEnrollment, ...prev]);
     setEnrollForm({ studentId: '', courseId: '' });
