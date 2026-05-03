@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Mail, Calendar, Award, Ban, CheckCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Mail, Calendar, Award, Ban, CheckCircle, Trash2, Zap, BookOpen, GitBranch, Coins } from 'lucide-react';
 import {
   mockStudents,
   mockEnrollments,
@@ -14,6 +14,7 @@ import {
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { Modal } from '@/components/admin/shared/Modal';
 import { format } from 'date-fns';
+import Link from 'next/link';
 
 export default function StudentDetailPage() {
   const router = useRouter();
@@ -224,6 +225,75 @@ export default function StudentDetailPage() {
                 {student.referralCount}
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Points & Referrals Panel */}
+      <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-indigo-500/10">
+        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <Coins size={18} className="text-indigo-400" /> Points &amp; Referrals
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Credit summary */}
+          <div className="rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 p-4 space-y-3">
+            <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-1.5"><Zap size={12} className="text-yellow-400" /> Credits</p>
+            <div>
+              <p className="text-xs text-gray-500">Spendable Balance</p>
+              <p className="text-2xl font-bold text-amber-400">₦{student.credit_balance.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Lifetime Points Earned</p>
+              <p className="text-lg font-bold text-white">{student.lifetime_points.toLocaleString()}</p>
+            </div>
+            <Link
+              href={`/admin/points`}
+              className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition"
+            >
+              View full transaction log →
+            </Link>
+          </div>
+
+          {/* Learning summary */}
+          <div className="rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 p-4 space-y-3">
+            <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-1.5"><BookOpen size={12} className="text-emerald-400" /> Learning</p>
+            <div>
+              <p className="text-xs text-gray-500">Learning Points (derived)</p>
+              <p className="text-2xl font-bold text-emerald-400">
+                {studentEnrollments.reduce((sum, e) => sum + (e.progress === 100 ? 800 : e.progress > 0 ? 200 : 0), 0).toLocaleString()}
+              </p>
+            </div>
+            <p className="text-xs text-gray-600">
+              {studentEnrollments.filter((e) => e.progress === 100).length} completed × 800
+              {' + '}
+              {studentEnrollments.filter((e) => e.progress > 0 && e.progress < 100).length} in-progress × 200
+            </p>
+            <p className="text-xs text-gray-600">Score never stored — derived at runtime.</p>
+          </div>
+
+          {/* Referral summary */}
+          <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 p-4 space-y-3">
+            <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-1.5"><GitBranch size={12} className="text-purple-400" /> Referrals</p>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Sent</span>
+                <span className="text-white font-semibold">{student.referrals_sent}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Converted</span>
+                <span className="text-emerald-400 font-semibold">{student.referrals_converted}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Total Commission</span>
+                <span className="text-amber-400 font-semibold">₦{student.total_commission_earned.toLocaleString()}</span>
+              </div>
+            </div>
+            <Link
+              href={`/admin/referrals`}
+              className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition"
+            >
+              View referral records →
+            </Link>
           </div>
         </div>
       </div>

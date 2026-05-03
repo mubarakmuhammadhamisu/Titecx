@@ -18,20 +18,24 @@ import {
   Settings,
   LogOut,
   Package,
+  GitBranch,
+  Coins,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import TitecxForgeLogo from '../ui/TitecxForgeLogo';
 
 const adminNavItems = [
-  { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-  { href: '/admin/students', label: 'Students', icon: Users },
-  { href: '/admin/courses', label: 'Courses', icon: BookOpen },
-  { href: '/admin/enrollments', label: 'Enrollments', icon: LogIn },
-  { href: '/admin/payments', label: 'Payments', icon: CreditCard },
-  { href: '/admin/coupons', label: 'Coupons', icon: Ticket },
-  { href: '/admin/mystery-box', label: 'Mystery Box', icon: Package },
-  { href: '/admin/leaderboard', label: 'Leaderboard', icon: Trophy },
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
+  { href: '/admin',              label: 'Overview',    icon: LayoutDashboard },
+  { href: '/admin/students',     label: 'Students',    icon: Users },
+  { href: '/admin/courses',      label: 'Courses',     icon: BookOpen },
+  { href: '/admin/enrollments',  label: 'Enrollments', icon: LogIn },
+  { href: '/admin/payments',     label: 'Payments',    icon: CreditCard },
+  { href: '/admin/referrals',    label: 'Referrals',   icon: GitBranch },
+  { href: '/admin/points',       label: 'Points',      icon: Coins },
+  { href: '/admin/coupons',      label: 'Coupons',     icon: Ticket },
+  { href: '/admin/mystery-box',  label: 'Mystery Box', icon: Package },
+  { href: '/admin/leaderboard',  label: 'Leaderboard', icon: Trophy },
+  { href: '/admin/settings',     label: 'Settings',    icon: Settings },
 ];
 
 export default function AdminSidebar() {

@@ -346,7 +346,16 @@ export default function LeaderboardPage() {
           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-2">
             <Medal size={13} /> Top 3
           </h2>
-          <div className="flex gap-3 items-end">
+          {/* Mobile: 1st full-width, 2nd & 3rd side by side below */}
+          <div className="md:hidden space-y-3">
+            <PodiumCard entry={top3[0]} tab={activeTab} borderColor="border-yellow-500/40" medalColor="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" />
+            <div className="flex gap-3">
+              <PodiumCard entry={top3[1]} tab={activeTab} borderColor="border-gray-400/30" medalColor="bg-gray-500/20 text-gray-300 border border-gray-500/30" />
+              <PodiumCard entry={top3[2]} tab={activeTab} borderColor="border-amber-600/30" medalColor="bg-amber-700/20 text-amber-500 border border-amber-600/30" />
+            </div>
+          </div>
+          {/* Desktop: classic podium order 2nd | 1st | 3rd */}
+          <div className="hidden md:flex gap-3 items-end">
             <PodiumCard entry={top3[1]} tab={activeTab} borderColor="border-gray-400/30" medalColor="bg-gray-500/20 text-gray-300 border border-gray-500/30" />
             <PodiumCard entry={top3[0]} tab={activeTab} borderColor="border-yellow-500/40" medalColor="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" />
             <PodiumCard entry={top3[2]} tab={activeTab} borderColor="border-amber-600/30" medalColor="bg-amber-700/20 text-amber-500 border border-amber-600/30" />
