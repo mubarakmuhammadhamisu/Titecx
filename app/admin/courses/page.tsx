@@ -13,10 +13,16 @@ import {
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
+import type { VideoProvider } from '@/lib/Course';
+
 // ── Lesson types (mirrors lib/Course.ts but self-contained for mock) ──────────
 type LessonType = 'video' | 'reading' | 'quiz';
 
-interface VideoContent   { videoUrl: string; duration: string; }
+interface VideoContent {
+  videoUrl:       string;
+  duration:       string;
+  videoProvider?: VideoProvider;
+}
 interface ReadingContent { markdownBody: string; }
 interface QuizQuestion   { id: string; question: string; options: string[]; correctAnswer: number; points: number; }
 interface QuizContent    { questions: QuizQuestion[]; }
@@ -57,7 +63,7 @@ const BLANK_FORM: CourseForm = {
 };
 
 function defaultContent(type: LessonType): VideoContent | ReadingContent | QuizContent {
-  if (type === 'video')   return { videoUrl: '', duration: '' };
+  if (type === 'video')   return { videoUrl: '', duration: '', videoProvider: 'youtube' };
   if (type === 'reading') return { markdownBody: '' };
   return { questions: [{ id: `q-${Date.now()}`, question: '', options: ['', '', '', ''], correctAnswer: 0, points: 10 }] };
 }
@@ -136,7 +142,7 @@ export default function CoursesPage() {
         id: `les-${Date.now()}`,
         title: 'New Lesson',
         type: 'video',
-        content: { videoUrl: '', duration: '' },
+        content: { videoUrl: '', duration: '', videoProvider: 'youtube' as VideoProvider },
         expanded: true,
       });
       return { ...f, modules };
@@ -452,6 +458,16 @@ export default function CoursesPage() {
                                                   <div className="ml-5 pt-2 border-t border-gray-700 space-y-2">
                                                     {lesson.type === 'video' && (
                                                       <>
+                                                        <select
+                                                          value={(lesson.content as VideoContent).videoProvider ?? 'youtube'}
+                                                          onChange={e => updateVideoContent(mi, li, { videoProvider: e.target.value as VideoProvider })}
+                                                          className="w-full bg-gray-700 text-gray-300 outline-none rounded px-2 py-1 text-xs"
+                                                        >
+                                                          <option value="youtube">YouTube</option>
+                                                          <option value="gumlet">Gumlet</option>
+                                                          <option value="bunny">Bunny</option>
+                                                          <option value="gdrive">Google Drive</option>
+                                                        </select>
                                                         <input
                                                           value={(lesson.content as VideoContent).videoUrl}
                                                           onChange={e => updateVideoContent(mi, li, { videoUrl: e.target.value })}
