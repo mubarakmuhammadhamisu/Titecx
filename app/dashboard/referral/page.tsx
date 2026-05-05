@@ -78,7 +78,7 @@ export default function ReferralDashboard() {
   const [txExpanded, setTxExpanded]     = useState(false);
 
   const referralLink = user?.referralCode
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${user.referralCode}`
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/?ref=${user.referralCode}`
     : '';
 
   const copyLink = async () => {
