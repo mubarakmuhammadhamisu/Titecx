@@ -24,7 +24,9 @@ export default function AppShellLayout({ children }: AppShellLayoutProps) {
     <div className="min-h-screen bg-gray-950">
       <div className="max-w-[1440px] mx-auto min-h-screen flex gap-4 p-4 md:p-6 lg:gap-6">
         <AppShellSidebar />
-        <main className="flex-1 overflow-y-auto min-w-0">
+        {/* pr-12 on mobile only — clears the fixed hamburger button (top-5 right-5, ~44px wide).
+            md:pr-0 resets it on desktop where the sidebar is inline and the button is gone. */}
+        <main className="flex-1 overflow-y-auto min-w-0 pr-12 md:pr-0">
           {children}
         </main>
       </div>

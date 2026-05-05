@@ -1,11 +1,8 @@
 // GET /api/admin/leaderboard?page=1&limit=50
 //
-// Dual-access route:
-//   - Admin users: unrestricted, any page/limit up to 100
-//   - Regular authenticated users: same data, same query (leaderboard is not sensitive)
-//
-// Auth is still required — unauthenticated requests are rejected.
-// This prevents leaking user names/avatars to anonymous scrapers.
+// Admin-only route — requires role = 'Admin' in the profiles table.
+// Previously allowed any authenticated user (logged as a security issue).
+// The user-facing leaderboard is served by /api/leaderboard/learning instead.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -20,20 +17,38 @@ function getAdminClient() {
   );
 }
 
-export async function GET(req: NextRequest) {
-  // ── Auth: any logged-in user may view the leaderboard ────────────────────
+// ── Shared admin auth check ───────────────────────────────────────────────────
+// Verifies session AND confirms the user has role = 'Admin' in profiles.
+// Returns the user if both checks pass, null otherwise.
+async function getAuthenticatedAdmin() {
   const cookieStore = await cookies();
   const sessionClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_Publishable_KEY!,
     { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
   );
-  const { data: { user }, error: authError } = await sessionClient.auth.getUser();
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { data: { user }, error } = await sessionClient.auth.getUser();
+  if (error || !user) return null;
+
+  const supabase = getAdminClient();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || profile.role !== 'Admin') return null;
+  return user;
+}
+
+export async function GET(req: NextRequest) {
+  // ── Auth: admin role required ─────────────────────────────────────────────
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { allowed } = checkRateLimit(`leaderboard:${user.id}`, 30, 60_000);
+  const { allowed } = checkRateLimit(`leaderboard:${admin.id}`, 30, 60_000);
   if (!allowed) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
