@@ -16,7 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace('/login?redirect=/admin');
       return;
     }
-    if (user.role !== 'admin') {
+    if (user.role !== 'Admin') {
       // Authenticated but not admin — send back to their dashboard
       router.replace('/dashboard');
     }
@@ -33,7 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!user || user.role !== 'admin') return null;
+  if (!user || user.role !== 'Admin') return null;
 
   return (
     <div className="min-h-screen bg-gray-950">
