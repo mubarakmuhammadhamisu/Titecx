@@ -10,12 +10,12 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 export const metadata: Metadata = {
   metadataBase: new URL('https://titecx.com'),
   title: {
-    default: 'TITECX',
-    template: '%s | TITECX',
+    default: 'TITECX FORGE',
+    template: '%s | TITECX FORGE',
   },
   description: 'High-quality courses built for real-world skills.',
   openGraph: {
-    siteName: 'TITECX',
+    siteName: 'TITECX FORGE',
     type: 'website',
     locale: 'en_NG',
   },
