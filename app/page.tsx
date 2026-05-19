@@ -9,22 +9,22 @@ export const metadata: Metadata = {
   title: 'TITECX — Learn Real-World Tech Skills',
   description: 'High-quality courses built for Nigerian learners. Master in-demand tech skills and get certified.',
   openGraph: {
-    title: 'TITECX — Learn Real-World Tech Skills',
+    title: 'TITECX FORGE — Learn Real-World Tech Skills',
     description: 'High-quality courses built for Nigerian learners. Master in-demand tech skills and get certified.',
-    url: 'https://titecx.com',
+    url: 'https://titecx-mb.vercel.app',
     type: 'website',
     images: [
       {
         url: '/og-default.png',
         width: 1200,
         height: 630,
-        alt: 'TITECX — Learn Real-World Tech Skills',
+        alt: 'TITECX FORGE — Learn Real-World Tech Skills',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'TITECX — Learn Real-World Tech Skills',
+    title: 'TITECX FORGE — Learn Real-World Tech Skills',
     description: 'High-quality courses built for Nigerian learners. Master in-demand tech skills and get certified.',
     images: ['/og-default.png'],
   },
