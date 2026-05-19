@@ -8,8 +8,20 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'TITECX',
+  metadataBase: new URL('https://titecx.com'),
+  title: {
+    default: 'TITECX',
+    template: '%s | TITECX',
+  },
   description: 'High-quality courses built for real-world skills.',
+  openGraph: {
+    siteName: 'TITECX',
+    type: 'website',
+    locale: 'en_NG',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
