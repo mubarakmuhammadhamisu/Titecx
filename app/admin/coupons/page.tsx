@@ -1,26 +1,29 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
-import { mockCoupons, Coupon } from '@/components/admin/mock-data';
+import { Coupon } from '@/components/admin/mock-data';
 import { Plus, ToggleLeft, ToggleRight, Trash2, Pencil } from 'lucide-react';
 
 export default function CouponsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [coupons, setCoupons] = useState<Coupon[]>(mockCoupons);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Coupon | null>(null);
   const [editTarget, setEditTarget] = useState<Coupon | null>(null);
   const [toggledCoupons, setToggledCoupons] = useState<{ [key: string]: boolean }>({});
   const [createError, setCreateError] = useState('');
-  const [formData, setFormData] = useState({
-    code: '',
-    discount: '',
-    maxUses: '',
-    expiryDate: '',
-  });
+  const [formData, setFormData] = useState({ code: '', discount: '', maxUses: '', expiryDate: '' });
+
+  useEffect(() => {
+    fetch('/api/admin/coupons')
+      .then((r) => r.json())
+      .then((data) => { setCoupons(data.coupons ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
 
   const filteredCoupons = useMemo(() => {
     return coupons.filter((coupon) =>
@@ -28,20 +31,27 @@ export default function CouponsPage() {
     );
   }, [coupons, searchTerm]);
 
-  const handleToggle = (couponId: string) => {
-    setToggledCoupons((prev) => ({
-      ...prev,
-      [couponId]: !prev[couponId],
-    }));
+  const handleToggle = async (couponId: string) => {
+    const current = toggledCoupons[couponId] !== undefined
+      ? toggledCoupons[couponId]
+      : (coupons.find((c) => c.id === couponId)?.active ?? true);
+    const newActive = !current;
+    setToggledCoupons((prev) => ({ ...prev, [couponId]: newActive }));
+    await fetch('/api/admin/coupons', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: couponId, active: newActive }),
+    });
   };
 
-  const handleDeleteCoupon = () => {
+  const handleDeleteCoupon = async () => {
     if (!deleteTarget) return;
+    await fetch(`/api/admin/coupons?id=${deleteTarget.id}`, { method: 'DELETE' });
     setCoupons((prev) => prev.filter((c) => c.id !== deleteTarget.id));
     setDeleteTarget(null);
   };
 
-  const handleCreateCoupon = () => {
+  const handleCreateCoupon = async () => {
     if (!formData.code || !formData.discount || !formData.maxUses) {
       setCreateError('Please fill in all required fields.');
       return;
@@ -50,27 +60,34 @@ export default function CouponsPage() {
 
     if (editTarget) {
       // EDIT MODE
-      setCoupons(prev => prev.map(c => c.id === editTarget.id ? {
-        ...c,
-        code: formData.code.toUpperCase(),
-        discountPercentage: Number(formData.discount),
-        maxUses: Number(formData.maxUses),
-        expiryDate: formData.expiryDate || c.expiryDate,
-      } : c));
+      const res = await fetch('/api/admin/coupons', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editTarget.id,
+          code: formData.code,
+          discountPercentage: Number(formData.discount),
+          maxUses: Number(formData.maxUses),
+          expiryDate: formData.expiryDate || editTarget.expiryDate,
+        }),
+      });
+      const { coupon } = await res.json();
+      setCoupons((prev) => prev.map((c) => c.id === editTarget.id ? coupon : c));
       setEditTarget(null);
     } else {
       // CREATE MODE
-      const newCoupon: Coupon = {
-        id: `new-${Date.now()}`,
-        code: formData.code.toUpperCase(),
-        discountPercentage: Number(formData.discount),
-        timesUsed: 0,
-        maxUses: Number(formData.maxUses),
-        expiryDate: formData.expiryDate || '2099-12-31',
-        active: true,
-        createdDate: new Date().toISOString().split('T')[0],
-      };
-      setCoupons(prev => [newCoupon, ...prev]);
+      const res = await fetch('/api/admin/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: formData.code,
+          discountPercentage: Number(formData.discount),
+          maxUses: Number(formData.maxUses),
+          expiryDate: formData.expiryDate || null,
+        }),
+      });
+      const { coupon } = await res.json();
+      setCoupons((prev) => [coupon, ...prev]);
     }
 
     setFormData({ code: '', discount: '', maxUses: '', expiryDate: '' });
@@ -162,6 +179,14 @@ export default function CouponsPage() {
       ),
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-400 text-sm animate-pulse">Loading coupons…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

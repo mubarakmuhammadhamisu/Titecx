@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
-import { mockPayments, Payment } from '@/components/admin/mock-data';
+import { Payment } from '@/components/admin/mock-data';
 import { CheckCircle, AlertCircle, X, GitBranch, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -15,9 +15,18 @@ export default function PaymentsPage() {
   const [dateTo, setDateTo] = useState('');
   const [verifying, setVerifying] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<{ id: string; success: boolean } | null>(null);
+  const [allPayments, setAllPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/admin/payments')
+      .then((r) => r.json())
+      .then((data) => { setAllPayments(data.payments ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
 
   const filteredPayments = useMemo(() => {
-    return mockPayments.filter((payment) => {
+    return allPayments.filter((payment) => {
       const matchesSearch =
         payment.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -137,6 +146,14 @@ export default function PaymentsPage() {
   const creditsRedeemed   = successPayments.reduce((sum, p) => sum + p.credits_value_ngn, 0);
   const referralTriggers  = successPayments.filter((p) => p.referral_id !== null).length;
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-400 text-sm animate-pulse">Loading payments…</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -204,7 +221,7 @@ export default function PaymentsPage() {
       </div>
 
       <div className="space-y-4">
-        <p className="text-sm text-gray-400">Showing {filteredPayments.length} of {mockPayments.length} payments</p>
+        <p className="text-sm text-gray-400">Showing {filteredPayments.length} of {allPayments.length} payments</p>
 
         {/* Desktop */}
         <div className="hidden md:block">

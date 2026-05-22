@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
-  mockReferrals,
   ReferralRecord,
   ReferralStatus,
 } from '@/components/admin/mock-data';
@@ -176,11 +175,19 @@ function DetailPanel({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ReferralsPage() {
-  const [records, setRecords] = useState<ReferralRecord[]>(mockReferrals);
+  const [records, setRecords]           = useState<ReferralRecord[]>([]);
+  const [loading, setLoading]           = useState(true);
   const [searchTerm, setSearchTerm]     = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | ReferralStatus>('all');
   const [selected, setSelected]         = useState<ReferralRecord | null>(null);
   const [toast, setToast]               = useState('');
+
+  useEffect(() => {
+    fetch('/api/admin/referrals')
+      .then((r) => r.json())
+      .then((data) => { setRecords(data.referrals ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
 
   const filtered = useMemo(() => {
     return records.filter((r) => {
@@ -198,14 +205,16 @@ export default function ReferralsPage() {
   const totalPending    = records.filter((r) => r.status === 'pending').length;
   const totalCommission = records.reduce((s, r) => s + r.commission_credits, 0);
 
-  const handleManualConvert = (id: string, reason: string) => {
+  const handleManualConvert = async (id: string, reason: string) => {
+    // Optimistic update — UI reflects change immediately
+    const now = new Date().toISOString();
     setRecords((prev) =>
       prev.map((r) =>
         r.id === id
           ? {
               ...r,
-              status: 'converted',
-              converted_at: new Date().toISOString(),
+              status: 'converted' as ReferralStatus,
+              converted_at: now,
               commission_credits: r.triggering_payment_amount
                 ? Math.floor(r.triggering_payment_amount * 0.1)
                 : 1500,
@@ -215,21 +224,30 @@ export default function ReferralsPage() {
           : r,
       ),
     );
-    // Update selected to reflect new state
     setSelected((prev) =>
       prev?.id === id
-        ? {
-            ...prev,
-            status: 'converted',
-            converted_at: new Date().toISOString(),
-            manually_converted: true,
-            admin_notes: reason,
-          }
+        ? { ...prev, status: 'converted' as ReferralStatus, converted_at: now, manually_converted: true, admin_notes: reason }
         : prev,
     );
-    setToast(`Referral manually converted and commission awarded.`);
+
+    // Persist to backend
+    await fetch('/api/admin/referrals', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, reason }),
+    });
+
+    setToast('Referral manually converted and commission awarded.');
     setTimeout(() => setToast(''), 4000);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-400 text-sm animate-pulse">Loading referrals…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

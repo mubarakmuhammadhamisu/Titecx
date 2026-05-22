@@ -1,12 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Package, CheckCircle2, Truck, Clock, X, Search, ChevronDown } from 'lucide-react';
 import { Modal } from '@/components/admin/shared/Modal';
-
-// ── Mock data ─────────────────────────────────────────────────────────────────
-// TODO: Replace with real Supabase fetch from mystery_box_requests table
-// joined with enrollments, profiles, and courses
 
 type BoxStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'forfeited';
 
@@ -30,97 +26,6 @@ interface MysteryBoxRequest {
   notes: string;
 }
 
-const mockRequests: MysteryBoxRequest[] = [
-  {
-    id: 'mbr-001',
-    studentName: 'Amina Hassan',
-    studentEmail: 'amina.hassan@email.com',
-    courseName: 'Introduction to Web Development',
-    courseSlug: 'intro-to-web-development',
-    earnedAt: '2025-04-10T14:22:00Z',
-    premiumDeadline: '2025-04-15T00:00:00Z',
-    status: 'pending',
-    trackingNumber: null,
-    deliveryAddress: {
-      name: 'Amina Hassan',
-      address: '14B Adeola Odeku Street, Victoria Island',
-      city: 'Lagos',
-      state: 'Lagos',
-      phone: '+234 812 345 6789',
-    },
-    notes: '',
-  },
-  {
-    id: 'mbr-002',
-    studentName: 'Chukwuemeka Obi',
-    studentEmail: 'c.obi@gmail.com',
-    courseName: 'Advanced React.js Mastery',
-    courseSlug: 'advanced-react',
-    earnedAt: '2025-04-08T09:10:00Z',
-    premiumDeadline: '2025-04-20T00:00:00Z',
-    status: 'processing',
-    trackingNumber: null,
-    deliveryAddress: {
-      name: 'Chukwuemeka Obi',
-      address: '22 Aguiyi-Ironsi Street, Maitama',
-      city: 'Abuja',
-      state: 'FCT',
-      phone: '+234 803 987 6543',
-    },
-    notes: 'Call before delivery',
-  },
-  {
-    id: 'mbr-003',
-    studentName: 'Fatima Yusuf',
-    studentEmail: 'fatimayusuf@outlook.com',
-    courseName: 'Python for Data Science',
-    courseSlug: 'python-data-science',
-    earnedAt: '2025-03-25T17:45:00Z',
-    premiumDeadline: '2025-04-01T00:00:00Z',
-    status: 'shipped',
-    trackingNumber: 'DHL-7823910042',
-    deliveryAddress: {
-      name: 'Fatima Yusuf',
-      address: '5 Yakubu Gowon Crescent',
-      city: 'Kaduna',
-      state: 'Kaduna',
-      phone: '+234 706 111 2233',
-    },
-    notes: '',
-  },
-  {
-    id: 'mbr-004',
-    studentName: 'Tunde Adeyemi',
-    studentEmail: 'tunde.a@proton.me',
-    courseName: 'Introduction to Web Development',
-    courseSlug: 'intro-to-web-development',
-    earnedAt: '2025-03-18T11:00:00Z',
-    premiumDeadline: '2025-03-30T00:00:00Z',
-    status: 'delivered',
-    trackingNumber: 'GIG-00192837',
-    deliveryAddress: {
-      name: 'Tunde Adeyemi',
-      address: '9 Allen Avenue, Ikeja',
-      city: 'Lagos',
-      state: 'Lagos',
-      phone: '+234 818 222 3344',
-    },
-    notes: 'Delivered and confirmed via WhatsApp',
-  },
-  {
-    id: 'mbr-005',
-    studentName: 'Ngozi Eze',
-    studentEmail: 'ngozi.eze@email.com',
-    courseName: 'Advanced React.js Mastery',
-    courseSlug: 'advanced-react',
-    earnedAt: '2025-04-12T08:30:00Z',
-    premiumDeadline: '2025-04-25T00:00:00Z',
-    status: 'pending',
-    trackingNumber: null,
-    deliveryAddress: null, // student hasn't submitted address yet
-    notes: 'Awaiting delivery address from student',
-  },
-];
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<BoxStatus, { label: string; color: string; icon: React.ReactNode }> = {
@@ -134,12 +39,20 @@ const STATUS_CONFIG: Record<BoxStatus, { label: string; color: string; icon: Rea
 const STATUS_ORDER: BoxStatus[] = ['pending', 'processing', 'shipped', 'delivered'];
 
 export default function MysteryBoxPage() {
-  const [requests, setRequests] = useState<MysteryBoxRequest[]>(mockRequests);
-  const [search, setSearch] = useState('');
+  const [requests, setRequests]   = useState<MysteryBoxRequest[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState('');
   const [statusFilter, setStatusFilter] = useState<BoxStatus | 'all'>('all');
-  const [selected, setSelected] = useState<MysteryBoxRequest | null>(null);
+  const [selected, setSelected]   = useState<MysteryBoxRequest | null>(null);
   const [trackingInput, setTrackingInput] = useState('');
-  const [notesInput, setNotesInput] = useState('');
+  const [notesInput, setNotesInput]       = useState('');
+
+  useEffect(() => {
+    fetch('/api/admin/mystery-box')
+      .then((r) => r.json())
+      .then((data) => { setRequests(data.requests ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
 
   // Stats
   const stats = useMemo(() => ({
@@ -167,21 +80,35 @@ export default function MysteryBoxPage() {
     setNotesInput(req.notes);
   };
 
-  const handleAdvanceStatus = () => {
+  const handleAdvanceStatus = async () => {
     if (!selected) return;
     const currentIdx = STATUS_ORDER.indexOf(selected.status as BoxStatus);
     if (currentIdx === -1 || currentIdx >= STATUS_ORDER.length - 1) return;
     const nextStatus = STATUS_ORDER[currentIdx + 1];
     const updated = { ...selected, status: nextStatus, trackingNumber: trackingInput || selected.trackingNumber, notes: notesInput };
+    // Optimistic update
     setRequests(prev => prev.map(r => r.id === selected.id ? updated : r));
     setSelected(updated);
+    // Persist
+    await fetch('/api/admin/mystery-box', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: selected.id, status: nextStatus, trackingNumber: trackingInput || selected.trackingNumber, notes: notesInput }),
+    });
   };
 
-  const handleSaveNotes = () => {
+  const handleSaveNotes = async () => {
     if (!selected) return;
     const updated = { ...selected, trackingNumber: trackingInput || selected.trackingNumber, notes: notesInput };
+    // Optimistic update
     setRequests(prev => prev.map(r => r.id === selected.id ? updated : r));
     setSelected(updated);
+    // Persist
+    await fetch('/api/admin/mystery-box', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: selected.id, trackingNumber: trackingInput || selected.trackingNumber, notes: notesInput }),
+    });
   };
 
   const canAdvance = selected && STATUS_ORDER.indexOf(selected.status as BoxStatus) < STATUS_ORDER.length - 1;

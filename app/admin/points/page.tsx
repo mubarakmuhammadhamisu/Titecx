@@ -1,9 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
-  mockStudentPoints,
-  mockStudents,
   StudentPointSummary,
   PointTransaction,
   PointTxnType,
@@ -204,25 +202,22 @@ function PointDetailPanel({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PointsPage() {
-  // Initialise with mock data, then extend from mockStudents for completeness
-  const buildInitialData = (): StudentPointSummary[] => {
-    const existing = new Set(mockStudentPoints.map((s) => s.student_id));
-    const extras: StudentPointSummary[] = mockStudents
-      .filter((s) => !existing.has(s.id))
-      .map((s) => ({
-        student_id:      s.id,
-        student_name:    s.name,
-        credit_balance:  s.credit_balance,
-        lifetime_points: s.lifetime_points,
-        learning_points: 0,
-        transactions:    [],
-      }));
-    return [...mockStudentPoints, ...extras];
-  };
-
-  const [summaries, setSummaries]   = useState<StudentPointSummary[]>(buildInitialData);
+  const [summaries, setSummaries]   = useState<StudentPointSummary[]>([]);
+  const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState('');
-  const [selectedId, setSelectedId] = useState<string>(mockStudentPoints[0]?.student_id ?? '');
+  const [selectedId, setSelectedId] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/admin/points')
+      .then((r) => r.json())
+      .then((data) => {
+        const list: StudentPointSummary[] = data.summaries ?? [];
+        setSummaries(list);
+        if (list.length > 0) setSelectedId(list[0].student_id);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const filtered = useMemo(
     () =>
@@ -234,15 +229,13 @@ export default function PointsPage() {
 
   const activeSummary = summaries.find((s) => s.student_id === selectedId) ?? null;
 
-  const handleAdjust = (studentId: string, txn: PointTransaction) => {
+  const handleAdjust = async (studentId: string, txn: PointTransaction) => {
+    // Optimistic update
     setSummaries((prev) =>
       prev.map((s) => {
         if (s.student_id !== studentId) return s;
-        const newBalance = Math.max(0, s.credit_balance + txn.amount);
-        const newLifetime =
-          txn.amount > 0
-            ? s.lifetime_points + txn.amount
-            : s.lifetime_points;
+        const newBalance  = Math.max(0, s.credit_balance + txn.amount);
+        const newLifetime = txn.amount > 0 ? s.lifetime_points + txn.amount : s.lifetime_points;
         return {
           ...s,
           credit_balance:  newBalance,
@@ -251,7 +244,21 @@ export default function PointsPage() {
         };
       }),
     );
+    // Persist to backend
+    await fetch('/api/admin/points', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId, amount: txn.amount, reason: txn.description }),
+    });
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-400 text-sm animate-pulse">Loading points…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

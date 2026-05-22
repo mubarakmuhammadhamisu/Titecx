@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
-import { mockCourses, Course } from '@/components/admin/mock-data';
+import { Course } from '@/components/admin/mock-data';
 import { useRouter } from 'next/navigation';
 import {
   ToggleLeft, ToggleRight, BookOpen, Plus, Trash2,
@@ -76,12 +76,20 @@ export default function CoursesPage() {
   const [pageMode, setPageMode] = useState<'list' | 'create'>('list');
 
   // ── List-mode state ───────────────────────────────────────────────────────
-  const [courses, setCourses] = useState<Course[]>(mockCourses);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [publishedFilter, setPublishedFilter] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [toggledCourses, setToggledCourses] = useState<Record<string, boolean>>({});
   const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/courses')
+      .then((r) => r.json())
+      .then((data) => { setCourses(data.courses ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
 
   // ── Create-mode state ─────────────────────────────────────────────────────
   const [form, setForm] = useState<CourseForm>(BLANK_FORM);
@@ -579,6 +587,14 @@ export default function CoursesPage() {
   // ─────────────────────────────────────────────────────────────────────────
   // LIST MODE
   // ─────────────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-400 text-sm animate-pulse">Loading courses…</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
