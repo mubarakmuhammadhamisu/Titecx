@@ -1,15 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatCard } from '@/components/admin/shared/StatCard';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
-import {
-  getMetrics,
-  getRecentPayments,
-  mockRevenueData,
-  mockReferralConversions,
-  Payment,
-} from '@/components/admin/mock-data';
+import { Payment } from '@/components/admin/mock-data';
 import {
   DollarSign,
   Users,
@@ -30,30 +24,55 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 
+interface StatsResponse {
+  totalRevenue: number;
+  totalStudents: number;
+  activeEnrollments: number;
+  completedEnrollments: number;
+  creditsIssuedThisMonth: number;
+  pendingReferrals: number;
+  revenueData: { date: string; revenue: number }[];
+  referralConversions: { date: string; conversions: number }[];
+  recentPayments: Payment[];
+}
+
 export default function AdminOverview() {
-  const metrics = getMetrics();
-  const recentPayments = getRecentPayments(5);
-  const [lessonsToday] = useState(() => Math.floor(Math.random() * 50 + 10));
-  const last7Revenue = mockRevenueData.slice(-7).map((d) => ({ v: d.revenue }));
-  const last7Enrollments = mockRevenueData.slice(-7).map((d, i) => ({ v: Math.round((d.revenue / 15000) * (8 + i)) }));
+  const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/admin/stats')
+      .then((r) => r.json())
+      .then((data) => { setStats(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const revenueData          = stats?.revenueData          ?? [];
+  const referralConversions  = stats?.referralConversions  ?? [];
+  const recentPayments       = stats?.recentPayments       ?? [];
+
+  const last7Revenue      = revenueData.slice(-7).map((d) => ({ v: d.revenue }));
+  const last7Enrollments  = revenueData.slice(-7).map((d, i) => ({ v: Math.round((d.revenue / 15000) * (8 + i)) }));
+  const todayRevenue      = revenueData[revenueData.length - 1]?.revenue ?? 0;
+  const yesterdayRevenue  = revenueData[revenueData.length - 2]?.revenue ?? 0;
+  const revenueTrend      = yesterdayRevenue ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100 : 0;
 
   const paymentColumns: Column<Payment>[] = [
     { key: 'studentName', label: 'Student', sortable: true },
-    { key: 'courseName', label: 'Course', sortable: true },
+    { key: 'courseName',  label: 'Course',  sortable: true },
     {
       key: 'amount',
       label: 'Amount',
       sortable: true,
-      render: (value) => `₦${value.toLocaleString()}`,
+      render: (value) => `₦${Number(value).toLocaleString()}`,
     },
     {
       key: 'date',
       label: 'Date',
       sortable: true,
-      render: (value) => format(new Date(value), 'MMM d, yyyy'),
+      render: (value) => format(new Date(value as string), 'MMM d, yyyy'),
     },
     {
       key: 'status',
@@ -67,19 +86,20 @@ export default function AdminOverview() {
     },
   ];
 
-  const todayRevenue = mockRevenueData[mockRevenueData.length - 1]?.revenue || 0;
-  const yesterdayRevenue = mockRevenueData[mockRevenueData.length - 2]?.revenue || 0;
-  const revenueTrend = yesterdayRevenue
-    ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100
-    : 0;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-400 text-sm animate-pulse">Loading dashboard…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
         <p className="mt-2 text-gray-400">
-          Welcome to the Titecx admin panel. Manage courses, students, payments,
-          and more.
+          Welcome to the Titecx admin panel. Manage courses, students, payments, and more.
         </p>
       </div>
 
@@ -87,7 +107,7 @@ export default function AdminOverview() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <StatCard
           title="Total Revenue (This Month)"
-          value={`₦${metrics.totalRevenue.toLocaleString()}`}
+          value={`₦${(stats?.totalRevenue ?? 0).toLocaleString()}`}
           icon={DollarSign}
           trend={{ value: Math.abs(revenueTrend), isPositive: revenueTrend >= 0 }}
           sparkData={last7Revenue}
@@ -95,7 +115,7 @@ export default function AdminOverview() {
         />
         <StatCard
           title="Students Enrolled"
-          value={metrics.totalStudents}
+          value={stats?.totalStudents ?? 0}
           icon={Users}
           trend={{ value: 12, isPositive: true }}
           sparkData={last7Enrollments}
@@ -103,15 +123,15 @@ export default function AdminOverview() {
         />
         <StatCard
           title="Active Enrollments"
-          value={metrics.activeEnrollments}
+          value={stats?.activeEnrollments ?? 0}
           icon={BookOpen}
           trend={{ value: 8, isPositive: true }}
           sparkData={last7Enrollments}
           sparkColor="pink"
         />
         <StatCard
-          title="Lessons Completed Today"
-          value={lessonsToday}
+          title="Completed Enrollments"
+          value={stats?.completedEnrollments ?? 0}
           icon={TrendingUp}
           trend={{ value: 5, isPositive: true }}
           sparkData={last7Revenue.map((d) => ({ v: Math.round(d.v / 3000) }))}
@@ -119,7 +139,7 @@ export default function AdminOverview() {
         />
         <StatCard
           title="Credits Issued This Month"
-          value={`₦${metrics.creditsIssuedThisMonth.toLocaleString()}`}
+          value={`₦${(stats?.creditsIssuedThisMonth ?? 0).toLocaleString()}`}
           icon={Zap}
           trend={{ value: 4, isPositive: true }}
           sparkData={last7Revenue.map((d) => ({ v: Math.round(d.v / 10000) }))}
@@ -127,7 +147,7 @@ export default function AdminOverview() {
         />
         <StatCard
           title="Pending Referrals"
-          value={metrics.pendingReferrals}
+          value={stats?.pendingReferrals ?? 0}
           icon={GitBranch}
           trend={{ value: 2, isPositive: false }}
           sparkData={last7Enrollments}
@@ -139,38 +159,18 @@ export default function AdminOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Bar Chart */}
         <div className="rounded-xl border border-pink-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-[0_0_28px_rgba(244,114,182,0.12)]">
-          <h2 className="mb-6 text-lg font-bold text-white">
-            Daily Revenue (Last 15 Days)
-          </h2>
+          <h2 className="mb-6 text-lg font-bold text-white">Daily Revenue (Last 15 Days)</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={mockRevenueData}>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="rgba(99, 102, 241, 0.1)"
-              />
-              <XAxis
-                dataKey="date"
-                stroke="rgb(156, 163, 175)"
-                style={{ fontSize: '12px' }}
-              />
-              <YAxis
-                stroke="rgb(156, 163, 175)"
-                style={{ fontSize: '12px' }}
-              />
+            <BarChart data={revenueData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(99, 102, 241, 0.1)" />
+              <XAxis dataKey="date" stroke="rgb(156, 163, 175)" style={{ fontSize: '12px' }} />
+              <YAxis stroke="rgb(156, 163, 175)" style={{ fontSize: '12px' }} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                  border: '1px solid rgba(244, 114, 182, 0.35)',
-                  borderRadius: '8px',
-                }}
+                contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.95)', border: '1px solid rgba(244, 114, 182, 0.35)', borderRadius: '8px' }}
                 labelStyle={{ color: '#fff' }}
-                formatter={(value: any) => `₦${(value as number).toLocaleString()}`}
+                formatter={(value) => `₦${(value as number).toLocaleString()}`}
               />
-              <Bar
-                dataKey="revenue"
-                fill="url(#colorRevenue)"
-                radius={[8, 8, 0, 0]}
-              />
+              <Bar dataKey="revenue" fill="url(#colorRevenue)" radius={[8, 8, 0, 0]} />
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#f472b6" stopOpacity={0.85} />
@@ -183,32 +183,16 @@ export default function AdminOverview() {
 
         {/* Revenue Trend Line Chart */}
         <div className="rounded-xl border border-green-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-[0_0_28px_rgba(74,222,128,0.10)]">
-          <h2 className="mb-6 text-lg font-bold text-white">
-            Revenue Trend
-          </h2>
+          <h2 className="mb-6 text-lg font-bold text-white">Revenue Trend</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={mockRevenueData}>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="rgba(74, 222, 128, 0.08)"
-              />
-              <XAxis
-                dataKey="date"
-                stroke="rgb(156, 163, 175)"
-                style={{ fontSize: '12px' }}
-              />
-              <YAxis
-                stroke="rgb(156, 163, 175)"
-                style={{ fontSize: '12px' }}
-              />
+            <LineChart data={revenueData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(74, 222, 128, 0.08)" />
+              <XAxis dataKey="date" stroke="rgb(156, 163, 175)" style={{ fontSize: '12px' }} />
+              <YAxis stroke="rgb(156, 163, 175)" style={{ fontSize: '12px' }} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                  border: '1px solid rgba(74, 222, 128, 0.35)',
-                  borderRadius: '8px',
-                }}
+                contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.95)', border: '1px solid rgba(74, 222, 128, 0.35)', borderRadius: '8px' }}
                 labelStyle={{ color: '#fff' }}
-                formatter={(value: any) => `₦${(value as number).toLocaleString()}`}
+                formatter={(value) => `₦${(value as number).toLocaleString()}`}
               />
               <Line
                 type="monotone"
@@ -229,11 +213,11 @@ export default function AdminOverview() {
               <GitBranch size={18} className="text-emerald-400" /> Referral Conversions (Last 7 Days)
             </h2>
             <span className="text-xs text-gray-500">
-              {metrics.referralConversionsLast7Days.reduce((s, d) => s + d.conversions, 0)} total
+              {referralConversions.reduce((s, d) => s + d.conversions, 0)} total
             </span>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={mockReferralConversions}>
+            <BarChart data={referralConversions}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" />
               <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis allowDecimals={false} tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -251,7 +235,10 @@ export default function AdminOverview() {
       {/* Recent Payments */}
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-white">Recent Payments</h2>
-        <AdminTable columns={paymentColumns} data={recentPayments} />
+        {recentPayments.length > 0
+          ? <AdminTable columns={paymentColumns} data={recentPayments} />
+          : <p className="text-gray-500 text-sm">No payments yet.</p>
+        }
       </div>
     </div>
   );
