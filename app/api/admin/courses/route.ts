@@ -3,7 +3,7 @@
 // Returns all courses enriched with enrollment counts, total revenue,
 // and completion rates. Shape matches the Course interface in mock-data.ts.
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient, getAuthenticatedAdmin } from '@/lib/adminSupabase';
 
 export async function GET() {
@@ -72,4 +72,58 @@ export async function GET() {
   });
 
   return NextResponse.json({ courses: result });
+}
+
+// ── POST — create new course ──────────────────────────────────────────────────
+export async function POST(req: NextRequest) {
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const body = await req.json();
+  const { title, description, instructor, level, price, published, modules } = body;
+
+  if (!title || !description || !instructor || price === undefined) {
+    return NextResponse.json({ error: 'title, description, instructor, price are required' }, { status: 400 });
+  }
+
+  // Generate a slug from the title
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    + '-' + Date.now();
+
+  const supabase = getAdminClient();
+  const { data, error } = await supabase
+    .from('courses')
+    .insert({
+      slug,
+      title,
+      description,
+      instructor: instructor ?? '',
+      level:      level ?? 'Beginner',
+      price:      String(price),
+      is_published: published ?? false,
+      modules:    modules ?? [],
+      features:   [],
+      curriculum: [],
+    })
+    .select('id, slug, title, description, price, is_published, modules')
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({
+    course: {
+      id:             data.id,
+      title:          data.title,
+      description:    data.description ?? '',
+      price:          data.price ? Math.round(Number(data.price)) : 0,
+      enrolledCount:  0,
+      totalRevenue:   0,
+      published:      data.is_published ?? false,
+      lessonsCount:   0,
+      completionRate: 0,
+    },
+  }, { status: 201 });
 }

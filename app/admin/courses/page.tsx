@@ -11,7 +11,24 @@ import {
   ArrowLeft, Save, Eye, EyeOff, GripVertical,
   Video, FileText, HelpCircle, X, ChevronDown, ChevronUp, Check, Pencil,
 } from 'lucide-react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import dynamic from 'next/dynamic';
+
+// @hello-pangea/dnd uses browser-only APIs (pointer events, requestAnimationFrame).
+// It must NEVER run on the server — dynamic import with ssr:false prevents the crash.
+const { DragDropContext, Droppable, Draggable } = {
+  DragDropContext: dynamic(
+    () => import('@hello-pangea/dnd').then((m) => m.DragDropContext),
+    { ssr: false }
+  ),
+  Droppable: dynamic(
+    () => import('@hello-pangea/dnd').then((m) => m.Droppable),
+    { ssr: false }
+  ),
+  Draggable: dynamic(
+    () => import('@hello-pangea/dnd').then((m) => m.Draggable),
+    { ssr: false }
+  ),
+};
 
 import type { VideoProvider } from '@/lib/Course';
 
@@ -220,38 +237,52 @@ export default function CoursesPage() {
     setForm(f => ({ ...f, modules }));
   };
 
-  const handleSaveCourse = () => {
+  const handleSaveCourse = async () => {
     const errors: string[] = [];
-    if (!form.title.trim())       errors.push('Course title is required.');
-    if (!form.description.trim()) errors.push('Description is required.');
-    if (!form.instructor.trim())  errors.push('Instructor name is required.');
-    if (!form.price.trim())       errors.push('Price is required.');
+    if (!form.title.trim())        errors.push('Course title is required.');
+    if (!form.description.trim())  errors.push('Description is required.');
+    if (!form.instructor.trim())   errors.push('Instructor name is required.');
+    if (!form.price.trim())        errors.push('Price is required.');
     if (form.modules.length === 0) errors.push('Add at least one module.');
 
     if (errors.length > 0) { setFormErrors(errors); return; }
     setFormErrors([]);
 
-    const newCourse: Course = {
-      id: `new-${Date.now()}`,
-      title: form.title,
-      description: form.description,
-      price: Number(form.price.replace(/[^0-9]/g, '')) || 0,
-      enrolledCount: 0,
-      totalRevenue: 0,
-      published: form.published,
-      lessonsCount: totalLessons,
-      completionRate: 0,
-    };
+    try {
+      const res = await fetch('/api/admin/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title:       form.title,
+          description: form.description,
+          instructor:  form.instructor,
+          level:       form.level,
+          price:       Number(form.price.replace(/[^0-9]/g, '')) || 0,
+          published:   form.published,
+          modules:     form.modules.map(({ collapsed: _c, ...m }) => ({
+            ...m,
+            lessons: m.lessons.map(({ expanded: _e, ...l }) => l),
+          })),
+        }),
+      });
 
-    console.log('New course (full):', JSON.stringify({ ...newCourse, modules: form.modules }, null, 2));
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setFormErrors([body.error ?? 'Failed to save course. Please try again.']);
+        return;
+      }
 
-    setCourses(prev => [newCourse, ...prev]);
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      setPageMode('list');
-      setForm(BLANK_FORM);
-    }, 1800);
+      const { course: saved } = await res.json();
+      setCourses((prev) => [saved, ...prev]);
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        setPageMode('list');
+        setForm(BLANK_FORM);
+      }, 1800);
+    } catch {
+      setFormErrors(['Network error — please check your connection and try again.']);
+    }
   };
 
   // ── Shared table columns ──────────────────────────────────────────────────

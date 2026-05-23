@@ -58,40 +58,52 @@ export default function CouponsPage() {
     }
     setCreateError('');
 
-    if (editTarget) {
-      // EDIT MODE
-      const res = await fetch('/api/admin/coupons', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editTarget.id,
-          code: formData.code,
-          discountPercentage: Number(formData.discount),
-          maxUses: Number(formData.maxUses),
-          expiryDate: formData.expiryDate || editTarget.expiryDate,
-        }),
-      });
-      const { coupon } = await res.json();
-      setCoupons((prev) => prev.map((c) => c.id === editTarget.id ? coupon : c));
-      setEditTarget(null);
-    } else {
-      // CREATE MODE
-      const res = await fetch('/api/admin/coupons', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: formData.code,
-          discountPercentage: Number(formData.discount),
-          maxUses: Number(formData.maxUses),
-          expiryDate: formData.expiryDate || null,
-        }),
-      });
-      const { coupon } = await res.json();
-      setCoupons((prev) => [coupon, ...prev]);
-    }
+    try {
+      if (editTarget) {
+        // EDIT MODE
+        const res = await fetch('/api/admin/coupons', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editTarget.id,
+            code: formData.code,
+            discountPercentage: Number(formData.discount),
+            maxUses: Number(formData.maxUses),
+            expiryDate: formData.expiryDate || editTarget.expiryDate,
+          }),
+        });
+        const body = await res.json();
+        if (!res.ok || !body.coupon) {
+          setCreateError(body.error ?? 'Failed to update coupon.');
+          return;
+        }
+        setCoupons((prev) => prev.map((c) => c.id === editTarget.id ? body.coupon : c));
+        setEditTarget(null);
+      } else {
+        // CREATE MODE
+        const res = await fetch('/api/admin/coupons', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: formData.code,
+            discountPercentage: Number(formData.discount),
+            maxUses: Number(formData.maxUses),
+            expiryDate: formData.expiryDate || null,
+          }),
+        });
+        const body = await res.json();
+        if (!res.ok || !body.coupon) {
+          setCreateError(body.error ?? 'Failed to create coupon.');
+          return;
+        }
+        setCoupons((prev) => [body.coupon, ...prev]);
+      }
 
-    setFormData({ code: '', discount: '', maxUses: '', expiryDate: '' });
-    setIsModalOpen(false);
+      setFormData({ code: '', discount: '', maxUses: '', expiryDate: '' });
+      setIsModalOpen(false);
+    } catch {
+      setCreateError('Network error — please check your connection and try again.');
+    }
   };
 
   const couponColumns: Column<Coupon>[] = [
