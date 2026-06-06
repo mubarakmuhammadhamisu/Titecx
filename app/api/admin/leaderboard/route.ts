@@ -17,9 +17,6 @@ function getAdminClient() {
   );
 }
 
-// ── Shared admin auth check ───────────────────────────────────────────────────
-// Verifies session AND confirms the user has role = 'Admin' in profiles.
-// Returns the user if both checks pass, null otherwise.
 async function getAuthenticatedAdmin() {
   const cookieStore = await cookies();
   const sessionClient = createServerClient(
@@ -42,7 +39,6 @@ async function getAuthenticatedAdmin() {
 }
 
 export async function GET(req: NextRequest) {
-  // ── Auth: admin role required ─────────────────────────────────────────────
   const admin = await getAuthenticatedAdmin();
   if (!admin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -61,43 +57,64 @@ export async function GET(req: NextRequest) {
 
   const supabase = getAdminClient();
 
+  // 1. Profiles — now includes credit_balance
   const { data: profiles, error, count } = await supabase
     .from('profiles')
-    .select('id, name, avatar, avatar_url, lifetime_points', { count: 'exact' })
+    .select('id, name, avatar, avatar_url, lifetime_points, credit_balance', { count: 'exact' })
     .gt('lifetime_points', 0)
     .order('lifetime_points', { ascending: false })
-    .order('id', { ascending: true }) // stable tie-break
+    .order('id', { ascending: true })
     .range(from, to);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const profileIds = (profiles ?? []).map((p: any) => p.id);
   const completionMap: Record<string, number> = {};
+  const inProgressMap: Record<string, number> = {};
 
   if (profileIds.length > 0) {
-    const { data: enrollments } = await supabase
+    // 2. Completed enrollments
+    const { data: completed } = await supabase
       .from('enrollments')
       .select('user_id')
       .in('user_id', profileIds)
       .eq('progress', 100);
 
-    for (const row of enrollments ?? []) {
+    for (const row of completed ?? []) {
       completionMap[row.user_id] = (completionMap[row.user_id] ?? 0) + 1;
+    }
+
+    // 3. In-progress enrollments (progress > 0 and < 100)
+    const { data: inProgress } = await supabase
+      .from('enrollments')
+      .select('user_id')
+      .in('user_id', profileIds)
+      .gt('progress', 0)
+      .lt('progress', 100);
+
+    for (const row of inProgress ?? []) {
+      inProgressMap[row.user_id] = (inProgressMap[row.user_id] ?? 0) + 1;
     }
   }
 
+  // 4. Assemble response
   const leaderboard = (profiles ?? []).map((p: any, i: number) => ({
-    id:               p.id,
-    position:         from + i + 1,
-    studentName:      p.name,       // admin page shape
-    name:             p.name,       // dashboard page shape
-    avatar:           p.avatar,
-    avatar_url:       p.avatar_url,
-    points:           p.lifetime_points ?? 0,      // admin page shape
-    lifetime_points:  p.lifetime_points ?? 0,      // dashboard page shape
-    coursesCompleted: completionMap[p.id] ?? 0,    // admin page shape
-    courses_completed: completionMap[p.id] ?? 0,   // dashboard page shape
-    rank:             from + i + 1,
+    id:                  p.id,
+    position:            from + i + 1,
+    studentName:         p.name,
+    name:                p.name,
+    avatar:              p.avatar,
+    avatar_url:          p.avatar_url,
+    points:              p.lifetime_points ?? 0,
+    lifetime_points:     p.lifetime_points ?? 0,
+    credit_balance:      p.credit_balance  ?? 0,
+    coursesCompleted:    completionMap[p.id] ?? 0,
+    courses_completed:   completionMap[p.id] ?? 0,
+    courses_in_progress: inProgressMap[p.id] ?? 0,
+    learning_points:
+      ((completionMap[p.id]  ?? 0) * 800) +
+      ((inProgressMap[p.id]  ?? 0) * 200),
+    rank: from + i + 1,
   }));
 
   return NextResponse.json({
