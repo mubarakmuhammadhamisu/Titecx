@@ -14,12 +14,12 @@
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import Navbar from '@/components/ui/Navbar';
 import Footer from '@/components/ui/Footer';
 import CopyLinkButton from '@/components/ui/CopyLinkButton';
 import { getCourseBySlug } from '@/lib/courses';
+import { getAdminClient } from '@/lib/adminSupabase';
 import { Award, CheckCircle2, Shield, Hash, Package, Trophy } from 'lucide-react';
 
 type PageProps = { params: Promise<{ slug: string }> };
@@ -32,9 +32,6 @@ export default async function CertificatePage({ params }: PageProps) {
   if (!course) return notFound();
 
   // ── Soft session check — NO redirect; public page ─────────────────────────
-  // We try to read the session so we can personalise the certificate if the
-  // viewer is the student who earned it. Non-logged-in visitors still see the
-  // course certificate template — we just omit their personal details.
   const cookieStore = await cookies();
   const sessionClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,21 +41,13 @@ export default async function CertificatePage({ params }: PageProps) {
   const { data: { user } } = await sessionClient.auth.getUser();
 
   // ── Personalisation: fetch enrollment + student name ──────────────────────
-  // Only runs if a session exists. Uses the service-role client so RLS on the
-  // enrollments and profiles tables doesn't block the join.
   let studentName: string | null = null;
   let verificationId: string | null = null;
   let isPremium = false;
 
   if (user) {
-    const adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const adminClient = getAdminClient();
 
-    // Join enrollments with profiles to fetch the student's display name.
-    // The 'profiles(name)' syntax uses Supabase's PostgREST FK relationship
-    // between enrollments.user_id → profiles.id.
     const { data: enrollment } = await adminClient
       .from('enrollments')
       .select('id, progress, completed_at, purchase_type, profiles(name)')
@@ -100,14 +89,14 @@ export default async function CertificatePage({ params }: PageProps) {
         }`}>
 
           {/* Top accent bar */}
-          <div className={`h-2 ${isPremium ? 'bg-gradient-to-r from-pink-500 via-fuchsia-500 to-pink-500' : 'bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-500'}`} />
+          <div className={`h-2 ${isPremium ? 'bg-linear-to-r from-pink-500 via-fuchsia-500 to-pink-500' : 'bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-500'}`} />
 
           <div className="px-8 py-12 text-center space-y-6">
 
             {/* Premium exclusive badge */}
             {isPremium && (
               <div className="flex items-center justify-center gap-2">
-                <span className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500/20 to-fuchsia-500/20 border border-pink-500/40 text-pink-300 text-xs font-bold px-4 py-1.5 rounded-full">
+                <span className="inline-flex items-center gap-2 bg-linear-to-r from-pink-500/20 to-fuchsia-500/20 border border-pink-500/40 text-pink-300 text-xs font-bold px-4 py-1.5 rounded-full">
                   <Trophy size={12} />
                   Premium Completion — Challenge Completed
                 </span>
@@ -194,7 +183,7 @@ export default async function CertificatePage({ params }: PageProps) {
           </div>
 
           {/* Bottom accent bar */}
-          <div className={`h-1 ${isPremium ? 'bg-gradient-to-r from-pink-500/0 via-pink-500/40 to-pink-500/0' : 'bg-linear-to-r from-indigo-500/0 via-indigo-500/40 to-indigo-500/0'}`} />
+          <div className={`h-1 ${isPremium ? 'bg-linear-to-r from-pink-500/0 via-pink-500/40 to-pink-500/0' : 'bg-linear-to-r from-indigo-500/0 via-indigo-500/40 to-indigo-500/0'}`} />
         </div>
 
         {/* Actions */}
@@ -206,7 +195,6 @@ export default async function CertificatePage({ params }: PageProps) {
           >
             ← Back to Achievements
           </Link>
-          {/* CopyLinkButton is a 'use client' component — handles onClick safely */}
           <CopyLinkButton />
         </div>
       </section>

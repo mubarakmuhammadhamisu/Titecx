@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient, getAuthenticatedAdmin } from '@/lib/adminSupabase';
+import { checkCsrfHeader } from '@/lib/csrf';
 
 export async function GET() {
   const admin = await getAuthenticatedAdmin();
@@ -92,6 +93,9 @@ export async function PATCH(req: NextRequest) {
   const admin = await getAuthenticatedAdmin();
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
+
   const body = await req.json();
   const { id, isBanned } = body;
   if (!id || isBanned === undefined) return NextResponse.json({ error: 'id and isBanned required' }, { status: 400 });
@@ -106,6 +110,9 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const admin = await getAuthenticatedAdmin();
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');

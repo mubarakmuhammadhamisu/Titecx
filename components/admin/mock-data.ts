@@ -1,151 +1,43 @@
-// Mock data for admin dashboard — all hardcoded for now.
-// Will be replaced with real Supabase API calls when backend is fully integrated.
-// All interfaces are 100% swappable with the real Supabase schema.
+// Mock data for admin dashboard — hardcoded fixtures for pages not yet wired to the API.
+// All interfaces now live in adminTypes.ts. This file re-exports them so pages that still
+// import from here continue to work without any changes until they are individually migrated.
+//
+// DO NOT import mockLeaderboard from here for new code — the leaderboard page now fetches
+// from /api/admin/leaderboard. Import types from @/components/admin/adminTypes instead.
 
 // ─────────────────────────────────────────────────────────────────────────────
-// INTERFACES
+// RE-EXPORT ALL TYPES (backward compatibility — do not remove)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface Student {
-  id: string;
-  name: string;
-  email: string;
-  joinDate: string;
-  lastLogin: string;
-  enrollmentCount: number;
-  amountPaid: number;
-  referralCount: number;
-  isBanned: boolean;
-  credit_balance: number;
-  lifetime_points: number;
-  referrals_sent: number;
-  referrals_converted: number;
-  total_commission_earned: number;
-}
-
-export interface Course {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  enrolledCount: number;
-  totalRevenue: number;
-  published: boolean;
-  lessonsCount: number;
-  completionRate: number;
-}
-
-export interface Enrollment {
-  id: string;
-  studentId: string;
-  studentName: string;
-  courseId: string;
-  courseName: string;
-  dateEnrolled: string;
-  progress: number;
-  completionDate?: string;
-  couponUsed?: string;
-  paymentType: 'free' | 'paid';
-  status: 'in-progress' | 'completed' | 'dropped';
-  learning_points: number;
-  referral_triggered: boolean;
-  referrer_name: string | null;
-}
-
-export interface Payment {
-  id: string;
-  studentId: string;
-  studentName: string;
-  courseId: string;
-  courseName: string;
-  amount: number;
-  currency: string;
-  reference: string;
-  coupon?: string;
-  date: string;
-  status: 'success' | 'failed' | 'pending';
-  credits_applied: number;
-  credits_value_ngn: number;
-  net_amount: number;
-  referral_id: string | null;
-}
-
-export interface Coupon {
-  id: string;
-  code: string;
-  discountPercentage: number;
-  timesUsed: number;
-  maxUses: number;
-  expiryDate: string;
-  active: boolean;
-  createdDate: string;
-}
-
-export interface Leaderboard {
-  id: string;
-  position: number;
-  studentName: string;
-  studentId: string;
-  lifetime_points: number;
-  credit_balance: number;
-  courses_completed: number;
-  courses_in_progress: number;
-  learning_points: number;
-  points: number;
-  coursesCompleted: number;
-}
-
-export type ReferralStatus = 'pending' | 'converted';
-
-export interface ReferralRecord {
-  id: string;
-  referrer_id: string;
-  referrer_name: string;
-  referee_id: string;
-  referee_name: string;
-  referee_email: string;
-  referral_code: string;
-  created_at: string;
-  status: ReferralStatus;
-  converted_at: string | null;
-  commission_credits: number;
-  triggering_payment_id: string | null;
-  triggering_payment_amount: number | null;
-  admin_notes: string | null;
-  manually_converted: boolean;
-}
-
-export type PointTxnType =
-  | 'referral_commission'
-  | 'manual_credit'
-  | 'manual_deduction'
-  | 'redemption'
-  | 'expiry';
-
-export interface PointTransaction {
-  id: string;
-  student_id: string;
-  type: PointTxnType;
-  amount: number;
-  balance_after: number;
-  description: string;
-  reference_id: string | null;
-  created_at: string;
-  created_by: string;
-}
-
-export interface StudentPointSummary {
-  student_id: string;
-  student_name: string;
-  credit_balance: number;
-  lifetime_points: number;
-  learning_points: number;
-  transactions: PointTransaction[];
-}
+export type {
+  Student,
+  Course,
+  Enrollment,
+  Payment,
+  Coupon,
+  Leaderboard,
+  ReferralStatus,
+  ReferralRecord,
+  PointTxnType,
+  PointTransaction,
+  StudentPointSummary,
+} from '@/components/admin/adminTypes';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
+
+import type {
+  Student,
+  Course,
+  Enrollment,
+  Payment,
+  Coupon,
+  Leaderboard,
+  ReferralRecord,
+  PointTransaction,
+  StudentPointSummary,
+} from '@/components/admin/adminTypes';
 
 function deriveLearningPoints(progress: number): number {
   if (progress === 100) return 800;
@@ -177,12 +69,12 @@ export const mockStudents: Student[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const mockCourses: Course[] = [
-  { id: '1', title: 'Introduction to Web Development',        description: 'Learn the basics of HTML, CSS, and JavaScript',    price: 15000, enrolledCount: 234, totalRevenue: 3510000, published: true,  lessonsCount: 24, completionRate: 78 },
-  { id: '2', title: 'Advanced React.js Mastery',              description: 'Master advanced React patterns and optimization',   price: 25000, enrolledCount: 156, totalRevenue: 3900000, published: true,  lessonsCount: 32, completionRate: 82 },
-  { id: '3', title: 'Full-Stack Web Development with Next.js',description: 'Build modern full-stack applications',              price: 30000, enrolledCount: 89,  totalRevenue: 2670000, published: true,  lessonsCount: 40, completionRate: 71 },
-  { id: '4', title: 'Mobile App Development with React Native',description: 'Create cross-platform mobile applications',        price: 28000, enrolledCount: 67,  totalRevenue: 1876000, published: true,  lessonsCount: 36, completionRate: 65 },
-  { id: '5', title: 'Data Science with Python',               description: 'Learn data analysis and machine learning basics',   price: 35000, enrolledCount: 45,  totalRevenue: 1575000, published: true,  lessonsCount: 28, completionRate: 58 },
-  { id: '6', title: 'DevOps and Cloud Deployment',            description: 'Master Docker, Kubernetes, and AWS',               price: 32000, enrolledCount: 34,  totalRevenue: 1088000, published: false, lessonsCount: 30, completionRate: 0 },
+  { id: '1', title: 'Introduction to Web Development',         description: 'Learn the basics of HTML, CSS, and JavaScript',    price: 15000, enrolledCount: 234, totalRevenue: 3510000, published: true,  lessonsCount: 24, completionRate: 78 },
+  { id: '2', title: 'Advanced React.js Mastery',               description: 'Master advanced React patterns and optimization',   price: 25000, enrolledCount: 156, totalRevenue: 3900000, published: true,  lessonsCount: 32, completionRate: 82 },
+  { id: '3', title: 'Full-Stack Web Development with Next.js', description: 'Build modern full-stack applications',              price: 30000, enrolledCount: 89,  totalRevenue: 2670000, published: true,  lessonsCount: 40, completionRate: 71 },
+  { id: '4', title: 'Mobile App Development with React Native',description: 'Create cross-platform mobile applications',         price: 28000, enrolledCount: 67,  totalRevenue: 1876000, published: true,  lessonsCount: 36, completionRate: 65 },
+  { id: '5', title: 'Data Science with Python',                description: 'Learn data analysis and machine learning basics',   price: 35000, enrolledCount: 45,  totalRevenue: 1575000, published: true,  lessonsCount: 28, completionRate: 58 },
+  { id: '6', title: 'DevOps and Cloud Deployment',             description: 'Master Docker, Kubernetes, and AWS',               price: 32000, enrolledCount: 34,  totalRevenue: 1088000, published: false, lessonsCount: 30, completionRate: 0 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,15 +82,15 @@ export const mockCourses: Course[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const mockEnrollments: Enrollment[] = [
-  { id: '1',  studentId: '1', studentName: 'Amina Hassan',    courseId: '1', courseName: 'Introduction to Web Development',         dateEnrolled: '2024-01-20', progress: 100, completionDate: '2024-03-15', couponUsed: 'SAVE10',     paymentType: 'paid', status: 'completed',  learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
-  { id: '2',  studentId: '1', studentName: 'Amina Hassan',    courseId: '2', courseName: 'Advanced React.js Mastery',               dateEnrolled: '2024-03-20', progress: 65,                                                        paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(65),  referral_triggered: false, referrer_name: null },
+  { id: '1',  studentId: '1', studentName: 'Amina Hassan',    courseId: '1', courseName: 'Introduction to Web Development',         dateEnrolled: '2024-01-20', progress: 100, completionDate: '2024-03-15', couponUsed: 'SAVE10',     paymentType: 'paid', status: 'completed',   learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
+  { id: '2',  studentId: '1', studentName: 'Amina Hassan',    courseId: '2', courseName: 'Advanced React.js Mastery',               dateEnrolled: '2024-03-20', progress: 65,                                                         paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(65),  referral_triggered: false, referrer_name: null },
   { id: '3',  studentId: '2', studentName: 'Ibrahim Musa',    courseId: '1', courseName: 'Introduction to Web Development',         dateEnrolled: '2024-01-25', progress: 45,                               couponUsed: 'WELCOME20', paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(45),  referral_triggered: true,  referrer_name: 'Zainab Adeyemi' },
-  { id: '4',  studentId: '3', studentName: 'Zainab Adeyemi',  courseId: '2', courseName: 'Advanced React.js Mastery',               dateEnrolled: '2024-02-15', progress: 100, completionDate: '2024-04-10',                           paymentType: 'paid', status: 'completed',  learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
+  { id: '4',  studentId: '3', studentName: 'Zainab Adeyemi',  courseId: '2', courseName: 'Advanced React.js Mastery',               dateEnrolled: '2024-02-15', progress: 100, completionDate: '2024-04-10',                           paymentType: 'paid', status: 'completed',   learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
   { id: '5',  studentId: '3', studentName: 'Zainab Adeyemi',  courseId: '3', courseName: 'Full-Stack Web Development with Next.js', dateEnrolled: '2024-04-11', progress: 80,                               couponUsed: 'SAVE10',     paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(80),  referral_triggered: false, referrer_name: null },
-  { id: '6',  studentId: '4', studentName: 'Chukwu Okonkwo', courseId: '1', courseName: 'Introduction to Web Development',         dateEnrolled: '2024-02-20', progress: 30,                                                        paymentType: 'free', status: 'in-progress', learning_points: deriveLearningPoints(30),  referral_triggered: true,  referrer_name: 'Aisha Bello' },
-  { id: '7',  studentId: '5', studentName: 'Fatima Mohammed', courseId: '4', courseName: 'Mobile App Development with React Native', dateEnrolled: '2024-03-05', progress: 100, completionDate: '2024-04-12', couponUsed: 'LEARNING50', paymentType: 'paid', status: 'completed',  learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
-  { id: '8',  studentId: '6', studentName: 'Chisom Eze',      courseId: '5', courseName: 'Data Science with Python',                dateEnrolled: '2024-03-15', progress: 50,                                                        paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(50),  referral_triggered: false, referrer_name: null },
-  { id: '9',  studentId: '7', studentName: 'Aisha Bello',     courseId: '2', courseName: 'Advanced React.js Mastery',               dateEnrolled: '2024-03-20', progress: 100, completionDate: '2024-04-18',                           paymentType: 'paid', status: 'completed',  learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
+  { id: '6',  studentId: '4', studentName: 'Chukwu Okonkwo', courseId: '1', courseName: 'Introduction to Web Development',         dateEnrolled: '2024-02-20', progress: 30,                                                         paymentType: 'free', status: 'in-progress', learning_points: deriveLearningPoints(30),  referral_triggered: true,  referrer_name: 'Aisha Bello' },
+  { id: '7',  studentId: '5', studentName: 'Fatima Mohammed', courseId: '4', courseName: 'Mobile App Development with React Native', dateEnrolled: '2024-03-05', progress: 100, completionDate: '2024-04-12', couponUsed: 'LEARNING50', paymentType: 'paid', status: 'completed',   learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
+  { id: '8',  studentId: '6', studentName: 'Chisom Eze',      courseId: '5', courseName: 'Data Science with Python',                dateEnrolled: '2024-03-15', progress: 50,                                                         paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(50),  referral_triggered: false, referrer_name: null },
+  { id: '9',  studentId: '7', studentName: 'Aisha Bello',     courseId: '2', courseName: 'Advanced React.js Mastery',               dateEnrolled: '2024-03-20', progress: 100, completionDate: '2024-04-18',                           paymentType: 'paid', status: 'completed',   learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
   { id: '10', studentId: '7', studentName: 'Aisha Bello',     courseId: '3', courseName: 'Full-Stack Web Development with Next.js', dateEnrolled: '2024-04-19', progress: 35,                               couponUsed: 'SAVE10',     paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(35),  referral_triggered: false, referrer_name: null },
 ];
 
@@ -233,8 +125,8 @@ export const mockCoupons: Coupon[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MOCK LEADERBOARD
-// learning_points = (courses_completed × 800) + (courses_in_progress × 200)
+// MOCK LEADERBOARD — kept for reference only. NOT used by leaderboard/page.tsx.
+// That page now fetches from /api/admin/leaderboard. Do not use this elsewhere.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const mockLeaderboard: Leaderboard[] = [

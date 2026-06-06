@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { mockLeaderboard, Leaderboard } from '@/components/admin/mock-data';
+import React, { useState, useEffect } from 'react';
+import { Leaderboard } from '@/components/admin/adminTypes';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { Trophy, Zap, BookOpen, Archive } from 'lucide-react';
 import { Modal } from '@/components/admin/shared/Modal';
@@ -17,11 +17,22 @@ interface ArchivedSnapshot {
 
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab]             = useState<Tab>('credits');
-  const [leaderboard, setLeaderboard]         = useState<Leaderboard[]>(mockLeaderboard);
+  const [leaderboard, setLeaderboard]         = useState<Leaderboard[]>([]);
+  const [loading, setLoading]                 = useState(true);
   const [archives, setArchives]               = useState<ArchivedSnapshot[]>([]);
   const [showArchives, setShowArchives]       = useState(false);
   const [archiveConfirm, setArchiveConfirm]   = useState(false);
   const [viewingSnapshot, setViewingSnapshot] = useState<ArchivedSnapshot | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/leaderboard')
+      .then((r) => r.json())
+      .then((data) => {
+        setLeaderboard(data.leaderboard ?? []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const handleArchiveAndReset = () => {
     const snapshot: ArchivedSnapshot = {
@@ -78,7 +89,7 @@ export default function LeaderboardPage() {
       key: 'courses_completed',
       label: 'Completed',
       sortable: true,
-      render: (value, row) => (
+      render: (value) => (
         <span className="text-sm text-gray-300">{Number(value)} <span className="text-gray-600 text-xs">× 800 = {Number(value) * 800} pts</span></span>
       ),
     },
@@ -152,7 +163,11 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Table */}
-      {leaderboard.length > 0 ? (
+      {loading ? (
+        <div className="rounded-2xl border border-indigo-500/20 bg-gray-900/60 p-12 text-center">
+          <p className="text-gray-400">Loading leaderboard…</p>
+        </div>
+      ) : leaderboard.length > 0 ? (
         <AdminTable
           columns={activeTab === 'credits' ? creditsColumns : learningColumns}
           data={displayData}

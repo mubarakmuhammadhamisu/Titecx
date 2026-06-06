@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient, getAuthenticatedAdmin } from '@/lib/adminSupabase';
+import { checkCsrfHeader } from '@/lib/csrf';
 
 export async function GET() {
   const admin = await getAuthenticatedAdmin();
@@ -91,6 +92,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const admin = await getAuthenticatedAdmin();
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
 
   const body = await req.json();
   const { studentId, courseId } = body;

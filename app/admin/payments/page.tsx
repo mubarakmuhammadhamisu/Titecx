@@ -37,15 +37,28 @@ export default function PaymentsPage() {
       const matchesTo = !dateTo || paymentDate <= new Date(dateTo);
       return matchesSearch && matchesStatus && matchesFrom && matchesTo;
     });
-  }, [searchTerm, statusFilter, dateFrom, dateTo]);
+  }, [searchTerm, statusFilter, dateFrom, dateTo, allPayments]);
 
-  const handleVerifyPayment = (paymentId: string) => {
+  const handleVerifyPayment = async (paymentId: string, reference: string) => {
     setVerifying(paymentId);
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/admin/payments/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-protection': '1',
+        },
+        body: JSON.stringify({ reference }),
+      });
+      const data = await res.json();
+      const success = data.status === true && data.data?.status === 'success';
+      setVerifyResult({ id: paymentId, success });
+    } catch {
+      setVerifyResult({ id: paymentId, success: false });
+    } finally {
       setVerifying(null);
-      setVerifyResult({ id: paymentId, success: true });
       setTimeout(() => setVerifyResult(null), 3000);
-    }, 1500);
+    }
   };
 
   const paymentColumns: Column<Payment>[] = [
@@ -131,7 +144,7 @@ export default function PaymentsPage() {
       label: 'Action',
       render: (_, payment) => (
         <button
-          onClick={(e) => { e.stopPropagation(); handleVerifyPayment(payment.id); }}
+          onClick={(e) => { e.stopPropagation(); handleVerifyPayment(payment.id, payment.reference); }}
           disabled={verifying === payment.id}
           className="text-xs px-3 py-1 rounded-lg border border-indigo-500/30 text-indigo-400 hover:border-indigo-500/60 hover:bg-indigo-500/10 transition disabled:opacity-50"
         >
@@ -141,10 +154,10 @@ export default function PaymentsPage() {
     },
   ];
 
-  const successPayments   = filteredPayments.filter((p) => p.status === 'success');
-  const totalRevenue      = successPayments.reduce((sum, p) => sum + p.amount, 0);
-  const creditsRedeemed   = successPayments.reduce((sum, p) => sum + p.credits_value_ngn, 0);
-  const referralTriggers  = successPayments.filter((p) => p.referral_id !== null).length;
+  const successPayments  = filteredPayments.filter((p) => p.status === 'success');
+  const totalRevenue     = successPayments.reduce((sum, p) => sum + p.amount, 0);
+  const creditsRedeemed  = successPayments.reduce((sum, p) => sum + p.credits_value_ngn, 0);
+  const referralTriggers = successPayments.filter((p) => p.referral_id !== null).length;
 
   if (loading) {
     return (
@@ -161,7 +174,6 @@ export default function PaymentsPage() {
         <p className="mt-2 text-gray-400">Track and verify payment transactions.</p>
       </div>
 
-      {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-indigo-500/10">
           <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Total Revenue (Filtered)</p>
@@ -223,12 +235,10 @@ export default function PaymentsPage() {
       <div className="space-y-4">
         <p className="text-sm text-gray-400">Showing {filteredPayments.length} of {allPayments.length} payments</p>
 
-        {/* Desktop */}
         <div className="hidden md:block">
           <AdminTable columns={paymentColumns} data={filteredPayments} />
         </div>
 
-        {/* Mobile */}
         <div className="md:hidden space-y-3">
           {filteredPayments.length > 0 ? filteredPayments.map((payment) => (
             <div key={payment.id} className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-4">
@@ -274,29 +284,32 @@ export default function PaymentsPage() {
                   </div>
                 )}
               </div>
-              <button onClick={() => handleVerifyPayment(payment.id)} disabled={verifying === payment.id} className="w-full text-xs py-2 rounded-lg border border-indigo-500/30 text-indigo-400 hover:border-indigo-500/60 hover:bg-indigo-500/10 transition disabled:opacity-50">
+              <button
+                onClick={() => handleVerifyPayment(payment.id, payment.reference)}
+                disabled={verifying === payment.id}
+                className="w-full text-xs py-2 rounded-lg border border-indigo-500/30 text-indigo-400 hover:border-indigo-500/60 hover:bg-indigo-500/10 transition disabled:opacity-50"
+              >
                 {verifying === payment.id ? 'Verifying...' : 'Verify Payment'}
               </button>
             </div>
           )) : (
-            <div className="rounded-lg border border-gray-700 p-8 text-center"><p className="text-gray-400">No payments found</p></div>
+            <div className="rounded-lg border border-gray-700 p-8 text-center">
+              <p className="text-gray-400">No payments found</p>
+            </div>
           )}
         </div>
       </div>
 
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-        <div className="flex gap-3">
-          <AlertCircle size={18} className="text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-200">
-            The &quot;Verify&quot; button is a mock implementation. When backend is integrated, it will verify against the Paystack API.
-          </p>
-        </div>
-      </div>
-
       {verifyResult && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shadow-xl backdrop-blur-md">
-          <CheckCircle size={18} />
-          <span className="text-sm font-medium">Payment verified successfully (mock)</span>
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl border shadow-xl backdrop-blur-md ${
+          verifyResult.success
+            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+            : 'bg-red-500/15 border-red-500/30 text-red-400'
+        }`}>
+          {verifyResult.success ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+          <span className="text-sm font-medium">
+            {verifyResult.success ? 'Payment verified successfully' : 'Verification failed — payment not found or unsuccessful'}
+          </span>
         </div>
       )}
     </div>

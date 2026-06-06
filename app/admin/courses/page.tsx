@@ -251,7 +251,7 @@ export default function CoursesPage() {
     try {
       const res = await fetch('/api/admin/courses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
         body: JSON.stringify({
           title:       form.title,
           description: form.description,
