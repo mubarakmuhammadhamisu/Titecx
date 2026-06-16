@@ -1,121 +1,153 @@
-// Admin type definitions — shared interfaces for all admin pages.
-// This file contains only types/interfaces. No mock data lives here.
-// Mock data (for pages not yet wired to the API) stays in mock-data.ts,
-// which re-exports everything from this file for backward compatibility.
-
 // ─────────────────────────────────────────────────────────────────────────────
-// INTERFACES
+// components/admin/adminTypes.ts
+// ALL admin types derived strictly from the real Supabase schema.
+// Zero mock data. Zero invented fields.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── profiles ─────────────────────────────────────────────────────────────────
 export interface Student {
   id: string;
   name: string;
   email: string;
-  joinDate: string;
-  lastLogin: string;
-  enrollmentCount: number;
-  amountPaid: number;
-  referralCount: number;
-  isBanned: boolean;
+  avatar: string;
+  avatar_url: string | null;
+  role: string;
+  location: string;
+  bio: string;
+  phone: string;
+  referral_code: string;
   credit_balance: number;
   lifetime_points: number;
-  referrals_sent: number;
-  referrals_converted: number;
-  total_commission_earned: number;
+  is_banned: boolean;
+  last_login_at: string | null;
+  created_at: string;
+  // enriched
+  enrollment_count: number;
+  total_paid_kobo: number;
+}
+
+// ── courses (modules stored as JSONB inside courses.modules) ──────────────────
+export type VideoProvider = 'youtube' | 'gumlet' | 'bunny' | 'gdrive';
+export type LessonType    = 'video' | 'reading' | 'quiz' | 'practice';
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  points: number;
+}
+
+export interface TestCase {
+  input: string;
+  expected_output: string;
+  hidden: boolean;
+}
+
+export interface VideoContent    { videoUrl: string; duration: string; videoProvider?: VideoProvider; topics?: string[]; }
+export interface ReadingContent  { markdownBody: string; topics?: string[]; }
+export interface QuizContent     { questions: QuizQuestion[]; topics?: string[]; }
+export interface PracticeContent {
+  language: 'html' | 'python' | 'c';
+  instructions: string;
+  starter_code: string;
+  example_input?: string;
+  example_output: string;
+  test_cases: TestCase[];
+}
+
+export interface Lesson {
+  id: string;
+  title: string;
+  type: LessonType;
+  content: VideoContent | ReadingContent | QuizContent | PracticeContent;
+}
+
+export interface Module {
+  id: string;
+  title: string;
+  lessons: Lesson[];
 }
 
 export interface Course {
   id: string;
+  slug: string;
   title: string;
+  short_description: string;
   description: string;
-  price: number;
-  enrolledCount: number;
-  totalRevenue: number;
-  published: boolean;
-  lessonsCount: number;
-  completionRate: number;
+  level: string;
+  duration: string;
+  price: string;
+  instructor: string;
+  thumbnail: string;
+  gradient_from: string;
+  gradient_to: string;
+  features: string[];
+  curriculum: string[];
+  modules: Module[];
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+  premium_price: string | null;
+  premium_deadline_days: number;
+  // enriched
+  enrolled_count: number;
+  total_revenue_kobo: number;
 }
 
+// ── enrollments ───────────────────────────────────────────────────────────────
 export interface Enrollment {
   id: string;
-  studentId: string;
-  studentName: string;
-  courseId: string;
-  courseName: string;
-  dateEnrolled: string;
+  user_id: string;
+  course_slug: string;
   progress: number;
-  completionDate?: string;
-  couponUsed?: string;
-  paymentType: 'free' | 'paid';
-  status: 'in-progress' | 'completed' | 'dropped';
-  learning_points: number;
+  enrolled_at: string;
+  completed_at: string | null;
+  purchase_type: string;
+  premium_deadline: string | null;
+  mystery_box_status: string | null;
+  // enriched
+  student_name: string;
+  student_email: string;
+  course_title: string;
   referral_triggered: boolean;
   referrer_name: string | null;
 }
 
+// ── payments ──────────────────────────────────────────────────────────────────
 export interface Payment {
   id: string;
-  studentId: string;
-  studentName: string;
-  courseId: string;
-  courseName: string;
-  amount: number;
-  currency: string;
-  reference: string;
-  coupon?: string;
-  date: string;
+  user_id: string;
+  course_slug: string;
+  paystack_reference: string;
+  amount_kobo: number;
   status: 'success' | 'failed' | 'pending';
-  credits_applied: number;
-  credits_value_ngn: number;
-  net_amount: number;
-  referral_id: string | null;
+  paid_at: string;
+  points_applied: number;
+  // enriched
+  student_name: string;
+  student_email: string;
+  course_title: string;
 }
 
-export interface Coupon {
-  id: string;
-  code: string;
-  discountPercentage: number;
-  timesUsed: number;
-  maxUses: number;
-  expiryDate: string;
-  active: boolean;
-  createdDate: string;
-}
-
-export interface Leaderboard {
-  id: string;
-  position: number;
-  studentName: string;
-  studentId: string;
-  lifetime_points: number;
-  credit_balance: number;
-  courses_completed: number;
-  courses_in_progress: number;
-  learning_points: number;
-  points: number;
-  coursesCompleted: number;
-}
-
-export type ReferralStatus = 'pending' | 'converted';
-
-export interface ReferralRecord {
+// ── referrals ─────────────────────────────────────────────────────────────────
+export interface Referral {
   id: string;
   referrer_id: string;
-  referrer_name: string;
   referee_id: string;
+  referred_at: string;
+  status: 'pending' | 'converted' | 'expired';
+  converted_at: string | null;
+  commission_points: number | null;
+  payment_id: string | null;
+  // enriched
+  referrer_name: string;
+  referrer_email: string;
   referee_name: string;
   referee_email: string;
-  referral_code: string;
-  created_at: string;
-  status: ReferralStatus;
-  converted_at: string | null;
-  commission_credits: number;
-  triggering_payment_id: string | null;
-  triggering_payment_amount: number | null;
-  admin_notes: string | null;
-  manually_converted: boolean;
 }
 
+// ── point_transactions ────────────────────────────────────────────────────────
 export type PointTxnType =
   | 'referral_commission'
   | 'manual_credit'
@@ -125,21 +157,79 @@ export type PointTxnType =
 
 export interface PointTransaction {
   id: string;
-  student_id: string;
+  user_id: string;
   type: PointTxnType;
-  amount: number;
-  balance_after: number;
-  description: string;
+  points: number;
+  description: string | null;
   reference_id: string | null;
   created_at: string;
-  created_by: string;
+  // enriched
+  student_name: string;
+  student_email: string;
+  credit_balance: number;
 }
 
-export interface StudentPointSummary {
-  student_id: string;
+// ── coupons ───────────────────────────────────────────────────────────────────
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_percent: number;
+  max_usage: number;
+  used_count: number;
+  is_active: boolean;
+  expires_at: string | null;
+  created_at: string;
+}
+
+// ── mystery_box_requests ──────────────────────────────────────────────────────
+export type MysteryBoxStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'forfeited';
+
+export interface MysteryBoxRequest {
+  id: string;
+  user_id: string;
+  enrollment_id: string;
+  status: MysteryBoxStatus;
+  tracking_number: string | null;
+  delivery_name: string | null;
+  delivery_address: string | null;
+  delivery_city: string | null;
+  delivery_state: string | null;
+  delivery_phone: string | null;
+  notes: string | null;
+  earned_at: string | null;
+  updated_at: string | null;
+  // enriched
   student_name: string;
-  credit_balance: number;
+  student_email: string;
+  course_title: string;
+}
+
+// ── leaderboard_view ──────────────────────────────────────────────────────────
+export interface LeaderboardEntry {
+  id: string;
+  name: string;
+  avatar: string;
+  avatar_url: string | null;
   lifetime_points: number;
-  learning_points: number;
-  transactions: PointTransaction[];
+  credit_balance: number;
+  courses_completed: number;
+  rank: number;
+}
+
+// ── platform_settings ─────────────────────────────────────────────────────────
+export interface PlatformSetting {
+  key: string;
+  value: string;
+  description: string | null;
+  updated_at: string;
+}
+
+// ── admin stats ───────────────────────────────────────────────────────────────
+export interface AdminStats {
+  total_revenue_kobo: number;
+  total_students: number;
+  active_enrollments: number;
+  completed_enrollments: number;
+  revenue_by_day: { date: string; revenue_kobo: number }[];
+  recent_payments: Payment[];
 }
