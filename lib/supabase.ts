@@ -1,16 +1,36 @@
 import { createBrowserClient } from '@supabase/ssr';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_Publishable_KEY!;
+// Lazy initialization: only validate and create the client when actually needed
+let supabaseClient: ReturnType<typeof createBrowserClient> | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing Supabase env vars. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_Publishable_KEY to .env.local'
-  );
+function getSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_Publishable_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      'Missing Supabase env vars. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_Publishable_KEY to .env.local'
+    );
+  }
+
+  supabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  return supabaseClient;
 }
 
-
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+// Lazy-loading getter that initializes on first use
+export const supabase = {
+  get auth() {
+    return getSupabaseClient().auth;
+  },
+  from(table: string) {
+    return getSupabaseClient().from(table);
+  },
+  get storage() {
+    return getSupabaseClient().storage;
+  },
+} as any;
 
 
 // ── Row types ────────────────────────────────────────────────────────────────

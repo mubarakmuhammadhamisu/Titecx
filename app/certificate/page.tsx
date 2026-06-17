@@ -11,6 +11,8 @@
 // The admin client is used for the enrollment + profile join so RLS doesn't
 // interfere with reads — this is a public display, not a mutating operation.
 
+export const dynamic = 'force-dynamic';
+
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';

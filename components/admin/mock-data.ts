@@ -15,12 +15,10 @@ export type {
   Enrollment,
   Payment,
   Coupon,
-  Leaderboard,
-  ReferralStatus,
-  ReferralRecord,
+  Referral,
+  LeaderboardEntry,
   PointTxnType,
   PointTransaction,
-  StudentPointSummary,
 } from '@/components/admin/adminTypes';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,10 +31,9 @@ import type {
   Enrollment,
   Payment,
   Coupon,
-  Leaderboard,
-  ReferralRecord,
+  Referral,
+  LeaderboardEntry,
   PointTransaction,
-  StudentPointSummary,
 } from '@/components/admin/adminTypes';
 
 function deriveLearningPoints(progress: number): number {
@@ -50,65 +47,50 @@ function deriveLearningPoints(progress: number): number {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const mockStudents: Student[] = [
-  { id: '1',  name: 'Amina Hassan',     email: 'amina.hassan@email.com',     joinDate: '2024-01-15', lastLogin: '2024-04-20', enrollmentCount: 3, amountPaid: 45000, referralCount: 2, isBanned: false, credit_balance: 3000,  lifetime_points: 5000,  referrals_sent: 3, referrals_converted: 2, total_commission_earned: 5000 },
-  { id: '2',  name: 'Ibrahim Musa',     email: 'ibrahim.musa@email.com',     joinDate: '2024-01-20', lastLogin: '2024-02-10', enrollmentCount: 2, amountPaid: 30000, referralCount: 0, isBanned: false, credit_balance: 0,     lifetime_points: 0,     referrals_sent: 0, referrals_converted: 0, total_commission_earned: 0 },
-  { id: '3',  name: 'Zainab Adeyemi',   email: 'zainab.adeyemi@email.com',   joinDate: '2024-02-10', lastLogin: '2024-04-18', enrollmentCount: 4, amountPaid: 60000, referralCount: 3, isBanned: false, credit_balance: 7500,  lifetime_points: 10000, referrals_sent: 5, referrals_converted: 4, total_commission_earned: 10000 },
-  { id: '4',  name: 'Chukwu Okonkwo',  email: 'chukwu.okonkwo@email.com',   joinDate: '2024-02-15', lastLogin: '2024-01-15', enrollmentCount: 1, amountPaid: 15000, referralCount: 1, isBanned: false, credit_balance: 1500,  lifetime_points: 1500,  referrals_sent: 2, referrals_converted: 1, total_commission_earned: 1500 },
-  { id: '5',  name: 'Fatima Mohammed',  email: 'fatima.mohammed@email.com',  joinDate: '2024-03-01', lastLogin: '2024-04-19', enrollmentCount: 3, amountPaid: 45000, referralCount: 2, isBanned: false, credit_balance: 2500,  lifetime_points: 2500,  referrals_sent: 2, referrals_converted: 1, total_commission_earned: 2500 },
-  { id: '6',  name: 'Chisom Eze',       email: 'chisom.eze@email.com',       joinDate: '2024-03-10', lastLogin: '2024-03-20', enrollmentCount: 2, amountPaid: 30000, referralCount: 0, isBanned: false, credit_balance: 0,     lifetime_points: 0,     referrals_sent: 0, referrals_converted: 0, total_commission_earned: 0 },
-  { id: '7',  name: 'Aisha Bello',      email: 'aisha.bello@email.com',      joinDate: '2024-03-15', lastLogin: '2024-04-22', enrollmentCount: 5, amountPaid: 75000, referralCount: 4, isBanned: false, credit_balance: 12000, lifetime_points: 15000, referrals_sent: 6, referrals_converted: 5, total_commission_earned: 15000 },
-  { id: '8',  name: 'Tunde Oluwafemi', email: 'tunde.oluwafemi@email.com',  joinDate: '2024-03-20', lastLogin: '2024-02-05', enrollmentCount: 2, amountPaid: 30000, referralCount: 1, isBanned: false, credit_balance: 500,   lifetime_points: 1000,  referrals_sent: 1, referrals_converted: 1, total_commission_earned: 1000 },
-  { id: '9',  name: 'Mariam Suleiman',  email: 'mariam.suleiman@email.com',  joinDate: '2024-04-01', lastLogin: '2024-04-21', enrollmentCount: 3, amountPaid: 45000, referralCount: 2, isBanned: false, credit_balance: 4000,  lifetime_points: 4000,  referrals_sent: 2, referrals_converted: 2, total_commission_earned: 4000 },
-  { id: '10', name: 'Eze Nwankwo',      email: 'eze.nwankwo@email.com',      joinDate: '2024-04-05', lastLogin: '2024-04-10', enrollmentCount: 1, amountPaid: 15000, referralCount: 0, isBanned: true,  credit_balance: 0,     lifetime_points: 0,     referrals_sent: 0, referrals_converted: 0, total_commission_earned: 0 },
-  { id: '11', name: 'Halima Abdullahi', email: 'halima.abdullahi@email.com', joinDate: '2024-04-10', lastLogin: '2024-04-23', enrollmentCount: 4, amountPaid: 60000, referralCount: 3, isBanned: false, credit_balance: 6000,  lifetime_points: 7500,  referrals_sent: 4, referrals_converted: 3, total_commission_earned: 7500 },
-  { id: '12', name: 'Segun Adebayo',    email: 'segun.adebayo@email.com',    joinDate: '2024-04-15', lastLogin: '2024-03-10', enrollmentCount: 2, amountPaid: 30000, referralCount: 1, isBanned: false, credit_balance: 0,     lifetime_points: 2500,  referrals_sent: 1, referrals_converted: 1, total_commission_earned: 2500 },
+  { id: '1',  name: 'Amina Hassan',     email: 'amina.hassan@email.com',     avatar: '', avatar_url: null, role: 'student', location: 'Lagos', bio: '', phone: '', referral_code: 'AMIN001', credit_balance: 3000,  lifetime_points: 5000, is_banned: false, last_login_at: '2024-04-20', created_at: '2024-01-15', enrollment_count: 3, total_paid_kobo: 45000000 },
+  { id: '2',  name: 'Ibrahim Musa',     email: 'ibrahim.musa@email.com',     avatar: '', avatar_url: null, role: 'student', location: 'Kano', bio: '', phone: '', referral_code: 'IBRA001', credit_balance: 0,     lifetime_points: 0,     is_banned: false, last_login_at: '2024-02-10', created_at: '2024-01-20', enrollment_count: 2, total_paid_kobo: 30000000 },
+  { id: '3',  name: 'Zainab Adeyemi',   email: 'zainab.adeyemi@email.com',   avatar: '', avatar_url: null, role: 'student', location: 'Abuja', bio: '', phone: '', referral_code: 'ZAIN001', credit_balance: 7500,  lifetime_points: 10000, is_banned: false, last_login_at: '2024-04-18', created_at: '2024-02-10', enrollment_count: 4, total_paid_kobo: 60000000 },
+  { id: '4',  name: 'Chukwu Okonkwo',  email: 'chukwu.okonkwo@email.com',   avatar: '', avatar_url: null, role: 'student', location: 'Enugu', bio: '', phone: '', referral_code: 'CHUK001', credit_balance: 1500,  lifetime_points: 1500,  is_banned: false, last_login_at: '2024-01-15', created_at: '2024-02-15', enrollment_count: 1, total_paid_kobo: 15000000 },
+  { id: '5',  name: 'Fatima Mohammed',  email: 'fatima.mohammed@email.com',  avatar: '', avatar_url: null, role: 'student', location: 'Kaduna', bio: '', phone: '', referral_code: 'FATI001', credit_balance: 2500,  lifetime_points: 2500,  is_banned: false, last_login_at: '2024-04-19', created_at: '2024-03-01', enrollment_count: 3, total_paid_kobo: 45000000 },
+  { id: '6',  name: 'Chisom Eze',       email: 'chisom.eze@email.com',       avatar: '', avatar_url: null, role: 'student', location: 'Onitsha', bio: '', phone: '', referral_code: 'CHIS001', credit_balance: 0,     lifetime_points: 0,     is_banned: false, last_login_at: '2024-03-20', created_at: '2024-03-10', enrollment_count: 2, total_paid_kobo: 30000000 },
+  { id: '7',  name: 'Aisha Bello',      email: 'aisha.bello@email.com',      avatar: '', avatar_url: null, role: 'student', location: 'Ilorin', bio: '', phone: '', referral_code: 'AISH001', credit_balance: 12000, lifetime_points: 15000, is_banned: false, last_login_at: '2024-04-22', created_at: '2024-03-15', enrollment_count: 5, total_paid_kobo: 75000000 },
+  { id: '8',  name: 'Tunde Oluwafemi', email: 'tunde.oluwafemi@email.com',  avatar: '', avatar_url: null, role: 'student', location: 'Ibadan', bio: '', phone: '', referral_code: 'TUND001', credit_balance: 500,   lifetime_points: 1000,  is_banned: false, last_login_at: '2024-02-05', created_at: '2024-03-20', enrollment_count: 2, total_paid_kobo: 30000000 },
+  { id: '9',  name: 'Mariam Suleiman',  email: 'mariam.suleiman@email.com',  avatar: '', avatar_url: null, role: 'student', location: 'Maiduguri', bio: '', phone: '', referral_code: 'MARI001', credit_balance: 4000,  lifetime_points: 4000,  is_banned: false, last_login_at: '2024-04-21', created_at: '2024-04-01', enrollment_count: 3, total_paid_kobo: 45000000 },
+  { id: '10', name: 'Eze Nwankwo',      email: 'eze.nwankwo@email.com',      avatar: '', avatar_url: null, role: 'student', location: 'Port Harcourt', bio: '', phone: '', referral_code: 'EZEN001', credit_balance: 0,     lifetime_points: 0,     is_banned: true,  last_login_at: '2024-04-10', created_at: '2024-04-05', enrollment_count: 1, total_paid_kobo: 15000000 },
+  { id: '11', name: 'Halima Abdullahi', email: 'halima.abdullahi@email.com', avatar: '', avatar_url: null, role: 'student', location: 'Katsina', bio: '', phone: '', referral_code: 'HALI001', credit_balance: 6000,  lifetime_points: 7500,  is_banned: false, last_login_at: '2024-04-23', created_at: '2024-04-10', enrollment_count: 4, total_paid_kobo: 60000000 },
+  { id: '12', name: 'Segun Adebayo',    email: 'segun.adebayo@email.com',    avatar: '', avatar_url: null, role: 'student', location: 'Akure', bio: '', phone: '', referral_code: 'SEGU001', credit_balance: 0,     lifetime_points: 2500,  is_banned: false, last_login_at: '2024-03-10', created_at: '2024-04-15', enrollment_count: 2, total_paid_kobo: 30000000 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MOCK COURSES
+// MOCK COURSES - Deprecated: Use Supabase APIs instead
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const mockCourses: Course[] = [
-  { id: '1', title: 'Introduction to Web Development',         description: 'Learn the basics of HTML, CSS, and JavaScript',    price: 15000, enrolledCount: 234, totalRevenue: 3510000, published: true,  lessonsCount: 24, completionRate: 78 },
-  { id: '2', title: 'Advanced React.js Mastery',               description: 'Master advanced React patterns and optimization',   price: 25000, enrolledCount: 156, totalRevenue: 3900000, published: true,  lessonsCount: 32, completionRate: 82 },
-  { id: '3', title: 'Full-Stack Web Development with Next.js', description: 'Build modern full-stack applications',              price: 30000, enrolledCount: 89,  totalRevenue: 2670000, published: true,  lessonsCount: 40, completionRate: 71 },
-  { id: '4', title: 'Mobile App Development with React Native',description: 'Create cross-platform mobile applications',         price: 28000, enrolledCount: 67,  totalRevenue: 1876000, published: true,  lessonsCount: 36, completionRate: 65 },
-  { id: '5', title: 'Data Science with Python',                description: 'Learn data analysis and machine learning basics',   price: 35000, enrolledCount: 45,  totalRevenue: 1575000, published: true,  lessonsCount: 28, completionRate: 58 },
-  { id: '6', title: 'DevOps and Cloud Deployment',             description: 'Master Docker, Kubernetes, and AWS',               price: 32000, enrolledCount: 34,  totalRevenue: 1088000, published: false, lessonsCount: 30, completionRate: 0 },
-];
+// export const mockCourses: Course[] = [
+// Courses should be fetched from Supabase
+// ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MOCK ENROLLMENTS
+// MOCK ENROLLMENTS - Deprecated: Use Supabase APIs instead
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const mockEnrollments: Enrollment[] = [
-  { id: '1',  studentId: '1', studentName: 'Amina Hassan',    courseId: '1', courseName: 'Introduction to Web Development',         dateEnrolled: '2024-01-20', progress: 100, completionDate: '2024-03-15', couponUsed: 'SAVE10',     paymentType: 'paid', status: 'completed',   learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
-  { id: '2',  studentId: '1', studentName: 'Amina Hassan',    courseId: '2', courseName: 'Advanced React.js Mastery',               dateEnrolled: '2024-03-20', progress: 65,                                                         paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(65),  referral_triggered: false, referrer_name: null },
-  { id: '3',  studentId: '2', studentName: 'Ibrahim Musa',    courseId: '1', courseName: 'Introduction to Web Development',         dateEnrolled: '2024-01-25', progress: 45,                               couponUsed: 'WELCOME20', paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(45),  referral_triggered: true,  referrer_name: 'Zainab Adeyemi' },
-  { id: '4',  studentId: '3', studentName: 'Zainab Adeyemi',  courseId: '2', courseName: 'Advanced React.js Mastery',               dateEnrolled: '2024-02-15', progress: 100, completionDate: '2024-04-10',                           paymentType: 'paid', status: 'completed',   learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
-  { id: '5',  studentId: '3', studentName: 'Zainab Adeyemi',  courseId: '3', courseName: 'Full-Stack Web Development with Next.js', dateEnrolled: '2024-04-11', progress: 80,                               couponUsed: 'SAVE10',     paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(80),  referral_triggered: false, referrer_name: null },
-  { id: '6',  studentId: '4', studentName: 'Chukwu Okonkwo', courseId: '1', courseName: 'Introduction to Web Development',         dateEnrolled: '2024-02-20', progress: 30,                                                         paymentType: 'free', status: 'in-progress', learning_points: deriveLearningPoints(30),  referral_triggered: true,  referrer_name: 'Aisha Bello' },
-  { id: '7',  studentId: '5', studentName: 'Fatima Mohammed', courseId: '4', courseName: 'Mobile App Development with React Native', dateEnrolled: '2024-03-05', progress: 100, completionDate: '2024-04-12', couponUsed: 'LEARNING50', paymentType: 'paid', status: 'completed',   learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
-  { id: '8',  studentId: '6', studentName: 'Chisom Eze',      courseId: '5', courseName: 'Data Science with Python',                dateEnrolled: '2024-03-15', progress: 50,                                                         paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(50),  referral_triggered: false, referrer_name: null },
-  { id: '9',  studentId: '7', studentName: 'Aisha Bello',     courseId: '2', courseName: 'Advanced React.js Mastery',               dateEnrolled: '2024-03-20', progress: 100, completionDate: '2024-04-18',                           paymentType: 'paid', status: 'completed',   learning_points: deriveLearningPoints(100), referral_triggered: false, referrer_name: null },
-  { id: '10', studentId: '7', studentName: 'Aisha Bello',     courseId: '3', courseName: 'Full-Stack Web Development with Next.js', dateEnrolled: '2024-04-19', progress: 35,                               couponUsed: 'SAVE10',     paymentType: 'paid', status: 'in-progress', learning_points: deriveLearningPoints(35),  referral_triggered: false, referrer_name: null },
-];
+// export const mockEnrollments: Enrollment[] = [
+// Enrollments should be fetched from Supabase
+// ];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOCK PAYMENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const mockPayments: Payment[] = [
-  { id: '1',  studentId: '1', studentName: 'Amina Hassan',    courseId: '1', courseName: 'Introduction to Web Development',          amount: 15000, currency: 'NGN', reference: 'PSK_001', coupon: 'SAVE10',     date: '2024-01-20', status: 'success', credits_applied: 1500, credits_value_ngn: 1500, net_amount: 13500, referral_id: null },
-  { id: '2',  studentId: '1', studentName: 'Amina Hassan',    courseId: '2', courseName: 'Advanced React.js Mastery',                amount: 25000, currency: 'NGN', reference: 'PSK_002',                       date: '2024-03-20', status: 'success', credits_applied: 0,    credits_value_ngn: 0,    net_amount: 25000, referral_id: null },
-  { id: '3',  studentId: '2', studentName: 'Ibrahim Musa',    courseId: '1', courseName: 'Introduction to Web Development',          amount: 15000, currency: 'NGN', reference: 'PSK_003', coupon: 'WELCOME20', date: '2024-01-25', status: 'success', credits_applied: 0,    credits_value_ngn: 0,    net_amount: 12000, referral_id: 'ref-002' },
-  { id: '4',  studentId: '3', studentName: 'Zainab Adeyemi',  courseId: '2', courseName: 'Advanced React.js Mastery',                amount: 25000, currency: 'NGN', reference: 'PSK_004',                       date: '2024-02-15', status: 'success', credits_applied: 0,    credits_value_ngn: 0,    net_amount: 25000, referral_id: null },
-  { id: '5',  studentId: '3', studentName: 'Zainab Adeyemi',  courseId: '3', courseName: 'Full-Stack Web Development with Next.js',  amount: 30000, currency: 'NGN', reference: 'PSK_005', coupon: 'SAVE10',     date: '2024-04-11', status: 'success', credits_applied: 3000, credits_value_ngn: 3000, net_amount: 27000, referral_id: null },
-  { id: '6',  studentId: '4', studentName: 'Chukwu Okonkwo', courseId: '1', courseName: 'Introduction to Web Development',          amount: 0,     currency: 'NGN', reference: 'FREE_001',                      date: '2024-02-20', status: 'success', credits_applied: 0,    credits_value_ngn: 0,    net_amount: 0,     referral_id: 'ref-001' },
-  { id: '7',  studentId: '5', studentName: 'Fatima Mohammed', courseId: '4', courseName: 'Mobile App Development with React Native', amount: 28000, currency: 'NGN', reference: 'PSK_006', coupon: 'LEARNING50', date: '2024-03-05', status: 'success', credits_applied: 2500, credits_value_ngn: 2500, net_amount: 14000, referral_id: null },
-  { id: '8',  studentId: '6', studentName: 'Chisom Eze',      courseId: '5', courseName: 'Data Science with Python',                amount: 35000, currency: 'NGN', reference: 'PSK_007',                       date: '2024-03-15', status: 'success', credits_applied: 0,    credits_value_ngn: 0,    net_amount: 35000, referral_id: null },
-  { id: '9',  studentId: '7', studentName: 'Aisha Bello',     courseId: '2', courseName: 'Advanced React.js Mastery',                amount: 25000, currency: 'NGN', reference: 'PSK_008',                       date: '2024-03-20', status: 'success', credits_applied: 0,    credits_value_ngn: 0,    net_amount: 25000, referral_id: null },
-  { id: '10', studentId: '7', studentName: 'Aisha Bello',     courseId: '3', courseName: 'Full-Stack Web Development with Next.js',  amount: 30000, currency: 'NGN', reference: 'PSK_009', coupon: 'SAVE10',     date: '2024-04-19', status: 'success', credits_applied: 0,    credits_value_ngn: 0,    net_amount: 27000, referral_id: null },
+  { id: '1',  user_id: '1', course_slug: 'intro-web-dev',       paystack_reference: 'PSK_001', amount_kobo: 1500000, status: 'success', paid_at: '2024-01-20T10:00:00Z', points_applied: 1500, student_name: 'Amina Hassan', student_email: 'amina.hassan@email.com', course_title: 'Introduction to Web Development' },
+  { id: '2',  user_id: '1', course_slug: 'advanced-react',      paystack_reference: 'PSK_002', amount_kobo: 2500000, status: 'success', paid_at: '2024-03-20T14:30:00Z', points_applied: 0, student_name: 'Amina Hassan', student_email: 'amina.hassan@email.com', course_title: 'Advanced React.js Mastery' },
+  { id: '3',  user_id: '2', course_slug: 'intro-web-dev',       paystack_reference: 'PSK_003', amount_kobo: 1500000, status: 'success', paid_at: '2024-01-25T11:15:00Z', points_applied: 0, student_name: 'Ibrahim Musa', student_email: 'ibrahim.musa@email.com', course_title: 'Introduction to Web Development' },
+  { id: '4',  user_id: '3', course_slug: 'advanced-react',      paystack_reference: 'PSK_004', amount_kobo: 2500000, status: 'success', paid_at: '2024-02-15T09:45:00Z', points_applied: 0, student_name: 'Zainab Adeyemi', student_email: 'zainab.adeyemi@email.com', course_title: 'Advanced React.js Mastery' },
+  { id: '5',  user_id: '3', course_slug: 'fullstack-nextjs',    paystack_reference: 'PSK_005', amount_kobo: 3000000, status: 'success', paid_at: '2024-04-11T16:20:00Z', points_applied: 3000, student_name: 'Zainab Adeyemi', student_email: 'zainab.adeyemi@email.com', course_title: 'Full-Stack Web Development with Next.js' },
+  { id: '6',  user_id: '5', course_slug: 'mobile-react-native', paystack_reference: 'PSK_006', amount_kobo: 2800000, status: 'success', paid_at: '2024-03-05T13:00:00Z', points_applied: 2500, student_name: 'Fatima Mohammed', student_email: 'fatima.mohammed@email.com', course_title: 'Mobile App Development with React Native' },
+  { id: '7',  user_id: '6', course_slug: 'data-science-python', paystack_reference: 'PSK_007', amount_kobo: 3500000, status: 'success', paid_at: '2024-03-15T10:30:00Z', points_applied: 0, student_name: 'Chisom Eze', student_email: 'chisom.eze@email.com', course_title: 'Data Science with Python' },
+  { id: '8',  user_id: '7', course_slug: 'advanced-react',      paystack_reference: 'PSK_008', amount_kobo: 2500000, status: 'success', paid_at: '2024-03-20T15:45:00Z', points_applied: 0, student_name: 'Aisha Bello', student_email: 'aisha.bello@email.com', course_title: 'Advanced React.js Mastery' },
+  { id: '9',  user_id: '7', course_slug: 'fullstack-nextjs',    paystack_reference: 'PSK_009', amount_kobo: 3000000, status: 'success', paid_at: '2024-04-19T12:00:00Z', points_applied: 0, student_name: 'Aisha Bello', student_email: 'aisha.bello@email.com', course_title: 'Full-Stack Web Development with Next.js' },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -116,92 +98,15 @@ export const mockPayments: Payment[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const mockCoupons: Coupon[] = [
-  { id: '1', code: 'SAVE10',      discountPercentage: 10, timesUsed: 45, maxUses: 100, expiryDate: '2024-12-31', active: true, createdDate: '2024-01-01' },
-  { id: '2', code: 'WELCOME20',   discountPercentage: 20, timesUsed: 28, maxUses: 50,  expiryDate: '2024-06-30', active: true, createdDate: '2024-01-01' },
-  { id: '3', code: 'LEARNING50',  discountPercentage: 50, timesUsed: 12, maxUses: 25,  expiryDate: '2024-05-31', active: true, createdDate: '2024-02-01' },
-  { id: '4', code: 'EARLYBIRD',   discountPercentage: 30, timesUsed: 67, maxUses: 100, expiryDate: '2024-12-31', active: true, createdDate: '2024-01-15' },
-  { id: '5', code: 'STUDENTDEAL', discountPercentage: 25, timesUsed: 34, maxUses: 80,  expiryDate: '2024-08-31', active: true, createdDate: '2024-02-15' },
-  { id: '6', code: 'NEWLAUNCHED', discountPercentage: 15, timesUsed: 8,  maxUses: 200, expiryDate: '2024-09-30', active: true, createdDate: '2024-04-01' },
+  { id: '1', code: 'SAVE10',      discount_percent: 10, used_count: 45, max_usage: 100, is_active: true, expires_at: '2024-12-31T23:59:59Z', created_at: '2024-01-01T00:00:00Z' },
+  { id: '2', code: 'WELCOME20',   discount_percent: 20, used_count: 28, max_usage: 50,  is_active: true, expires_at: '2024-06-30T23:59:59Z', created_at: '2024-01-01T00:00:00Z' },
+  { id: '3', code: 'LEARNING50',  discount_percent: 50, used_count: 12, max_usage: 25,  is_active: true, expires_at: '2024-05-31T23:59:59Z', created_at: '2024-02-01T00:00:00Z' },
+  { id: '4', code: 'EARLYBIRD',   discount_percent: 30, used_count: 67, max_usage: 100, is_active: true, expires_at: '2024-12-31T23:59:59Z', created_at: '2024-01-15T00:00:00Z' },
+  { id: '5', code: 'STUDENTDEAL', discount_percent: 25, used_count: 34, max_usage: 80,  is_active: true, expires_at: '2024-08-31T23:59:59Z', created_at: '2024-02-15T00:00:00Z' },
+  { id: '6', code: 'NEWLAUNCHED', discount_percent: 15, used_count: 8,  max_usage: 200, is_active: true, expires_at: '2024-09-30T23:59:59Z', created_at: '2024-04-01T00:00:00Z' },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK LEADERBOARD — kept for reference only. NOT used by leaderboard/page.tsx.
-// That page now fetches from /api/admin/leaderboard. Do not use this elsewhere.
-// ─────────────────────────────────────────────────────────────────────────────
 
-export const mockLeaderboard: Leaderboard[] = [
-  { id: '7',  position: 1,  studentId: '7',  studentName: 'Aisha Bello',      lifetime_points: 15000, credit_balance: 12000, courses_completed: 2, courses_in_progress: 1, learning_points: 1800, points: 15000, coursesCompleted: 2 },
-  { id: '3',  position: 2,  studentId: '3',  studentName: 'Zainab Adeyemi',   lifetime_points: 10000, credit_balance: 7500,  courses_completed: 2, courses_in_progress: 1, learning_points: 1800, points: 10000, coursesCompleted: 2 },
-  { id: '11', position: 3,  studentId: '11', studentName: 'Halima Abdullahi', lifetime_points: 7500,  credit_balance: 6000,  courses_completed: 1, courses_in_progress: 2, learning_points: 1200, points: 7500,  coursesCompleted: 1 },
-  { id: '1',  position: 4,  studentId: '1',  studentName: 'Amina Hassan',     lifetime_points: 5000,  credit_balance: 3000,  courses_completed: 1, courses_in_progress: 1, learning_points: 1000, points: 5000,  coursesCompleted: 1 },
-  { id: '9',  position: 5,  studentId: '9',  studentName: 'Mariam Suleiman',  lifetime_points: 4000,  credit_balance: 4000,  courses_completed: 0, courses_in_progress: 2, learning_points: 400,  points: 4000,  coursesCompleted: 0 },
-  { id: '5',  position: 6,  studentId: '5',  studentName: 'Fatima Mohammed',  lifetime_points: 2500,  credit_balance: 2500,  courses_completed: 1, courses_in_progress: 0, learning_points: 800,  points: 2500,  coursesCompleted: 1 },
-  { id: '12', position: 7,  studentId: '12', studentName: 'Segun Adebayo',    lifetime_points: 2500,  credit_balance: 0,     courses_completed: 0, courses_in_progress: 1, learning_points: 200,  points: 2500,  coursesCompleted: 0 },
-  { id: '4',  position: 8,  studentId: '4',  studentName: 'Chukwu Okonkwo',  lifetime_points: 1500,  credit_balance: 1500,  courses_completed: 0, courses_in_progress: 1, learning_points: 200,  points: 1500,  coursesCompleted: 0 },
-  { id: '8',  position: 9,  studentId: '8',  studentName: 'Tunde Oluwafemi', lifetime_points: 1000,  credit_balance: 500,   courses_completed: 0, courses_in_progress: 1, learning_points: 200,  points: 1000,  coursesCompleted: 0 },
-  { id: '6',  position: 10, studentId: '6',  studentName: 'Chisom Eze',       lifetime_points: 0,     credit_balance: 0,     courses_completed: 0, courses_in_progress: 1, learning_points: 200,  points: 0,     coursesCompleted: 0 },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK REFERRALS
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const mockReferrals: ReferralRecord[] = [
-  { id: 'ref-001', referrer_id: '7',  referrer_name: 'Aisha Bello',      referee_id: '4',  referee_name: 'Chukwu Okonkwo',  referee_email: 'chukwu.okonkwo@email.com',   referral_code: 'AISH-B7K2', created_at: '2024-02-18T09:00:00Z', status: 'converted', converted_at: '2024-02-20T11:30:00Z', commission_credits: 1500, triggering_payment_id: '6',  triggering_payment_amount: 15000, admin_notes: null,                                            manually_converted: false },
-  { id: 'ref-002', referrer_id: '3',  referrer_name: 'Zainab Adeyemi',   referee_id: '2',  referee_name: 'Ibrahim Musa',    referee_email: 'ibrahim.musa@email.com',     referral_code: 'ZAIN-A3P7', created_at: '2024-01-22T14:10:00Z', status: 'converted', converted_at: '2024-01-25T10:00:00Z', commission_credits: 1500, triggering_payment_id: '3',  triggering_payment_amount: 15000, admin_notes: null,                                            manually_converted: false },
-  { id: 'ref-003', referrer_id: '1',  referrer_name: 'Amina Hassan',     referee_id: '9',  referee_name: 'Mariam Suleiman', referee_email: 'mariam.suleiman@email.com',   referral_code: 'AMIN-H1Q4', created_at: '2024-03-28T16:00:00Z', status: 'pending',   converted_at: null,                   commission_credits: 0,    triggering_payment_id: null, triggering_payment_amount: null,  admin_notes: 'Registered but no purchase yet.',               manually_converted: false },
-  { id: 'ref-004', referrer_id: '7',  referrer_name: 'Aisha Bello',      referee_id: '5',  referee_name: 'Fatima Mohammed', referee_email: 'fatima.mohammed@email.com',   referral_code: 'AISH-B7K2', created_at: '2024-02-28T08:00:00Z', status: 'converted', converted_at: '2024-03-05T09:00:00Z', commission_credits: 2800, triggering_payment_id: '7',  triggering_payment_amount: 28000, admin_notes: null,                                            manually_converted: false },
-  { id: 'ref-005', referrer_id: '11', referrer_name: 'Halima Abdullahi', referee_id: '6',  referee_name: 'Chisom Eze',      referee_email: 'chisom.eze@email.com',       referral_code: 'HALI-A4M8', created_at: '2024-03-12T10:00:00Z', status: 'converted', converted_at: '2024-03-15T11:00:00Z', commission_credits: 3500, triggering_payment_id: '8',  triggering_payment_amount: 35000, admin_notes: null,                                            manually_converted: false },
-  { id: 'ref-006', referrer_id: '3',  referrer_name: 'Zainab Adeyemi',   referee_id: '12', referee_name: 'Segun Adebayo',   referee_email: 'segun.adebayo@email.com',    referral_code: 'ZAIN-A3P7', created_at: '2024-04-12T07:00:00Z', status: 'pending',   converted_at: null,                   commission_credits: 0,    triggering_payment_id: null, triggering_payment_amount: null,  admin_notes: null,                                            manually_converted: false },
-  { id: 'ref-007', referrer_id: '7',  referrer_name: 'Aisha Bello',      referee_id: '8',  referee_name: 'Tunde Oluwafemi', referee_email: 'tunde.oluwafemi@email.com',  referral_code: 'AISH-B7K2', created_at: '2024-03-18T12:00:00Z', status: 'converted', converted_at: '2024-03-20T15:00:00Z', commission_credits: 2500, triggering_payment_id: '9',  triggering_payment_amount: 25000, admin_notes: 'Manually converted after device-switch issue.', manually_converted: true },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK POINT TRANSACTIONS
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const mockStudentPoints: StudentPointSummary[] = [
-  {
-    student_id: '7', student_name: 'Aisha Bello',
-    credit_balance: 12000, lifetime_points: 15000, learning_points: 1800,
-    transactions: [
-      { id: 'txn-001', student_id: '7', type: 'referral_commission', amount: 1500,  balance_after: 1500,  description: 'Commission: Chukwu Okonkwo enrolled in Intro to Web Dev',      reference_id: 'ref-001', created_at: '2024-02-20T11:30:00Z', created_by: 'system' },
-      { id: 'txn-002', student_id: '7', type: 'referral_commission', amount: 2800,  balance_after: 4300,  description: 'Commission: Fatima Mohammed enrolled in Mobile App Dev',         reference_id: 'ref-004', created_at: '2024-03-05T09:00:00Z', created_by: 'system' },
-      { id: 'txn-003', student_id: '7', type: 'referral_commission', amount: 2500,  balance_after: 6800,  description: 'Commission: Tunde Oluwafemi enrolled in Advanced React.js',      reference_id: 'ref-007', created_at: '2024-03-20T15:00:00Z', created_by: 'system' },
-      { id: 'txn-004', student_id: '7', type: 'referral_commission', amount: 5000,  balance_after: 11800, description: 'Commission: Mariam Suleiman enrolled in Full-Stack Next.js',     reference_id: 'ref-010', created_at: '2024-04-05T08:00:00Z', created_by: 'system' },
-      { id: 'txn-005', student_id: '7', type: 'referral_commission', amount: 3200,  balance_after: 15000, description: 'Commission: Halima Abdullahi enrolled in Advanced React.js',     reference_id: 'ref-009', created_at: '2024-03-25T10:00:00Z', created_by: 'system' },
-      { id: 'txn-006', student_id: '7', type: 'redemption',          amount: -3000, balance_after: 12000, description: 'Credits applied to Full-Stack Web Development enrollment',        reference_id: '10',      created_at: '2024-04-19T09:00:00Z', created_by: 'system' },
-    ],
-  },
-  {
-    student_id: '3', student_name: 'Zainab Adeyemi',
-    credit_balance: 7500, lifetime_points: 10000, learning_points: 1800,
-    transactions: [
-      { id: 'txn-007', student_id: '3', type: 'referral_commission', amount: 1500,  balance_after: 1500,  description: 'Commission: Ibrahim Musa enrolled in Intro to Web Dev',          reference_id: 'ref-002', created_at: '2024-01-25T10:00:00Z', created_by: 'system' },
-      { id: 'txn-008', student_id: '3', type: 'referral_commission', amount: 3000,  balance_after: 4500,  description: 'Commission: Segun Adebayo enrolled in Full-Stack Next.js',       reference_id: 'ref-006', created_at: '2024-04-15T14:00:00Z', created_by: 'system' },
-      { id: 'txn-009', student_id: '3', type: 'manual_credit',       amount: 2000,  balance_after: 6500,  description: 'Manual credit: referral dispute — Eze Nwankwo registration',     reference_id: null,      created_at: '2024-04-18T10:30:00Z', created_by: 'Admin' },
-      { id: 'txn-010', student_id: '3', type: 'redemption',          amount: -3000, balance_after: 3500,  description: 'Credits applied to Full-Stack Web Dev enrollment',                reference_id: '5',       created_at: '2024-04-11T08:00:00Z', created_by: 'system' },
-      { id: 'txn-011', student_id: '3', type: 'referral_commission', amount: 4000,  balance_after: 7500,  description: 'Commission: Halima Abdullahi enrolled in Data Science',           reference_id: 'ref-011', created_at: '2024-04-20T11:00:00Z', created_by: 'system' },
-    ],
-  },
-  {
-    student_id: '1', student_name: 'Amina Hassan',
-    credit_balance: 3000, lifetime_points: 5000, learning_points: 1000,
-    transactions: [
-      { id: 'txn-012', student_id: '1', type: 'referral_commission', amount: 4500,  balance_after: 4500,  description: 'Commission: Mariam Suleiman enrolled in Advanced React.js',      reference_id: 'ref-003', created_at: '2024-04-02T14:00:00Z', created_by: 'system' },
-      { id: 'txn-013', student_id: '1', type: 'redemption',          amount: -1500, balance_after: 3000,  description: 'Credits applied to Intro to Web Dev enrollment',                  reference_id: '1',       created_at: '2024-01-20T09:00:00Z', created_by: 'system' },
-    ],
-  },
-  {
-    student_id: '11', student_name: 'Halima Abdullahi',
-    credit_balance: 6000, lifetime_points: 7500, learning_points: 1200,
-    transactions: [
-      { id: 'txn-014', student_id: '11', type: 'referral_commission', amount: 3500, balance_after: 3500,  description: 'Commission: Chisom Eze enrolled in Data Science with Python',     reference_id: 'ref-005', created_at: '2024-03-15T11:00:00Z', created_by: 'system' },
-      { id: 'txn-015', student_id: '11', type: 'referral_commission', amount: 4000, balance_after: 7500,  description: 'Commission: Tunde Oluwafemi enrolled in Full-Stack Next.js',      reference_id: 'ref-012', created_at: '2024-04-10T09:00:00Z', created_by: 'system' },
-      { id: 'txn-016', student_id: '11', type: 'redemption',          amount: -1500,balance_after: 6000,  description: 'Credits applied toward Advanced React.js enrollment',              reference_id: '9',       created_at: '2024-04-22T14:00:00Z', created_by: 'system' },
-    ],
-  },
-];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CHART DATA
@@ -235,15 +140,13 @@ export const getRecentPayments = (limit = 5): Payment[] =>
 export const getMetrics = () => {
   const totalRevenue = mockPayments
     .filter((p) => p.status === 'success')
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + p.amount_kobo, 0) / 100; // Convert kobo to Naira
 
   const totalStudents        = mockStudents.length;
-  const activeEnrollments    = mockEnrollments.filter((e) => e.status === 'in-progress').length;
-  const completedEnrollments = mockEnrollments.filter((e) => e.status === 'completed').length;
-  const creditsIssuedThisMonth = mockReferrals
-    .filter((r) => r.status === 'converted')
-    .reduce((sum, r) => sum + r.commission_credits, 0);
-  const pendingReferrals = mockReferrals.filter((r) => r.status === 'pending').length;
+  const activeEnrollments    = 0; // Fetch from Supabase API instead
+  const completedEnrollments = 0; // Fetch from Supabase API instead
+  const creditsIssuedThisMonth = 0; // Fetch from Supabase API instead
+  const pendingReferrals = 0; // Fetch from Supabase API instead
 
   return {
     totalRevenue,
