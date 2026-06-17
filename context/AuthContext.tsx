@@ -188,13 +188,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // ── FIX: Guaranteed setIsLoading(false) via .finally() ─────────────
     supabase.auth.getUser()
-      .then(async ({ data: { user } }) => {
+      .then(async ({ data: { user } }: any) => {
         if (user) {
           loadedUserIdRef.current = user.id;
           await loadUserData(user.id);
         }
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('[AuthProvider] session init error:', err);
         setLoadError(true);
       })
@@ -202,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       if (!session?.user) {
         loadedUserIdRef.current = null;
         referralClaimedRef.current = false;

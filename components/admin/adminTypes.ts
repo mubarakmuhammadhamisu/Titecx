@@ -4,6 +4,8 @@
 // Zero mock data. Zero invented fields.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { Module, Lesson, LessonType, VideoProvider, PracticeContent, TestCase, VideoContent, ReadingContent, QuizContent } from '@/lib/Course';
+
 // ── profiles ─────────────────────────────────────────────────────────────────
 export interface Student {
   id: string;
@@ -28,7 +30,8 @@ export interface Student {
 
 // Lesson and Module types are imported from lib/Course.ts to stay in sync with the CoursePlayer.
 // The admin curriculum builder writes data in this exact shape into courses.modules JSONB.
-export type { Module, Lesson, LessonType, VideoProvider, PracticeContent, TestCase } from '@/lib/Course';
+// Re-exporting for convenience to consumers of this types file.
+export type { Module, Lesson, LessonType, VideoProvider, PracticeContent, TestCase, VideoContent, ReadingContent, QuizContent };
 
 export interface QuizQuestion {
   id: string;
@@ -37,10 +40,6 @@ export interface QuizQuestion {
   correctAnswer: number;
   points: number;
 }
-
-export interface VideoContent    { videoUrl: string; duration: string; videoProvider?: VideoProvider; topics?: string[]; }
-export interface ReadingContent  { markdownBody: string; topics?: string[]; }
-export interface QuizContent     { questions: QuizQuestion[]; topics?: string[]; }
 
 export interface Course {
   id: string;
