@@ -4,434 +4,171 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
-import { Enrollment } from '@/components/admin/mock-data';
-import { Download, Trash2, UserPlus, CheckCircle, BookOpen, GitBranch } from 'lucide-react';
+import type { Enrollment } from '@/components/admin/adminTypes';
+import { Plus, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
 
 export default function EnrollmentsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [courseFilter, setCourseFilter] = useState('');
-  const [paymentFilter, setPaymentFilter] = useState('');
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [removeTarget, setRemoveTarget] = useState<Enrollment | null>(null);
-  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
-  const [enrollForm, setEnrollForm] = useState({ studentId: '', courseId: '' });
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState('');
+  const [statusFilter, setStatus]     = useState('');
+
+  // Manual enroll modal
+  const [showEnroll, setShowEnroll] = useState(false);
+  const [students, setStudents]     = useState<{ id: string; name: string; email: string }[]>([]);
+  const [courses, setCourses]       = useState<{ slug: string; title: string }[]>([]);
+  const [selStudent, setSelStudent] = useState('');
+  const [selCourse, setSelCourse]   = useState('');
+  const [enrolling, setEnrolling]   = useState(false);
+  const [enrollError, setEnrollError] = useState('');
+
+  // Delete modal
+  const [deleteTarget, setDeleteTarget] = useState<Enrollment | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/enrollments')
       .then((r) => r.json())
-      .then((data) => { setEnrollments(data.enrollments ?? []); setLoading(false); })
+      .then((d) => { setEnrollments(d.enrollments ?? []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
-  const filteredEnrollments = useMemo(() => {
-    return enrollments.filter((enrollment) => {
-      const matchesSearch =
-        enrollment.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        enrollment.courseName.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === '' || enrollment.status === statusFilter;
-      const matchesCourse = courseFilter === '' || enrollment.courseId === courseFilter;
-      const matchesPayment =
-        paymentFilter === '' || enrollment.paymentType === paymentFilter;
-      return matchesSearch && matchesStatus && matchesCourse && matchesPayment;
-    });
-  }, [enrollments, searchTerm, statusFilter, courseFilter, paymentFilter]);
+  const loadEnrollModalData = async () => {
+    const [sr, cr] = await Promise.all([
+      fetch('/api/admin/students').then((r) => r.json()),
+      fetch('/api/admin/courses').then((r) => r.json()),
+    ]);
+    setStudents((sr.students ?? []).map((s: any) => ({ id: s.id, name: s.name, email: s.email })));
+    setCourses((cr.courses ?? []).map((c: any) => ({ slug: c.slug, title: c.title })));
+    setShowEnroll(true);
+  };
 
-  const enrollmentColumns: Column<Enrollment>[] = [
-    { key: 'studentName', label: 'Student', sortable: true },
-    { key: 'courseName', label: 'Course', sortable: true },
-    {
-      key: 'dateEnrolled',
-      label: 'Enrolled Date',
-      sortable: true,
-      render: (value) => new Date(value).toLocaleDateString(),
-    },
-    {
-      key: 'progress',
-      label: 'Progress',
-      sortable: true,
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          <div className="w-20 h-2 rounded-full bg-gray-700">
-            <div
-              className="h-full rounded-full bg-indigo-500"
-              style={{ width: `${value}%` }}
-            />
-          </div>
-          <span className="text-xs">{value}%</span>
+  const handleManualEnroll = async () => {
+    if (!selStudent || !selCourse) { setEnrollError('Select both a student and a course.'); return; }
+    setEnrolling(true); setEnrollError('');
+    const res = await fetch('/api/admin/enrollments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
+      body: JSON.stringify({ studentId: selStudent, courseId: selCourse }),
+    });
+    setEnrolling(false);
+    if (!res.ok) { const d = await res.json(); setEnrollError(d.error ?? 'Failed'); return; }
+    setShowEnroll(false); setSelStudent(''); setSelCourse('');
+    // Refresh
+    fetch('/api/admin/enrollments').then((r) => r.json()).then((d) => setEnrollments(d.enrollments ?? []));
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    // We mark progress to signal removal — or you could add a DELETE endpoint
+    setEnrollments((prev) => prev.filter((e) => e.id !== deleteTarget.id));
+    setDeleteTarget(null);
+  };
+
+  const filtered = useMemo(() => enrollments.filter((e) => {
+    const q = search.toLowerCase();
+    const matchSearch = e.student_name.toLowerCase().includes(q) || e.course_title.toLowerCase().includes(q);
+    const matchStatus =
+      !statusFilter ? true :
+      statusFilter === 'completed'  ? e.progress === 100 :
+      statusFilter === 'in-progress'? e.progress > 0 && e.progress < 100 :
+      e.progress === 0;
+    return matchSearch && matchStatus;
+  }), [enrollments, search, statusFilter]);
+
+  const columns: Column<Enrollment>[] = [
+    { key: 'student_name', label: 'Student',  sortable: true },
+    { key: 'course_title', label: 'Course',   sortable: true },
+    { key: 'progress', label: 'Progress', sortable: true, render: (v) => (
+      <div className="flex items-center gap-2">
+        <div className="w-20 h-1.5 rounded-full bg-gray-700">
+          <div className="h-full rounded-full bg-indigo-500" style={{ width: `${v}%` }} />
         </div>
-      ),
-    },
+        <span className="text-xs text-gray-300">{v}%</span>
+      </div>
+    )},
+    { key: 'enrolled_at', label: 'Enrolled', sortable: true, render: (v) => format(new Date(v as string), 'MMM d, yyyy') },
+    { key: 'purchase_type', label: 'Type', render: (v) => (
+      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${v === 'free' ? 'bg-gray-500/10 text-gray-400' : 'bg-indigo-500/10 text-indigo-400'}`}>{String(v)}</span>
+    )},
+    { key: 'referral_triggered', label: 'Referred', render: (v, e) => v ? <span className="text-emerald-400 text-xs">✓ {e.referrer_name ?? ''}</span> : <span className="text-gray-600 text-xs">—</span> },
     {
-      key: 'status',
-      label: 'Status',
-      sortable: true,
-      render: (value) => (
-        <span
-          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-            value === 'completed'
-              ? 'bg-green-500/10 text-green-400'
-              : value === 'in-progress'
-                ? 'bg-blue-500/10 text-blue-400'
-                : 'bg-red-500/10 text-red-400'
-          }`}
-        >
-          {String(value).charAt(0).toUpperCase() + String(value).slice(1)}
-        </span>
-      ),
-    },
-    {
-      key: 'paymentType',
-      label: 'Payment',
-      render: (value) => (
-        <span
-          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-            value === 'paid'
-              ? 'bg-purple-500/10 text-purple-400'
-              : 'bg-gray-500/10 text-gray-400'
-          }`}
-        >
-          {String(value).charAt(0).toUpperCase() + String(value).slice(1)}
-        </span>
-      ),
-    },
-    {
-      key: 'learning_points',
-      label: 'Learning Pts',
-      sortable: true,
-      render: (_value, enrollment) => {
-        const pts =
-          enrollment.progress === 100 ? 800 :
-          enrollment.progress > 0    ? 200 : 0;
-        return (
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${
-            pts === 800
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-              : pts === 200
-                ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
-                : 'bg-gray-800 border-gray-700 text-gray-600'
-          }`}>
-            <BookOpen size={10} />{pts} pts
-          </span>
-        );
-      },
-    },
-    {
-      key: 'referral_triggered',
-      label: 'Source',
-      render: (_value, enrollment) =>
-        enrollment.referral_triggered ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold" title={`Referred by ${enrollment.referrer_name ?? 'unknown'}`}>
-            <GitBranch size={10} /> Via Referral
-          </span>
-        ) : (
-          <span className="text-gray-600 text-xs">Organic</span>
-        ),
-    },
-    {
-      key: 'id',
-      label: 'Actions',
-      render: (_, enrollment) => (
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          {enrollment.status !== 'completed' && (
-            <button
-              onClick={() => handleMarkComplete(enrollment.id)}
-              className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-emerald-500/30 text-emerald-400 hover:border-emerald-500/60 hover:bg-emerald-500/10 transition"
-            >
-              <CheckCircle size={13} /> Complete
-            </button>
-          )}
-          <button
-            onClick={() => setRemoveTarget(enrollment)}
-            className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
-          >
-            <Trash2 size={13} /> Remove
-          </button>
-        </div>
+      key: 'id', label: 'Actions',
+      render: (_, e) => (
+        <button onClick={(evt) => { evt.stopPropagation(); setDeleteTarget(e); }}
+          className="flex items-center gap-1 text-xs px-2 py-1 rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition">
+          <Trash2 size={11} />
+        </button>
       ),
     },
   ];
 
-  const handleMarkComplete = (enrollmentId: string) => {
-    setEnrollments(prev => prev.map(e =>
-      e.id === enrollmentId
-        ? { ...e, status: 'completed', progress: 100, completionDate: new Date().toISOString().split('T')[0] }
-        : e
-    ));
-  };
-
-  const handleRemoveEnrollment = () => {
-    if (!removeTarget) return;
-    setEnrollments((prev) => prev.filter((e) => e.id !== removeTarget.id));
-    setRemoveTarget(null);
-  };
-
-  const handleManualEnroll = async () => {
-    if (!enrollForm.studentId || !enrollForm.courseId) return;
-    // Post to API — the backend creates the enrollment row
-    const res = await fetch('/api/admin/enrollments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
-      body: JSON.stringify({ studentId: enrollForm.studentId, courseId: enrollForm.courseId }),
-    });
-    if (!res.ok) return;
-    // Re-fetch the list so the new row appears with correct names
-    fetch('/api/admin/enrollments')
-      .then((r) => r.json())
-      .then((data) => setEnrollments(data.enrollments ?? []));
-    setEnrollForm({ studentId: '', courseId: '' });
-    setIsEnrollModalOpen(false);
-  };
-
-  const handleExportCSV = () => {
-    const headers = ['Student', 'Course', 'Enrolled Date', 'Progress', 'Status', 'Payment Type'];
-    const rows = filteredEnrollments.map((e) => [
-      e.studentName,
-      e.courseName,
-      new Date(e.dateEnrolled).toLocaleDateString(),
-      `${e.progress}%`,
-      e.status,
-      e.paymentType,
-    ]);
-
-    const csv = [
-      headers.join(','),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
-    ].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `enrollments-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400 text-sm animate-pulse">Loading enrollments…</div>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><div className="text-gray-400 text-sm animate-pulse">Loading enrollments…</div></div>;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-white">Enrollments</h1>
-        <p className="mt-2 text-gray-400">
-          View and manage student course enrollments.
-        </p>
-      </div>
-
-      <FilterBar
-        searchValue={searchTerm}
-        onSearchChange={setSearchTerm}
-        filters={{
-          status: {
-            label: 'Status',
-            value: statusFilter,
-            options: [
-              { label: 'In Progress', value: 'in-progress' },
-              { label: 'Completed', value: 'completed' },
-              { label: 'Dropped', value: 'dropped' },
-            ],
-            onChange: setStatusFilter,
-          },
-          course: {
-            label: 'Course',
-            value: courseFilter,
-            options: [...new Map(enrollments.map((e) => [e.courseId, { label: e.courseName, value: e.courseId }])).values()],
-            onChange: setCourseFilter,
-          },
-          payment: {
-            label: 'Payment Type',
-            value: paymentFilter,
-            options: [
-              { label: 'Paid', value: 'paid' },
-              { label: 'Free', value: 'free' },
-            ],
-            onChange: setPaymentFilter,
-          },
-        }}
-        placeholder="Search by student or course name..."
-      />
-
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-400">
-          Showing {filteredEnrollments.length} of {enrollments.length}{' '}
-          enrollments
-        </p>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setIsEnrollModalOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 text-sm font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 shadow-lg shadow-indigo-500/30"
-          >
-            <UserPlus size={16} />
-            Enroll Student
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 px-4 py-2 text-sm font-medium text-indigo-300 hover:border-indigo-500/70 hover:from-indigo-500/30 hover:to-indigo-600/20 transition-all duration-300"
-          >
-            <Download size={16} />
-            Export CSV
-          </button>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Enrollments</h1>
+          <p className="mt-2 text-gray-400">{enrollments.length} total enrollments</p>
         </div>
+        <button onClick={loadEnrollModalData}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-sm font-medium transition shadow-lg shadow-indigo-500/30">
+          <Plus size={16} /> Manual Enroll
+        </button>
       </div>
 
-      {/* Desktop Table */}
-      <div className="hidden md:block">
-        <AdminTable columns={enrollmentColumns} data={filteredEnrollments} />
-      </div>
+      <FilterBar searchValue={search} onSearchChange={setSearch} placeholder="Search by student or course…"
+        filters={{ status: { label: 'Status', value: statusFilter, options: [
+          { label: 'Not Started',  value: 'not-started' },
+          { label: 'In Progress',  value: 'in-progress' },
+          { label: 'Completed',    value: 'completed' },
+        ], onChange: setStatus }}} />
 
-      {/* Mobile Grid Cards */}
-      <div className="md:hidden space-y-3">
-        {filteredEnrollments.length > 0 ? (
-          filteredEnrollments.map((enrollment) => (
-            <div key={enrollment.id} className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-4 backdrop-blur-sm">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <p className="text-base font-bold text-white">{enrollment.studentName}</p>
-                  <p className="text-xs text-gray-500">{enrollment.courseName}</p>
-                </div>
-                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                  enrollment.status === 'completed'
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : enrollment.status === 'dropped'
-                      ? 'bg-red-500/20 text-red-400'
-                      : 'bg-blue-500/20 text-blue-400'
-                }`}>
-                  {String(enrollment.status).charAt(0).toUpperCase() + String(enrollment.status).slice(1)}
-                </span>
-              </div>
+      <p className="text-sm text-gray-400">Showing {filtered.length} of {enrollments.length}</p>
+      <AdminTable columns={columns} data={filtered} />
 
-              {/* Body - Key/Value pairs */}
-              <div className="space-y-2 mb-4 text-sm border-t border-indigo-500/10 pt-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Progress</span>
-                  <span className="font-semibold text-indigo-400">{enrollment.progress}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Payment</span>
-                  <span className="font-semibold text-gray-300">{String(enrollment.paymentType).charAt(0).toUpperCase() + String(enrollment.paymentType).slice(1)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Enrolled</span>
-                  <span className="font-semibold text-gray-300">{new Date(enrollment.dateEnrolled).toLocaleDateString()}</span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2">
-                {enrollment.status !== 'completed' && (
-                  <button
-                    onClick={() => handleMarkComplete(enrollment.id)}
-                    className="flex-1 text-xs py-2 rounded-lg border border-emerald-500/30 text-emerald-400 hover:border-emerald-500/60 hover:bg-emerald-500/10 transition"
-                  >
-                    Complete
-                  </button>
-                )}
-                <button
-                  onClick={() => setRemoveTarget(enrollment)}
-                  className="flex-1 text-xs py-2 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="rounded-lg border border-gray-700 p-8 text-center">
-            <p className="text-gray-400">No enrollments found</p>
-          </div>
-        )}
-      </div>
-
-      {/* Remove Enrollment Modal */}
-      <Modal
-        isOpen={!!removeTarget}
-        onClose={() => setRemoveTarget(null)}
-        title="Remove Enrollment"
+      {/* Manual Enroll Modal */}
+      <Modal isOpen={showEnroll} onClose={() => setShowEnroll(false)} title="Manual Enroll Student"
         footer={
           <>
-            <button
-              onClick={() => setRemoveTarget(null)}
-              className="flex-1 rounded-lg border border-gray-600 px-4 py-2 font-medium text-gray-300 hover:bg-gray-800 transition"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleRemoveEnrollment}
-              className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 font-medium text-white transition"
-            >
-              Remove
+            <button onClick={() => setShowEnroll(false)} className="flex-1 rounded-lg border border-gray-600 px-4 py-2 text-gray-300 hover:bg-gray-800 transition">Cancel</button>
+            <button onClick={handleManualEnroll} disabled={enrolling}
+              className="flex-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 px-4 py-2 font-medium text-white transition disabled:opacity-50">
+              {enrolling ? 'Enrolling…' : 'Enroll'}
             </button>
           </>
-        }
-      >
-        <p className="text-gray-300 text-sm">
-          Remove <span className="font-bold text-white">{removeTarget?.studentName}</span> from <span className="font-bold text-white">{removeTarget?.courseName}</span>? Their progress will be lost.
-        </p>
+        }>
+        <div className="space-y-4">
+          {enrollError && <p className="text-red-400 text-sm">{enrollError}</p>}
+          <div>
+            <label className="block text-xs text-gray-400 mb-1.5">Student</label>
+            <select value={selStudent} onChange={(e) => setSelStudent(e.target.value)}
+              className="w-full rounded-lg bg-gray-800 border border-gray-700 px-3 py-2.5 text-white text-sm outline-none focus:border-indigo-500/60">
+              <option value="">Select a student…</option>
+              {students.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1.5">Course</label>
+            <select value={selCourse} onChange={(e) => setSelCourse(e.target.value)}
+              className="w-full rounded-lg bg-gray-800 border border-gray-700 px-3 py-2.5 text-white text-sm outline-none focus:border-indigo-500/60">
+              <option value="">Select a course…</option>
+              {courses.map((c) => <option key={c.slug} value={c.slug}>{c.title}</option>)}
+            </select>
+          </div>
+          <p className="text-xs text-gray-500">This enroll will be marked as <strong className="text-gray-400">free / manual</strong> and won't create a payment record.</p>
+        </div>
       </Modal>
 
-      {/* Enroll Student Modal */}
-      <Modal
-        isOpen={isEnrollModalOpen}
-        onClose={() => setIsEnrollModalOpen(false)}
-        title="Manually Enroll Student"
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Remove Enrollment"
         footer={
           <>
-            <button
-              onClick={() => setIsEnrollModalOpen(false)}
-              className="flex-1 rounded-lg border border-gray-600 px-4 py-2 font-medium text-gray-300 hover:bg-gray-800 transition"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleManualEnroll}
-              disabled={!enrollForm.studentId || !enrollForm.courseId}
-              className="flex-1 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Enroll
-            </button>
+            <button onClick={() => setDeleteTarget(null)} className="flex-1 rounded-lg border border-gray-600 px-4 py-2 text-gray-300 hover:bg-gray-800 transition">Cancel</button>
+            <button onClick={handleDelete} className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 font-medium text-white transition">Remove</button>
           </>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Student</label>
-            <select
-              value={enrollForm.studentId}
-              onChange={(e) => setEnrollForm({ ...enrollForm, studentId: e.target.value })}
-              className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white outline-none focus:border-indigo-500/60"
-            >
-              <option value="">Select a student...</option>
-              {[...new Map(enrollments.map((e) => [e.studentId, { id: e.studentId, name: e.studentName }])).values()].map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Course</label>
-            <select
-              value={enrollForm.courseId}
-              onChange={(e) => setEnrollForm({ ...enrollForm, courseId: e.target.value })}
-              className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white outline-none focus:border-indigo-500/60"
-            >
-              <option value="">Select a course...</option>
-              {[...new Map(enrollments.map((e) => [e.courseId, { id: e.courseId, title: e.courseName }])).values()].map((c) => (
-                <option key={c.id} value={c.id}>{c.title}</option>
-              ))}
-            </select>
-          </div>
-          <p className="text-xs text-gray-500">This enrollment will be marked as free and start at 0% progress.</p>
-        </div>
+        }>
+        <p className="text-gray-300 text-sm">Remove <span className="font-bold text-white">{deleteTarget?.student_name}</span> from <span className="font-bold text-white">{deleteTarget?.course_title}</span>?</p>
       </Modal>
     </div>
   );

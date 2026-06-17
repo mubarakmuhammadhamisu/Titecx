@@ -26,9 +26,9 @@ export interface Student {
   total_paid_kobo: number;
 }
 
-// ── courses (modules stored as JSONB inside courses.modules) ──────────────────
-export type VideoProvider = 'youtube' | 'gumlet' | 'bunny' | 'gdrive';
-export type LessonType    = 'video' | 'reading' | 'quiz' | 'practice';
+// Lesson and Module types are imported from lib/Course.ts to stay in sync with the CoursePlayer.
+// The admin curriculum builder writes data in this exact shape into courses.modules JSONB.
+export type { Module, Lesson, LessonType, VideoProvider, PracticeContent, TestCase } from '@/lib/Course';
 
 export interface QuizQuestion {
   id: string;
@@ -38,36 +38,9 @@ export interface QuizQuestion {
   points: number;
 }
 
-export interface TestCase {
-  input: string;
-  expected_output: string;
-  hidden: boolean;
-}
-
 export interface VideoContent    { videoUrl: string; duration: string; videoProvider?: VideoProvider; topics?: string[]; }
 export interface ReadingContent  { markdownBody: string; topics?: string[]; }
 export interface QuizContent     { questions: QuizQuestion[]; topics?: string[]; }
-export interface PracticeContent {
-  language: 'html' | 'python' | 'c';
-  instructions: string;
-  starter_code: string;
-  example_input?: string;
-  example_output: string;
-  test_cases: TestCase[];
-}
-
-export interface Lesson {
-  id: string;
-  title: string;
-  type: LessonType;
-  content: VideoContent | ReadingContent | QuizContent | PracticeContent;
-}
-
-export interface Module {
-  id: string;
-  title: string;
-  lessons: Lesson[];
-}
 
 export interface Course {
   id: string;

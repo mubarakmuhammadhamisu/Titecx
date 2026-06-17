@@ -3,315 +3,126 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
-import { Payment } from '@/components/admin/mock-data';
-import { CheckCircle, AlertCircle, X, GitBranch, Zap } from 'lucide-react';
+import type { Payment } from '@/components/admin/adminTypes';
+import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
-import Link from 'next/link';
+
+function fmt(kobo: number) { return `₦${(kobo / 100).toLocaleString()}`; }
 
 export default function PaymentsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [verifying, setVerifying] = useState<string | null>(null);
-  const [verifyResult, setVerifyResult] = useState<{ id: string; success: boolean } | null>(null);
-  const [allPayments, setAllPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [payments, setPayments]     = useState<Payment[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [search, setSearch]         = useState('');
+  const [statusFilter, setStatus]   = useState('');
+  const [dateFrom, setDateFrom]     = useState('');
+  const [dateTo, setDateTo]         = useState('');
+  const [verifying, setVerifying]   = useState<string | null>(null);
+  const [verifyResult, setVerifyResult] = useState<{ id: string; ok: boolean } | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/payments')
       .then((r) => r.json())
-      .then((data) => { setAllPayments(data.payments ?? []); setLoading(false); })
+      .then((d) => { setPayments(d.payments ?? []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
-  const filteredPayments = useMemo(() => {
-    return allPayments.filter((payment) => {
-      const matchesSearch =
-        payment.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.courseName.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === '' || payment.status === statusFilter;
-      const paymentDate = new Date(payment.date);
-      const matchesFrom = !dateFrom || paymentDate >= new Date(dateFrom);
-      const matchesTo = !dateTo || paymentDate <= new Date(dateTo);
-      return matchesSearch && matchesStatus && matchesFrom && matchesTo;
-    });
-  }, [searchTerm, statusFilter, dateFrom, dateTo, allPayments]);
+  const filtered = useMemo(() => payments.filter((p) => {
+    const q = search.toLowerCase();
+    const matchSearch = p.student_name.toLowerCase().includes(q) ||
+                        p.course_title.toLowerCase().includes(q) ||
+                        p.paystack_reference.toLowerCase().includes(q);
+    const matchStatus = !statusFilter || p.status === statusFilter;
+    const pd = new Date(p.paid_at);
+    const matchFrom = !dateFrom || pd >= new Date(dateFrom);
+    const matchTo   = !dateTo   || pd <= new Date(dateTo);
+    return matchSearch && matchStatus && matchFrom && matchTo;
+  }), [payments, search, statusFilter, dateFrom, dateTo]);
 
-  const handleVerifyPayment = async (paymentId: string, reference: string) => {
-    setVerifying(paymentId);
+  const totalRevenue = filtered.filter((p) => p.status === 'success').reduce((s, p) => s + p.amount_kobo, 0);
+
+  const handleVerify = async (p: Payment) => {
+    setVerifying(p.id);
     try {
       const res = await fetch('/api/admin/payments/verify', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-csrf-protection': '1',
-        },
-        body: JSON.stringify({ reference }),
+        headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
+        body: JSON.stringify({ reference: p.paystack_reference }),
       });
       const data = await res.json();
-      const success = data.status === true && data.data?.status === 'success';
-      setVerifyResult({ id: paymentId, success });
-    } catch {
-      setVerifyResult({ id: paymentId, success: false });
-    } finally {
+      setVerifyResult({ id: p.id, ok: data.data?.status === 'success' });
+    } catch { setVerifyResult({ id: p.id, ok: false }); }
+    finally {
       setVerifying(null);
       setTimeout(() => setVerifyResult(null), 3000);
     }
   };
 
-  const paymentColumns: Column<Payment>[] = [
-    { key: 'studentName', label: 'Student', sortable: true },
-    { key: 'courseName',  label: 'Course',  sortable: true },
+  const statusBadge = (s: string) => {
+    if (s === 'success') return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-semibold"><CheckCircle size={11} />Success</span>;
+    if (s === 'failed')  return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold"><AlertCircle size={11} />Failed</span>;
+    return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold"><Clock size={11} />Pending</span>;
+  };
+
+  const columns: Column<Payment>[] = [
+    { key: 'student_name',        label: 'Student',    sortable: true },
+    { key: 'course_title',        label: 'Course',     sortable: true },
+    { key: 'amount_kobo',         label: 'Amount',     sortable: true, render: (v) => fmt(Number(v)) },
+    { key: 'points_applied',      label: 'Pts Applied',sortable: true, render: (v) => Number(v) > 0 ? <span className="text-amber-400 text-xs">{Number(v)} pts</span> : <span className="text-gray-600 text-xs">—</span> },
+    { key: 'status',              label: 'Status',     render: (v) => statusBadge(String(v)) },
+    { key: 'paid_at',             label: 'Date',       sortable: true, render: (v) => format(new Date(v as string), 'MMM d, yyyy') },
+    { key: 'paystack_reference',  label: 'Reference',  render: (v) => <span className="text-xs text-gray-400 font-mono">{String(v)}</span> },
     {
-      key: 'amount',
-      label: 'Listed Price',
-      sortable: true,
-      render: (value) => `₦${Number(value).toLocaleString()}`,
-    },
-    {
-      key: 'credits_applied',
-      label: 'Credits Applied',
-      sortable: true,
-      render: (value) =>
-        Number(value) > 0 ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
-            <Zap size={10} />₦{Number(value).toLocaleString()}
-          </span>
-        ) : (
-          <span className="text-gray-600 text-xs">—</span>
-        ),
-    },
-    {
-      key: 'net_amount',
-      label: 'Net Charged',
-      sortable: true,
-      render: (value) => (
-        <span className="font-semibold text-indigo-300">₦{Number(value).toLocaleString()}</span>
-      ),
-    },
-    {
-      key: 'reference',
-      label: 'Reference',
-      sortable: true,
-      render: (value) => (
-        <span className="font-mono text-xs text-gray-300">{String(value)}</span>
-      ),
-    },
-    {
-      key: 'date',
-      label: 'Date',
-      sortable: true,
-      render: (value) => format(new Date(String(value)), 'MMM d, yyyy'),
-    },
-    {
-      key: 'referral_id',
-      label: 'Referral',
-      render: (value) =>
-        value ? (
-          <Link
-            href={`/admin/referrals`}
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition"
-          >
-            <GitBranch size={10} /> Ref
-          </Link>
-        ) : (
-          <span className="text-gray-600 text-xs">—</span>
-        ),
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (value) => (
-        <span
-          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-            value === 'success'
-              ? 'bg-green-500/10 text-green-400'
-              : value === 'pending'
-                ? 'bg-yellow-500/10 text-yellow-400'
-                : 'bg-red-500/10 text-red-400'
-          }`}
-        >
-          <CheckCircle size={12} />
-          {String(value).charAt(0).toUpperCase() + String(value).slice(1)}
-        </span>
-      ),
-    },
-    {
-      key: 'id',
-      label: 'Action',
-      render: (_, payment) => (
+      key: 'id', label: 'Verify',
+      render: (_, p) => (
         <button
-          onClick={(e) => { e.stopPropagation(); handleVerifyPayment(payment.id, payment.reference); }}
-          disabled={verifying === payment.id}
-          className="text-xs px-3 py-1 rounded-lg border border-indigo-500/30 text-indigo-400 hover:border-indigo-500/60 hover:bg-indigo-500/10 transition disabled:opacity-50"
+          onClick={() => handleVerify(p)}
+          disabled={verifying === p.id}
+          className="text-xs px-2.5 py-1 rounded-lg border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 transition disabled:opacity-50"
         >
-          {verifying === payment.id ? 'Verifying...' : 'Verify'}
+          {verifying === p.id ? '…' :
+           verifyResult?.id === p.id ? (verifyResult.ok ? '✓ OK' : '✗ Fail') : 'Verify'}
         </button>
       ),
     },
   ];
 
-  const successPayments  = filteredPayments.filter((p) => p.status === 'success');
-  const totalRevenue     = successPayments.reduce((sum, p) => sum + p.amount, 0);
-  const creditsRedeemed  = successPayments.reduce((sum, p) => sum + p.credits_value_ngn, 0);
-  const referralTriggers = successPayments.filter((p) => p.referral_id !== null).length;
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400 text-sm animate-pulse">Loading payments…</div>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><div className="text-gray-400 text-sm animate-pulse">Loading payments…</div></div>;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-white">Payments</h1>
-        <p className="mt-2 text-gray-400">Track and verify payment transactions.</p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-indigo-500/10">
-          <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Total Revenue (Filtered)</p>
-          <p className="mt-3 text-3xl font-bold text-indigo-400">₦{totalRevenue.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-1">{filteredPayments.length} transaction{filteredPayments.length !== 1 ? 's' : ''}</p>
-        </div>
-        <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-emerald-500/10">
-          <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Successful</p>
-          <p className="mt-3 text-3xl font-bold text-emerald-400">{successPayments.length}</p>
-          <p className="text-xs text-gray-500 mt-1">transactions completed</p>
-        </div>
-        <div className="rounded-xl border border-amber-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-amber-500/10">
-          <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Credits Redeemed</p>
-          <p className="mt-3 text-3xl font-bold text-amber-400">₦{creditsRedeemed.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-1">applied as discounts</p>
-        </div>
-        <div className="rounded-xl border border-purple-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-purple-500/10">
-          <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Referral Commissions Triggered</p>
-          <p className="mt-3 text-3xl font-bold text-purple-400">{referralTriggers}</p>
-          <p className="text-xs text-gray-500 mt-1">payments that paid commission</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Payments</h1>
+          <p className="mt-2 text-gray-400">{filtered.length} transactions · {fmt(totalRevenue)} total</p>
         </div>
       </div>
 
       <FilterBar
-        searchValue={searchTerm}
-        onSearchChange={setSearchTerm}
+        searchValue={search} onSearchChange={setSearch}
+        placeholder="Search by student, course, or reference…"
         filters={{
           status: {
-            label: 'Status',
-            value: statusFilter,
-            options: [
-              { label: 'Success', value: 'success' },
-              { label: 'Failed', value: 'failed' },
-              { label: 'Pending', value: 'pending' },
-            ],
-            onChange: setStatusFilter,
+            label: 'Status', value: statusFilter,
+            options: [{ label: 'Success', value: 'success' }, { label: 'Failed', value: 'failed' }, { label: 'Pending', value: 'pending' }],
+            onChange: setStatus,
           },
         }}
-        placeholder="Search by reference, student, or course..."
       />
 
-      <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-lg border border-indigo-500/20 bg-gray-900/50">
-        <span className="text-xs text-gray-400 font-medium">Date range:</span>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">From</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-1.5 text-sm text-white outline-none focus:border-indigo-500/60" />
+      <div className="flex gap-4">
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">From</label>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+            className="rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-white text-sm outline-none focus:border-indigo-500/60" />
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">To</label>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-1.5 text-sm text-white outline-none focus:border-indigo-500/60" />
-        </div>
-        {(dateFrom || dateTo) && (
-          <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-xs text-gray-500 hover:text-gray-300 transition flex items-center gap-1">
-            <X size={12} /> Clear dates
-          </button>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <p className="text-sm text-gray-400">Showing {filteredPayments.length} of {allPayments.length} payments</p>
-
-        <div className="hidden md:block">
-          <AdminTable columns={paymentColumns} data={filteredPayments} />
-        </div>
-
-        <div className="md:hidden space-y-3">
-          {filteredPayments.length > 0 ? filteredPayments.map((payment) => (
-            <div key={payment.id} className="rounded-lg border border-indigo-500/20 bg-gray-900/50 p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <p className="text-base font-bold text-white">{payment.studentName}</p>
-                  <p className="text-xs text-gray-500">{payment.courseName}</p>
-                </div>
-                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${payment.status === 'success' ? 'bg-green-500/10 text-green-400' : payment.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-red-500/10 text-red-400'}`}>
-                  <CheckCircle size={12} />
-                  {String(payment.status).charAt(0).toUpperCase() + String(payment.status).slice(1)}
-                </span>
-              </div>
-              <div className="space-y-2 mb-4 text-sm border-t border-indigo-500/10 pt-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Listed Price</span>
-                  <span className="text-white font-semibold">₦{payment.amount.toLocaleString()}</span>
-                </div>
-                {payment.credits_applied > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Credits Applied</span>
-                    <span className="text-amber-400 font-semibold">−₦{payment.credits_value_ngn.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Net Charged</span>
-                  <span className="text-indigo-300 font-bold">₦{payment.net_amount.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Reference</span>
-                  <span className="font-mono text-xs text-gray-300">{payment.reference}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Date</span>
-                  <span className="text-gray-300">{format(new Date(payment.date), 'MMM d, yyyy')}</span>
-                </div>
-                {payment.referral_id && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Referral</span>
-                    <Link href="/admin/referrals" className="inline-flex items-center gap-1 text-emerald-400 text-xs font-semibold">
-                      <GitBranch size={10} /> View
-                    </Link>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => handleVerifyPayment(payment.id, payment.reference)}
-                disabled={verifying === payment.id}
-                className="w-full text-xs py-2 rounded-lg border border-indigo-500/30 text-indigo-400 hover:border-indigo-500/60 hover:bg-indigo-500/10 transition disabled:opacity-50"
-              >
-                {verifying === payment.id ? 'Verifying...' : 'Verify Payment'}
-              </button>
-            </div>
-          )) : (
-            <div className="rounded-lg border border-gray-700 p-8 text-center">
-              <p className="text-gray-400">No payments found</p>
-            </div>
-          )}
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">To</label>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+            className="rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-white text-sm outline-none focus:border-indigo-500/60" />
         </div>
       </div>
 
-      {verifyResult && (
-        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl border shadow-xl backdrop-blur-md ${
-          verifyResult.success
-            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-            : 'bg-red-500/15 border-red-500/30 text-red-400'
-        }`}>
-          {verifyResult.success ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
-          <span className="text-sm font-medium">
-            {verifyResult.success ? 'Payment verified successfully' : 'Verification failed — payment not found or unsuccessful'}
-          </span>
-        </div>
-      )}
+      <AdminTable columns={columns} data={filtered} />
     </div>
   );
 }

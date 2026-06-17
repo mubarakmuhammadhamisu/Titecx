@@ -7,7 +7,7 @@
 //   - Client components  → const { courses } = useAuth()
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type LessonType    = 'video' | 'reading' | 'quiz';
+export type LessonType    = 'video' | 'reading' | 'quiz' | 'practice';
 export type LessonStatus  = 'completed' | 'current' | 'locked';
 export type FilterStatus  = 'all' | 'in-progress' | 'completed';
 
@@ -62,12 +62,27 @@ export interface QuizContent {
   topics?: string[];
 }
 
+export interface TestCase {
+  input: string;
+  expected_output: string;
+  hidden: boolean;
+}
+
+export interface PracticeContent {
+  language: 'html' | 'python' | 'c';
+  instructions: string;
+  starter_code: string;
+  example_input?: string;
+  example_output: string;
+  test_cases: TestCase[];
+}
+
 export interface Lesson {
   id: string;
   title: string;
   type: LessonType;
   status: LessonStatus;
-  content: VideoContent | ReadingContent | QuizContent;
+  content: VideoContent | ReadingContent | QuizContent | PracticeContent;
 }
 
 export interface Module {

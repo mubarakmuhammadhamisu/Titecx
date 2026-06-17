@@ -194,6 +194,12 @@ export default function CourseLessonPage({ params }: PageProps) {
                 onQuizComplete={handleComplete}
               />
             )}
+            {lesson.type === 'practice' && (
+              <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6">
+                <h2 className="text-xl font-bold text-white mb-2">{lesson.title}</h2>
+                <p className="text-emerald-400 text-sm">Practice environment coming soon.</p>
+              </div>
+            )}
           </motion.div>
 
           <LessonNavigation

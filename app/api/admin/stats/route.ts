@@ -1,10 +1,3 @@
-// GET /api/admin/stats
-//
-// Returns aggregated numbers for the admin dashboard overview:
-// totalRevenue, totalStudents, activeEnrollments, completedEnrollments,
-// creditsIssuedThisMonth, pendingReferrals, revenueData (last 15 days),
-// referralConversions (last 7 days), recentPayments (last 5).
-
 import { NextResponse } from 'next/server';
 import { getAdminClient, getAuthenticatedAdmin } from '@/lib/adminSupabase';
 
@@ -14,133 +7,71 @@ export async function GET() {
 
   const supabase = getAdminClient();
 
-  // ── 1. Total students ────────────────────────────────────────────────────
-  const { count: totalStudents } = await supabase
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .neq('role', 'Admin');
-
-  // ── 2. Enrollments — active + completed ─────────────────────────────────
-  const { data: enrollmentStats } = await supabase
-    .from('enrollments')
-    .select('progress');
-
-  const activeEnrollments    = (enrollmentStats ?? []).filter((e) => e.progress > 0 && e.progress < 100).length;
-  const completedEnrollments = (enrollmentStats ?? []).filter((e) => e.progress === 100).length;
-
-  // ── 3. Total revenue + recent payments ──────────────────────────────────
-  const { data: payments } = await supabase
-    .from('payments')
-    .select('id, user_id, course_slug, amount_kobo, status, paid_at, paystack_reference, points_applied')
-    .eq('status', 'success')
-    .order('paid_at', { ascending: false });
-
-  const totalRevenue = (payments ?? []).reduce((sum, p) => sum + Math.round(p.amount_kobo / 100), 0);
-
-  // Enrich recent 5 payments with profile + course name
-  const recent5 = (payments ?? []).slice(0, 5);
-  const recentUserIds   = [...new Set(recent5.map((p) => p.user_id))];
-  const recentSlugs     = [...new Set(recent5.map((p) => p.course_slug))];
-
-  const [{ data: recentProfiles }, { data: recentCourses }] = await Promise.all([
-    supabase.from('profiles').select('id, name, email').in('id', recentUserIds),
-    supabase.from('courses').select('slug, title').in('slug', recentSlugs),
+  const [
+    { data: payments },
+    { count: totalStudents },
+    { count: activeEnrollments },
+    { count: completedEnrollments },
+  ] = await Promise.all([
+    supabase
+      .from('payments')
+      .select('id, user_id, course_slug, paystack_reference, amount_kobo, status, paid_at, points_applied')
+      .eq('status', 'success')
+      .order('paid_at', { ascending: false }),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    supabase.from('enrollments').select('*', { count: 'exact', head: true }).lt('progress', 100),
+    supabase.from('enrollments').select('*', { count: 'exact', head: true }).eq('progress', 100),
   ]);
 
-  const profileMap: Record<string, { name: string; email: string }> = {};
-  for (const p of recentProfiles ?? []) profileMap[p.id] = { name: p.name, email: p.email };
-  const courseMap: Record<string, string> = {};
-  for (const c of recentCourses ?? []) courseMap[c.slug] = c.title;
+  // Revenue by day (last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const recentPayments = recent5.map((p) => ({
-    id:             p.id,
-    studentId:      p.user_id,
-    studentName:    profileMap[p.user_id]?.name  ?? 'Unknown',
-    courseId:       p.course_slug,
-    courseName:     courseMap[p.course_slug]     ?? p.course_slug,
-    amount:         Math.round(p.amount_kobo / 100),
-    currency:       'NGN',
-    reference:      p.paystack_reference,
-    date:           p.paid_at,
-    status:         p.status as 'success' | 'failed' | 'pending',
-    credits_applied:    p.points_applied ?? 0,
-    credits_value_ngn:  p.points_applied ?? 0,
-    net_amount:         Math.round(p.amount_kobo / 100) - (p.points_applied ?? 0),
-    referral_id:        null,
-  }));
+  const recentPayments = (payments ?? []).filter(
+    (p) => new Date(p.paid_at) >= thirtyDaysAgo
+  );
 
-  // ── 4. Revenue last 15 days ──────────────────────────────────────────────
-  const fifteenDaysAgo = new Date();
-  fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 14);
-
-  const { data: recentPaid } = await supabase
-    .from('payments')
-    .select('amount_kobo, paid_at')
-    .eq('status', 'success')
-    .gte('paid_at', fifteenDaysAgo.toISOString());
-
-  // Bucket by day
-  const revenueByDay: Record<string, number> = {};
-  for (let i = 14; i >= 0; i--) {
+  // Group by date
+  const revenueMap: Record<string, number> = {};
+  for (let i = 29; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const key = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-    revenueByDay[key] = 0;
+    revenueMap[d.toISOString().slice(0, 10)] = 0;
   }
-  for (const p of recentPaid ?? []) {
-    const key = new Date(p.paid_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-    if (key in revenueByDay) revenueByDay[key] += Math.round(p.amount_kobo / 100);
+  for (const p of recentPayments) {
+    const day = p.paid_at.slice(0, 10);
+    if (revenueMap[day] !== undefined) revenueMap[day] += p.amount_kobo;
   }
-  const revenueData = Object.entries(revenueByDay).map(([date, revenue]) => ({ date, revenue }));
+  const revenue_by_day = Object.entries(revenueMap).map(([date, revenue_kobo]) => ({ date, revenue_kobo }));
 
-  // ── 5. Referrals — credits issued this month + pending + last-7-day conversions ──
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-
-  const { data: referrals } = await supabase
-    .from('referrals')
-    .select('status, commission_points, converted_at')
-    .gte('created_at', sevenDaysAgo.toISOString());
-
-  const { data: allReferrals } = await supabase
-    .from('referrals')
-    .select('status, commission_points, converted_at');
-
-  const creditsIssuedThisMonth = (allReferrals ?? [])
-    .filter((r) => r.status === 'converted' && r.converted_at && new Date(r.converted_at) >= startOfMonth)
-    .reduce((sum, r) => sum + (r.commission_points ?? 0), 0);
-
-  const pendingReferrals = (allReferrals ?? []).filter((r) => r.status === 'pending').length;
-
-  // Last 7 days conversions bucketed by day
-  const convByDay: Record<string, number> = {};
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-    convByDay[key] = 0;
+  // Enrich recent 10 payments with names
+  const last10 = (payments ?? []).slice(0, 10);
+  let enrichedPayments: any[] = last10;
+  if (last10.length > 0) {
+    const userIds  = [...new Set(last10.map((p) => p.user_id))];
+    const slugs    = [...new Set(last10.map((p) => p.course_slug))];
+    const [{ data: profiles }, { data: courses }] = await Promise.all([
+      supabase.from('profiles').select('id, name, email').in('id', userIds),
+      supabase.from('courses').select('slug, title').in('slug', slugs),
+    ]);
+    const pm: Record<string, any> = {};
+    for (const p of profiles ?? []) pm[p.id] = p;
+    const cm: Record<string, string> = {};
+    for (const c of courses ?? []) cm[c.slug] = c.title;
+    enrichedPayments = last10.map((p) => ({
+      ...p,
+      student_name:  pm[p.user_id]?.name  ?? 'Unknown',
+      student_email: pm[p.user_id]?.email ?? '',
+      course_title:  cm[p.course_slug]    ?? p.course_slug,
+    }));
   }
-  for (const r of referrals ?? []) {
-    if (r.status === 'converted' && r.converted_at) {
-      const key = new Date(r.converted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-      if (key in convByDay) convByDay[key] += 1;
-    }
-  }
-  const referralConversions = Object.entries(convByDay).map(([date, conversions]) => ({ date, conversions }));
 
   return NextResponse.json({
-    totalRevenue,
-    totalStudents:          totalStudents ?? 0,
-    activeEnrollments,
-    completedEnrollments,
-    creditsIssuedThisMonth,
-    pendingReferrals,
-    revenueData,
-    referralConversions,
-    recentPayments,
+    total_revenue_kobo:    (payments ?? []).reduce((s, p) => s + p.amount_kobo, 0),
+    total_students:        totalStudents ?? 0,
+    active_enrollments:    activeEnrollments ?? 0,
+    completed_enrollments: completedEnrollments ?? 0,
+    revenue_by_day,
+    recent_payments: enrichedPayments,
   });
 }

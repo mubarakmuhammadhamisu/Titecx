@@ -2,27 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient, getAuthenticatedAdmin } from '@/lib/adminSupabase';
 import { checkCsrfHeader } from '@/lib/csrf';
 
-export async function GET() {
-  const admin = await getAuthenticatedAdmin();
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const supabase = getAdminClient();
-  const { data, error } = await supabase.from('platform_settings').select('*').order('key');
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ settings: data ?? [] });
-}
-
-export async function PATCH(req: NextRequest) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAuthenticatedAdmin();
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const csrfError = checkCsrfHeader(req);
   if (csrfError) return csrfError;
-  const { key, value } = await req.json();
-  if (!key) return NextResponse.json({ error: 'key required' }, { status: 400 });
+  const { id } = await params;
+  const body = await req.json();
   const supabase = getAdminClient();
-  const { data, error } = await supabase
-    .from('platform_settings')
-    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
-    .select().single();
+  const { data, error } = await supabase.from('coupons').update(body).eq('id', id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ setting: data });
+  return NextResponse.json({ coupon: data });
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const { id } = await params;
+  const supabase = getAdminClient();
+  const { error } = await supabase.from('coupons').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
 }

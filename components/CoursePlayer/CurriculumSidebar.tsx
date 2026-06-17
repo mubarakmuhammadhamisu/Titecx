@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Module } from '@/lib/Course';
-import { ChevronDown, CheckCircle2, Circle, Video, BookOpen, Brain, Lock } from 'lucide-react';
+import { ChevronDown, CheckCircle2, Circle, Video, BookOpen, Brain, Lock, Code } from 'lucide-react';
 
 interface CurriculumSidebarProps {
   modules: Module[];
@@ -110,9 +110,10 @@ export default function CurriculumSidebar({
                           ? <Lock size={15} className="text-gray-600 shrink-0" />
                           : <Circle size={15} className={`shrink-0 ${isActive ? 'text-indigo-400' : 'text-gray-600'}`} />
                         }
-                        {lesson.type === 'video'   && <Video    size={13} className={`shrink-0 ${locked ? 'text-gray-600' : 'text-indigo-400'}`} />}
-                        {lesson.type === 'reading' && <BookOpen size={13} className={`shrink-0 ${locked ? 'text-gray-600' : 'text-purple-400'}`} />}
-                        {lesson.type === 'quiz'    && <Brain    size={13} className={`shrink-0 ${locked ? 'text-gray-600' : 'text-pink-400'}`}   />}
+                        {lesson.type === 'video'    && <Video    size={13} className={`shrink-0 ${locked ? 'text-gray-600' : 'text-indigo-400'}`} />}
+                        {lesson.type === 'reading'  && <BookOpen size={13} className={`shrink-0 ${locked ? 'text-gray-600' : 'text-purple-400'}`} />}
+                        {lesson.type === 'quiz'     && <Brain    size={13} className={`shrink-0 ${locked ? 'text-gray-600' : 'text-pink-400'}`}   />}
+                        {lesson.type === 'practice' && <Code     size={13} className={`shrink-0 ${locked ? 'text-gray-600' : 'text-emerald-400'}`} />}
                         <span className="flex-1 truncate">{lesson.title}</span>
                         {isActive && <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />}
                       </>

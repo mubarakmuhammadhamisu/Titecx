@@ -1,328 +1,162 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { Package, CheckCircle2, Truck, Clock, X, Search, ChevronDown } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { Modal } from '@/components/admin/shared/Modal';
+import { FilterBar } from '@/components/admin/shared/FilterBar';
+import type { MysteryBoxRequest, MysteryBoxStatus } from '@/components/admin/adminTypes';
+import { Package, Truck, CheckCircle, Clock, X } from 'lucide-react';
+import { format } from 'date-fns';
 
-type BoxStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'forfeited';
-
-interface MysteryBoxRequest {
-  id: string;
-  studentName: string;
-  studentEmail: string;
-  courseName: string;
-  courseSlug: string;
-  earnedAt: string;        // when mystery_box_status was set to 'earned'
-  premiumDeadline: string; // original deadline they beat
-  status: BoxStatus;
-  trackingNumber: string | null;
-  deliveryAddress: {
-    name: string;
-    address: string;
-    city: string;
-    state: string;
-    phone: string;
-  } | null;
-  notes: string;
-}
-
-
-// ── Status config ─────────────────────────────────────────────────────────────
-const STATUS_CONFIG: Record<BoxStatus, { label: string; color: string; icon: React.ReactNode }> = {
-  pending:    { label: 'Pending',    color: 'text-amber-400 bg-amber-500/10 border-amber-500/20',    icon: <Clock size={11} /> },
-  processing: { label: 'Processing', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20',       icon: <Package size={11} /> },
-  shipped:    { label: 'Shipped',    color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20', icon: <Truck size={11} /> },
-  delivered:  { label: 'Delivered',  color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: <CheckCircle2 size={11} /> },
-  forfeited:  { label: 'Forfeited', color: 'text-gray-400 bg-gray-700/30 border-gray-600/30',       icon: <X size={11} /> },
+const STATUS_CONFIG: Record<MysteryBoxStatus, { label: string; color: string; icon: React.ReactNode }> = {
+  pending:    { label: 'Pending',    color: 'text-amber-400  border-amber-500/20  bg-amber-500/10',  icon: <Clock size={11} /> },
+  processing: { label: 'Processing', color: 'text-indigo-400 border-indigo-500/20 bg-indigo-500/10', icon: <Package size={11} /> },
+  shipped:    { label: 'Shipped',    color: 'text-blue-400   border-blue-500/20   bg-blue-500/10',   icon: <Truck size={11} /> },
+  delivered:  { label: 'Delivered',  color: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10', icon: <CheckCircle size={11} /> },
+  forfeited:  { label: 'Forfeited', color: 'text-gray-500   border-gray-600/20   bg-gray-700/20',   icon: <X size={11} /> },
 };
 
-const STATUS_ORDER: BoxStatus[] = ['pending', 'processing', 'shipped', 'delivered'];
+const inp = 'w-full rounded-lg bg-gray-800 border border-gray-700 px-3 py-2.5 text-white text-sm outline-none focus:border-indigo-500/60 transition';
 
 export default function MysteryBoxPage() {
   const [requests, setRequests]   = useState<MysteryBoxRequest[]>([]);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState('');
-  const [statusFilter, setStatusFilter] = useState<BoxStatus | 'all'>('all');
+  const [statusFilter, setStatus] = useState('');
   const [selected, setSelected]   = useState<MysteryBoxRequest | null>(null);
-  const [trackingInput, setTrackingInput] = useState('');
-  const [notesInput, setNotesInput]       = useState('');
+  const [saving, setSaving]       = useState(false);
+
+  const [editForm, setEditForm] = useState({
+    status: '' as MysteryBoxStatus,
+    tracking_number: '',
+    notes: '',
+  });
 
   useEffect(() => {
     fetch('/api/admin/mystery-box')
       .then((r) => r.json())
-      .then((data) => { setRequests(data.requests ?? []); setLoading(false); })
+      .then((d) => { setRequests(d.requests ?? []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
-  // Stats
-  const stats = useMemo(() => ({
-    total:      requests.length,
-    pending:    requests.filter(r => r.status === 'pending').length,
-    processing: requests.filter(r => r.status === 'processing').length,
-    shipped:    requests.filter(r => r.status === 'shipped').length,
-    delivered:  requests.filter(r => r.status === 'delivered').length,
-  }), [requests]);
-
-  const filtered = useMemo(() =>
-    requests.filter(r => {
-      const matchSearch =
-        r.studentName.toLowerCase().includes(search.toLowerCase()) ||
-        r.courseName.toLowerCase().includes(search.toLowerCase()) ||
-        (r.trackingNumber ?? '').toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === 'all' || r.status === statusFilter;
-      return matchSearch && matchStatus;
-    }),
-  [requests, search, statusFilter]);
-
-  const openModal = (req: MysteryBoxRequest) => {
-    setSelected(req);
-    setTrackingInput(req.trackingNumber ?? '');
-    setNotesInput(req.notes);
+  const openModal = (r: MysteryBoxRequest) => {
+    setSelected(r);
+    setEditForm({ status: r.status, tracking_number: r.tracking_number ?? '', notes: r.notes ?? '' });
   };
 
-  const handleAdvanceStatus = async () => {
+  const handleSave = async () => {
     if (!selected) return;
-    const currentIdx = STATUS_ORDER.indexOf(selected.status as BoxStatus);
-    if (currentIdx === -1 || currentIdx >= STATUS_ORDER.length - 1) return;
-    const nextStatus = STATUS_ORDER[currentIdx + 1];
-    const updated = { ...selected, status: nextStatus, trackingNumber: trackingInput || selected.trackingNumber, notes: notesInput };
-    // Optimistic update
-    setRequests(prev => prev.map(r => r.id === selected.id ? updated : r));
-    setSelected(updated);
-    // Persist
-    await fetch('/api/admin/mystery-box', {
+    setSaving(true);
+    const res = await fetch('/api/admin/mystery-box', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
-      body: JSON.stringify({ id: selected.id, status: nextStatus, trackingNumber: trackingInput || selected.trackingNumber, notes: notesInput }),
+      body: JSON.stringify({ id: selected.id, ...editForm }),
     });
+    setSaving(false);
+    if (res.ok) {
+      const { request } = await res.json();
+      setRequests((prev) => prev.map((r) => r.id === selected.id ? { ...r, ...request } : r));
+      setSelected(null);
+    }
   };
 
-  const handleSaveNotes = async () => {
-    if (!selected) return;
-    const updated = { ...selected, trackingNumber: trackingInput || selected.trackingNumber, notes: notesInput };
-    // Optimistic update
-    setRequests(prev => prev.map(r => r.id === selected.id ? updated : r));
-    setSelected(updated);
-    // Persist
-    await fetch('/api/admin/mystery-box', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
-      body: JSON.stringify({ id: selected.id, trackingNumber: trackingInput || selected.trackingNumber, notes: notesInput }),
-    });
+  const filtered = useMemo(() => requests.filter((r) => {
+    const q = search.toLowerCase();
+    const matchSearch = r.student_name.toLowerCase().includes(q) || r.course_title.toLowerCase().includes(q) ||
+                        (r.delivery_name ?? '').toLowerCase().includes(q);
+    const matchStatus = !statusFilter || r.status === statusFilter;
+    return matchSearch && matchStatus;
+  }), [requests, search, statusFilter]);
+
+  const StatusBadge = ({ s }: { s: MysteryBoxStatus }) => {
+    const cfg = STATUS_CONFIG[s];
+    return (
+      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-semibold ${cfg.color}`}>
+        {cfg.icon}{cfg.label}
+      </span>
+    );
   };
 
-  const canAdvance = selected && STATUS_ORDER.indexOf(selected.status as BoxStatus) < STATUS_ORDER.length - 1;
+  const columns: Column<MysteryBoxRequest>[] = [
+    { key: 'student_name', label: 'Student', sortable: true, render: (v, r) => (
+      <div><p className="text-sm text-white">{String(v)}</p><p className="text-xs text-gray-500">{r.student_email}</p></div>
+    )},
+    { key: 'course_title',   label: 'Course',   sortable: true },
+    { key: 'status',         label: 'Status',   render: (v) => <StatusBadge s={v as MysteryBoxStatus} /> },
+    { key: 'tracking_number',label: 'Tracking', render: (v) => v ? <span className="font-mono text-xs text-indigo-300">{String(v)}</span> : <span className="text-gray-600 text-xs">—</span> },
+    { key: 'delivery_city',  label: 'City',     render: (v) => <span className="text-gray-300 text-xs">{String(v ?? '—')}</span> },
+    { key: 'delivery_state', label: 'State',    render: (v) => <span className="text-gray-300 text-xs">{String(v ?? '—')}</span> },
+    { key: 'earned_at',      label: 'Earned',   sortable: true, render: (v) => v ? format(new Date(v as string), 'MMM d, yyyy') : '—' },
+  ];
 
-  const stat = (label: string, value: number, color: string) => (
-    <div className="rounded-xl border border-indigo-500/20 bg-gray-900/60 px-5 py-4">
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className={`text-2xl font-extrabold ${color}`}>{value}</p>
-    </div>
-  );
+  const counts = Object.keys(STATUS_CONFIG).reduce((acc, s) => {
+    acc[s] = requests.filter((r) => r.status === s).length;
+    return acc;
+  }, {} as Record<string, number>);
+
+  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><div className="text-gray-400 text-sm animate-pulse">Loading requests…</div></div>;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <Package size={28} className="text-pink-400" />
-          Mystery Box Fulfilment
-        </h1>
-        <p className="text-gray-400 text-sm mt-1">
-          Manage mystery box delivery for premium course completions.
-        </p>
+        <h1 className="text-3xl font-bold text-white">Mystery Box</h1>
+        <p className="mt-2 text-gray-400">{requests.length} total requests</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {stat('Total Earned', stats.total,      'text-white')}
-        {stat('Pending',      stats.pending,    'text-amber-400')}
-        {stat('Processing',   stats.processing, 'text-blue-400')}
-        {stat('Shipped',      stats.shipped,    'text-indigo-400')}
-        {stat('Delivered',    stats.delivered,  'text-emerald-400')}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {Object.entries(STATUS_CONFIG).map(([s, cfg]) => (
+          <button key={s} onClick={() => setStatus(statusFilter === s ? '' : s)}
+            className={`rounded-xl border p-3 text-left transition ${statusFilter === s ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-gray-800 bg-gray-900/50 hover:border-gray-700'}`}>
+            <p className="text-xs text-gray-400">{cfg.label}</p>
+            <p className={`text-2xl font-bold mt-1 ${cfg.color.split(' ')[0]}`}>{counts[s] ?? 0}</p>
+          </button>
+        ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search by student, course, or tracking number..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-gray-900 border border-indigo-500/20 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 transition"
-          />
-        </div>
-        <div className="relative">
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value as BoxStatus | 'all')}
-            className="appearance-none pl-3 pr-8 py-2.5 rounded-lg bg-gray-900 border border-indigo-500/20 text-white text-sm focus:outline-none focus:border-indigo-500/50 transition"
-          >
-            <option value="all">All Statuses</option>
-            {Object.entries(STATUS_CONFIG).map(([key, { label }]) => (
-              <option key={key} value={key}>{label}</option>
-            ))}
-          </select>
-          <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-        </div>
-      </div>
+      <FilterBar searchValue={search} onSearchChange={setSearch} placeholder="Search by student, course, or recipient…"
+        filters={{ status: { label: 'Status', value: statusFilter,
+          options: Object.entries(STATUS_CONFIG).map(([v, { label }]) => ({ label, value: v })),
+          onChange: setStatus }}} />
 
-      {/* Table */}
-      <div className="rounded-xl border border-indigo-500/20 bg-gray-900/40 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-indigo-500/10">
-                {['Student', 'Course', 'Earned On', 'Address', 'Tracking', 'Status', 'Action'].map(h => (
-                  <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-indigo-500/5">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center text-gray-500 py-12">
-                    <Package size={32} className="mx-auto mb-3 text-gray-700" />
-                    No mystery box requests found
-                  </td>
-                </tr>
-              ) : filtered.map(req => {
-                const cfg = STATUS_CONFIG[req.status];
-                return (
-                  <tr key={req.id} className="hover:bg-indigo-500/5 transition">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-white">{req.studentName}</p>
-                      <p className="text-xs text-gray-500">{req.studentEmail}</p>
-                    </td>
-                    <td className="px-4 py-3 text-gray-300 max-w-[180px]">
-                      <p className="truncate">{req.courseName}</p>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                      {new Date(req.earnedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {req.deliveryAddress ? (
-                        <span className="text-gray-300">{req.deliveryAddress.city}, {req.deliveryAddress.state}</span>
-                      ) : (
-                        <span className="text-amber-400">⚠ Not provided</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-mono">
-                      {req.trackingNumber
-                        ? <span className="text-indigo-300">{req.trackingNumber}</span>
-                        : <span className="text-gray-600">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cfg.color}`}>
-                        {cfg.icon}{cfg.label}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => openModal(req)}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/60 transition"
-                      >
-                        Manage
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <AdminTable columns={columns} data={filtered} onRowClick={openModal} />
 
-      {/* Manage Modal */}
-      {selected && (
-        <Modal
-          isOpen={!!selected}
-          onClose={() => setSelected(null)}
-          title={`Manage — ${selected.studentName}`}
-          footer={
-            <div className="flex gap-2 w-full">
-              <button
-                onClick={handleSaveNotes}
-                className="flex-1 rounded-lg border border-indigo-500/30 px-4 py-2 text-indigo-400 hover:bg-indigo-500/10 transition text-sm font-medium"
-              >
-                Save Notes
-              </button>
-              {canAdvance && (
-                <button
-                  onClick={handleAdvanceStatus}
-                  className="flex-1 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 px-4 py-2 text-white text-sm font-medium transition"
-                >
-                  Mark as {STATUS_CONFIG[STATUS_ORDER[STATUS_ORDER.indexOf(selected.status as BoxStatus) + 1]]?.label}
-                </button>
-              )}
+      <Modal isOpen={!!selected} onClose={() => setSelected(null)} title={`Update: ${selected?.student_name}`}
+        footer={
+          <>
+            <button onClick={() => setSelected(null)} className="flex-1 rounded-lg border border-gray-600 px-4 py-2 text-gray-300 hover:bg-gray-800 transition">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="flex-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 px-4 py-2 font-medium text-white transition disabled:opacity-50">
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </>
+        }>
+        {selected && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-gray-800/50 border border-gray-700 p-4 space-y-1 text-sm">
+              <p className="text-gray-300"><span className="text-gray-500">Course:</span> {selected.course_title}</p>
+              {selected.delivery_name    && <p className="text-gray-300"><span className="text-gray-500">Name:</span> {selected.delivery_name}</p>}
+              {selected.delivery_address && <p className="text-gray-300"><span className="text-gray-500">Address:</span> {selected.delivery_address}</p>}
+              {selected.delivery_city    && <p className="text-gray-300"><span className="text-gray-500">City/State:</span> {selected.delivery_city}, {selected.delivery_state}</p>}
+              {selected.delivery_phone   && <p className="text-gray-300"><span className="text-gray-500">Phone:</span> {selected.delivery_phone}</p>}
             </div>
-          }
-        >
-          <div className="space-y-4 text-sm">
-            {/* Current status */}
-            <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-800/40 border border-indigo-500/10">
-              <span className="text-gray-400">Current Status</span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_CONFIG[selected.status].color}`}>
-                {STATUS_CONFIG[selected.status].icon}
-                {STATUS_CONFIG[selected.status].label}
-              </span>
-            </div>
-
-            {/* Course & dates */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="px-3 py-2.5 rounded-lg bg-gray-800/40 border border-indigo-500/10">
-                <p className="text-xs text-gray-500 mb-0.5">Course</p>
-                <p className="text-white font-medium text-xs leading-snug">{selected.courseName}</p>
-              </div>
-              <div className="px-3 py-2.5 rounded-lg bg-gray-800/40 border border-indigo-500/10">
-                <p className="text-xs text-gray-500 mb-0.5">Earned On</p>
-                <p className="text-white font-medium text-xs">{new Date(selected.earnedAt).toLocaleDateString()}</p>
-              </div>
-            </div>
-
-            {/* Delivery address */}
             <div>
-              <p className="text-xs font-semibold text-gray-400 mb-2">Delivery Address</p>
-              {selected.deliveryAddress ? (
-                <div className="px-4 py-3 rounded-xl bg-gray-800/40 border border-indigo-500/10 space-y-1 text-xs">
-                  <p className="text-white font-semibold">{selected.deliveryAddress.name}</p>
-                  <p className="text-gray-300">{selected.deliveryAddress.address}</p>
-                  <p className="text-gray-300">{selected.deliveryAddress.city}, {selected.deliveryAddress.state}</p>
-                  <p className="text-gray-400">{selected.deliveryAddress.phone}</p>
-                </div>
-              ) : (
-                <div className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs">
-                  ⚠ Student has not submitted a delivery address yet.
-                </div>
-              )}
+              <label className="block text-xs text-gray-400 mb-1.5">Status</label>
+              <select value={editForm.status} onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value as MysteryBoxStatus }))} className={inp}>
+                {Object.entries(STATUS_CONFIG).map(([v, { label }]) => <option key={v} value={v}>{label}</option>)}
+              </select>
             </div>
-
-            {/* Tracking number */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Tracking Number</label>
-              <input
-                value={trackingInput}
-                onChange={e => setTrackingInput(e.target.value)}
-                placeholder="e.g. DHL-7823910042"
-                className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white text-sm placeholder-gray-600 outline-none focus:border-indigo-500/50 transition"
-              />
+              <label className="block text-xs text-gray-400 mb-1.5">Tracking Number</label>
+              <input value={editForm.tracking_number} onChange={(e) => setEditForm((f) => ({ ...f, tracking_number: e.target.value }))}
+                placeholder="e.g. ABC123456" className={inp} />
             </div>
-
-            {/* Notes */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5">Internal Notes</label>
-              <textarea
-                value={notesInput}
-                onChange={e => setNotesInput(e.target.value)}
-                rows={3}
-                placeholder="e.g. Called student, confirmed address..."
-                className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white text-sm placeholder-gray-600 outline-none focus:border-indigo-500/50 transition resize-none"
-              />
+              <label className="block text-xs text-gray-400 mb-1.5">Internal Notes</label>
+              <textarea value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={3} placeholder="Optional notes…" className={`${inp} resize-none`} />
             </div>
           </div>
-        </Modal>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }
