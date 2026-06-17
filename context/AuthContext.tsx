@@ -144,8 +144,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         timeoutPromise,
       ]);
 
-      if (profileError || coursesError) {
-        console.error('[loadUserData] critical query failed:', profileError?.message ?? coursesError?.message);
+      // Courses are required; profile can be auto-created if missing
+      if (coursesError) {
+        console.error('[loadUserData] critical query failed:', coursesError?.message);
         setLoadError(true);
         return;
       }
@@ -156,7 +157,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setCourses(courseList);
 
-      if (profile) {
+      // If profile doesn't exist, auto-create it with defaults
+      if (!profile && !profileError) {
+        // User is logged in but has no profile — this shouldn't happen but handle gracefully
+        try {
+          const { data: authUser } = await supabase.auth.getUser();
+          if (authUser?.user) {
+            const initials = (authUser.user.user_metadata?.name ?? 'User')
+              .split(' ')
+              .map((n: string) => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2);
+
+            await supabase.from('profiles').upsert({
+              id: authUser.user.id,
+              name: authUser.user.user_metadata?.name ?? 'User',
+              email: authUser.user.email,
+              avatar: initials,
+              role: 'Member',
+              location: '',
+              bio: '',
+              phone: '',
+              preferences: {
+                email_notifications: true,
+                course_recommendations: true,
+                weekly_digest: false,
+              },
+            });
+
+            setUser({
+              id: authUser.user.id,
+              name: authUser.user.user_metadata?.name ?? 'User',
+              email: authUser.user.email,
+              avatar: initials,
+              avatarUrl: null,
+              role: 'Member',
+              location: '',
+              bio: '',
+              phone: '',
+              preferences: {
+                email_notifications: true,
+                course_recommendations: true,
+                weekly_digest: false,
+              },
+              creditBalance: 0,
+              lifetimePoints: 0,
+              referralCode: '',
+            });
+          }
+        } catch (err) {
+          console.error('[loadUserData] failed to auto-create profile:', err);
+          setLoadError(true);
+          return;
+        }
+      } else if (profile) {
         setUser({
           id: profile.id, name: profile.name, email: profile.email,
           avatar: profile.avatar, avatarUrl: profile.avatar_url ?? null,
@@ -169,6 +224,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           lifetimePoints: profile.lifetime_points ?? 0,
           referralCode:   profile.referral_code   ?? '',
         });
+      } else if (profileError) {
+        console.error('[loadUserData] profile query failed:', profileError.message);
+        setLoadError(true);
+        return;
       }
 
       const comp = completions ?? [];
