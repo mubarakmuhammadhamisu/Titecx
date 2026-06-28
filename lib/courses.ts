@@ -1,10 +1,18 @@
-// lib/courses.ts — Server-side fetch functions for SERVER COMPONENTS only.
-// Client components use const { courses } = useAuth() instead.
+// lib/courses.ts — Shared course utilities used by both server and client code.
+//
+// Exports:
+//   CourseRow          — raw Supabase DB row shape (used internally + by AuthContext)
+//   rowToCourse()      — canonical DB-row → CourseSchema mapper (single source of truth)
+//   getAllCourses()     — server-only fetch (SERVER COMPONENTS only)
+//   getCourseBySlug()  — server-only fetch (SERVER COMPONENTS only)
+//
+// Client components access courses via: const { courses } = useAuth()
 
 import { createClient } from '@supabase/supabase-js';
 import type { CourseSchema, Module } from '@/lib/Course';
 
-interface CourseRow {
+// Exported so AuthContext can reuse the same shape without redeclaring it.
+export interface CourseRow {
   id: string;
   slug: string;
   title: string;
@@ -21,13 +29,13 @@ interface CourseRow {
   curriculum: string[];
   modules: Module[];
   is_published: boolean;
-  // 1. Add these fields to the interface
-  premium_price: string;
+  premium_price: string | null;
   premium_deadline_days: number;
   premium_perks: string[];
 }
 
-function rowToCourse(row: CourseRow): CourseSchema {
+// Exported so AuthContext can reuse the same mapper without redeclaring it.
+export function rowToCourse(row: CourseRow): CourseSchema {
   return {
     id:               row.id,
     slug:             row.slug,
@@ -41,18 +49,17 @@ function rowToCourse(row: CourseRow): CourseSchema {
     thumbnail:        row.thumbnail,
     gradientFrom:     row.gradient_from,
     gradientTo:       row.gradient_to,
-    features:         Array.isArray(row.features)   ? row.features   : [],
-    curriculum:       Array.isArray(row.curriculum) ? row.curriculum : [],
-    modules:          Array.isArray(row.modules)    ? row.modules    : [],
-    // 2. Map the database row properties to the schema properties
-    premiumPrice:        row.premium_price,
-    premiumDeadlineDays: row.premium_deadline_days,
-    premiumPerks:        Array.isArray(row.premium_perks) ? row.premium_perks : [],
+    features:         row.features  ?? [],
+    curriculum:       row.curriculum ?? [],
+    modules:          row.modules    ?? [],
+    premiumPrice:        row.premium_price         ?? null,
+    premiumDeadlineDays: row.premium_deadline_days ?? 60,
+    premiumPerks:        row.premium_perks         ?? [],
   };
 }
 
-// Client is created once at module level — not inside the fetch functions —
-// so it is not re-created on every server component render.
+// Creates a Supabase client for server-side fetches (no service role — anon key only).
+// Called inside each fetch function; the client is cheap to construct per-request.
 function getServerClient() {
   const url  = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key  = process.env.NEXT_PUBLIC_SUPABASE_Publishable_KEY;

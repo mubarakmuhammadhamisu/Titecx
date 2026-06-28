@@ -86,14 +86,12 @@ export async function proxy(req: NextRequest) {
   }
 
   // ---------------------------------------------------------------------------
-  // STEP 1 — Create a response object FIRST, before anything else.  
+  // STEP 2 — Create a response object FIRST, before anything else.
   // ---------------------------------------------------------------------------
   let res = NextResponse.next({ request: req });
 
   // ---------------------------------------------------------------------------
-  // STEP 2 — Create a Supabase client that works in the Edge Runtime.
-  //
-  
+  // STEP 3 — Create a Supabase client that works in the Edge Runtime.
   // ---------------------------------------------------------------------------
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -123,14 +121,14 @@ export async function proxy(req: NextRequest) {
   );
 
   // ---------------------------------------------------------------------------
-  // STEP 3 — Verify the user's session with Supabase's servers.
+  // STEP 4 — Verify the user's session with Supabase's servers.
   // ---------------------------------------------------------------------------
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   // ---------------------------------------------------------------------------
-  // STEP 4 — Protect routes and redirect logged-in users away from root.
+  // STEP 5 — Protect routes and redirect logged-in users away from root.
   // ---------------------------------------------------------------------------
   const isDashboard = pathname.startsWith('/dashboard');
   const isAdmin     = pathname.startsWith('/admin');
@@ -159,7 +157,7 @@ export async function proxy(req: NextRequest) {
   }
 
   // ---------------------------------------------------------------------------
-  // STEP 5 — Return the response.
+  // STEP 6 — Return the response.
   //
   // ---------------------------------------------------------------------------
   return res;
