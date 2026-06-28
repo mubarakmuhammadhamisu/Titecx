@@ -16,8 +16,8 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' https://js.paystack.co https://www.youtube.com",
-      "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://www.checkout.paystack.com https://*.paystack.com https://paystack.com",
-      "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://img.youtube.com https://i.ytimg.com https://*.paystack.com https://paystack.com",
+      "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://www.checkout.paystack.com https://*.paystack.com https://paystack.com https://play.gumlet.io https://iframe.mediadelivery.net https://drive.google.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://img.youtube.com https://i.ytimg.com https://*.paystack.com https://paystack.com https://*.gumlet.io https://video.gumlet.io https://*.b-cdn.net",
       "connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.paystack.co https://checkout.paystack.com https://*.paystack.com https://paystack.com",
       "style-src 'self' 'unsafe-inline' https://*.paystack.com https://paystack.com",
       "font-src 'self'",
