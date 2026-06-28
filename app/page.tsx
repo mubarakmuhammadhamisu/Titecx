@@ -1,8 +1,34 @@
+import type { Metadata } from 'next';
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/ui/Navbar";
 import Footer from "@/components/ui/Footer";
 import CoursePreview from "@/components/ui/CoursePreview";
+
+export const metadata: Metadata = {
+  title: 'TITECX — Learn Real-World Tech Skills',
+  description: 'High-quality courses built for Nigerian learners. Master in-demand tech skills and get certified.',
+  openGraph: {
+    title: 'TITECX FORGE — Learn Real-World Tech Skills',
+    description: 'High-quality courses built for Nigerian learners. Master in-demand tech skills and get certified.',
+    url: 'https://titecx-mb.vercel.app',
+    type: 'website',
+    images: [
+      {
+        url: '/og-default.png',
+        width: 1200,
+        height: 630,
+        alt: 'TITECX FORGE — Learn Real-World Tech Skills',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'TITECX FORGE — Learn Real-World Tech Skills',
+    description: 'High-quality courses built for Nigerian learners. Master in-demand tech skills and get certified.',
+    images: ['/og-default.png'],
+  },
+};
 
 export default function HomePage() {
   return (
@@ -121,6 +147,4 @@ function FinalCTA() {
   );
 }
 
-/* =========================
-   FOOTER
-========================= */
+

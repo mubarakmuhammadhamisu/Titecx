@@ -1,21 +1,29 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
-import { mockEnrollments, mockCourses, mockStudents, Enrollment, Student } from '@/components/admin/mock-data';
-import { Download, Trash2, UserPlus, CheckCircle } from 'lucide-react';
+import { Enrollment } from '@/components/admin/mock-data';
+import { Download, Trash2, UserPlus, CheckCircle, BookOpen, GitBranch } from 'lucide-react';
 
 export default function EnrollmentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
-  const [enrollments, setEnrollments] = useState<Enrollment[]>(mockEnrollments);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [removeTarget, setRemoveTarget] = useState<Enrollment | null>(null);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [enrollForm, setEnrollForm] = useState({ studentId: '', courseId: '' });
+
+  useEffect(() => {
+    fetch('/api/admin/enrollments')
+      .then((r) => r.json())
+      .then((data) => { setEnrollments(data.enrollments ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
 
   const filteredEnrollments = useMemo(() => {
     return enrollments.filter((enrollment) => {
@@ -89,6 +97,39 @@ export default function EnrollmentsPage() {
       ),
     },
     {
+      key: 'learning_points',
+      label: 'Learning Pts',
+      sortable: true,
+      render: (_value, enrollment) => {
+        const pts =
+          enrollment.progress === 100 ? 800 :
+          enrollment.progress > 0    ? 200 : 0;
+        return (
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${
+            pts === 800
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+              : pts === 200
+                ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                : 'bg-gray-800 border-gray-700 text-gray-600'
+          }`}>
+            <BookOpen size={10} />{pts} pts
+          </span>
+        );
+      },
+    },
+    {
+      key: 'referral_triggered',
+      label: 'Source',
+      render: (_value, enrollment) =>
+        enrollment.referral_triggered ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold" title={`Referred by ${enrollment.referrer_name ?? 'unknown'}`}>
+            <GitBranch size={10} /> Via Referral
+          </span>
+        ) : (
+          <span className="text-gray-600 text-xs">Organic</span>
+        ),
+    },
+    {
       key: 'id',
       label: 'Actions',
       render: (_, enrollment) => (
@@ -126,23 +167,19 @@ export default function EnrollmentsPage() {
     setRemoveTarget(null);
   };
 
-  const handleManualEnroll = () => {
+  const handleManualEnroll = async () => {
     if (!enrollForm.studentId || !enrollForm.courseId) return;
-    const student = mockStudents.find((s) => s.id === enrollForm.studentId);
-    const course = mockCourses.find((c) => c.id === enrollForm.courseId);
-    if (!student || !course) return;
-    const newEnrollment: Enrollment = {
-      id: `manual-${Date.now()}`,
-      studentId: student.id,
-      studentName: student.name,
-      courseId: course.id,
-      courseName: course.title,
-      dateEnrolled: new Date().toISOString().split('T')[0],
-      progress: 0,
-      paymentType: 'free',
-      status: 'in-progress',
-    };
-    setEnrollments((prev) => [newEnrollment, ...prev]);
+    // Post to API — the backend creates the enrollment row
+    const res = await fetch('/api/admin/enrollments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId: enrollForm.studentId, courseId: enrollForm.courseId }),
+    });
+    if (!res.ok) return;
+    // Re-fetch the list so the new row appears with correct names
+    fetch('/api/admin/enrollments')
+      .then((r) => r.json())
+      .then((data) => setEnrollments(data.enrollments ?? []));
     setEnrollForm({ studentId: '', courseId: '' });
     setIsEnrollModalOpen(false);
   };
@@ -174,6 +211,14 @@ export default function EnrollmentsPage() {
     document.body.removeChild(a);
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-400 text-sm animate-pulse">Loading enrollments…</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -200,10 +245,7 @@ export default function EnrollmentsPage() {
           course: {
             label: 'Course',
             value: courseFilter,
-            options: mockCourses.map((c) => ({
-              label: c.title,
-              value: c.id,
-            })),
+            options: [...new Map(enrollments.map((e) => [e.courseId, { label: e.courseName, value: e.courseId }])).values()],
             onChange: setCourseFilter,
           },
           payment: {
@@ -370,8 +412,8 @@ export default function EnrollmentsPage() {
               className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white outline-none focus:border-indigo-500/60"
             >
               <option value="">Select a student...</option>
-              {mockStudents.map((s) => (
-                <option key={s.id} value={s.id}>{s.name} — {s.email}</option>
+              {[...new Map(enrollments.map((e) => [e.studentId, { id: e.studentId, name: e.studentName }])).values()].map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
           </div>
@@ -383,7 +425,7 @@ export default function EnrollmentsPage() {
               className="w-full rounded-lg bg-gray-800 border border-indigo-500/20 px-3 py-2 text-white outline-none focus:border-indigo-500/60"
             >
               <option value="">Select a course...</option>
-              {mockCourses.map((c) => (
+              {[...new Map(enrollments.map((e) => [e.courseId, { id: e.courseId, title: e.courseName }])).values()].map((c) => (
                 <option key={c.id} value={c.id}>{c.title}</option>
               ))}
             </select>

@@ -1,22 +1,45 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Modal } from '@/components/admin/shared/Modal';
-import { mockCourses, Course } from '@/components/admin/mock-data';
+import { Course } from '@/components/admin/mock-data';
 import { useRouter } from 'next/navigation';
 import {
   ToggleLeft, ToggleRight, BookOpen, Plus, Trash2,
   ArrowLeft, Save, Eye, EyeOff, GripVertical,
   Video, FileText, HelpCircle, X, ChevronDown, ChevronUp, Check, Pencil,
 } from 'lucide-react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import dynamic from 'next/dynamic';
+
+// @hello-pangea/dnd uses browser-only APIs (pointer events, requestAnimationFrame).
+// It must NEVER run on the server — dynamic import with ssr:false prevents the crash.
+const { DragDropContext, Droppable, Draggable } = {
+  DragDropContext: dynamic(
+    () => import('@hello-pangea/dnd').then((m) => m.DragDropContext),
+    { ssr: false }
+  ),
+  Droppable: dynamic(
+    () => import('@hello-pangea/dnd').then((m) => m.Droppable),
+    { ssr: false }
+  ),
+  Draggable: dynamic(
+    () => import('@hello-pangea/dnd').then((m) => m.Draggable),
+    { ssr: false }
+  ),
+};
+
+import type { VideoProvider } from '@/lib/Course';
 
 // ── Lesson types (mirrors lib/Course.ts but self-contained for mock) ──────────
 type LessonType = 'video' | 'reading' | 'quiz';
 
-interface VideoContent   { videoUrl: string; duration: string; }
+interface VideoContent {
+  videoUrl:       string;
+  duration:       string;
+  videoProvider?: VideoProvider;
+}
 interface ReadingContent { markdownBody: string; }
 interface QuizQuestion   { id: string; question: string; options: string[]; correctAnswer: number; points: number; }
 interface QuizContent    { questions: QuizQuestion[]; }
@@ -57,7 +80,7 @@ const BLANK_FORM: CourseForm = {
 };
 
 function defaultContent(type: LessonType): VideoContent | ReadingContent | QuizContent {
-  if (type === 'video')   return { videoUrl: '', duration: '' };
+  if (type === 'video')   return { videoUrl: '', duration: '', videoProvider: 'youtube' };
   if (type === 'reading') return { markdownBody: '' };
   return { questions: [{ id: `q-${Date.now()}`, question: '', options: ['', '', '', ''], correctAnswer: 0, points: 10 }] };
 }
@@ -70,12 +93,20 @@ export default function CoursesPage() {
   const [pageMode, setPageMode] = useState<'list' | 'create'>('list');
 
   // ── List-mode state ───────────────────────────────────────────────────────
-  const [courses, setCourses] = useState<Course[]>(mockCourses);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [publishedFilter, setPublishedFilter] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [toggledCourses, setToggledCourses] = useState<Record<string, boolean>>({});
   const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/courses')
+      .then((r) => r.json())
+      .then((data) => { setCourses(data.courses ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
 
   // ── Create-mode state ─────────────────────────────────────────────────────
   const [form, setForm] = useState<CourseForm>(BLANK_FORM);
@@ -136,7 +167,7 @@ export default function CoursesPage() {
         id: `les-${Date.now()}`,
         title: 'New Lesson',
         type: 'video',
-        content: { videoUrl: '', duration: '' },
+        content: { videoUrl: '', duration: '', videoProvider: 'youtube' as VideoProvider },
         expanded: true,
       });
       return { ...f, modules };
@@ -206,38 +237,52 @@ export default function CoursesPage() {
     setForm(f => ({ ...f, modules }));
   };
 
-  const handleSaveCourse = () => {
+  const handleSaveCourse = async () => {
     const errors: string[] = [];
-    if (!form.title.trim())       errors.push('Course title is required.');
-    if (!form.description.trim()) errors.push('Description is required.');
-    if (!form.instructor.trim())  errors.push('Instructor name is required.');
-    if (!form.price.trim())       errors.push('Price is required.');
+    if (!form.title.trim())        errors.push('Course title is required.');
+    if (!form.description.trim())  errors.push('Description is required.');
+    if (!form.instructor.trim())   errors.push('Instructor name is required.');
+    if (!form.price.trim())        errors.push('Price is required.');
     if (form.modules.length === 0) errors.push('Add at least one module.');
 
     if (errors.length > 0) { setFormErrors(errors); return; }
     setFormErrors([]);
 
-    const newCourse: Course = {
-      id: `new-${Date.now()}`,
-      title: form.title,
-      description: form.description,
-      price: Number(form.price.replace(/[^0-9]/g, '')) || 0,
-      enrolledCount: 0,
-      totalRevenue: 0,
-      published: form.published,
-      lessonsCount: totalLessons,
-      completionRate: 0,
-    };
+    try {
+      const res = await fetch('/api/admin/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title:       form.title,
+          description: form.description,
+          instructor:  form.instructor,
+          level:       form.level,
+          price:       Number(form.price.replace(/[^0-9]/g, '')) || 0,
+          published:   form.published,
+          modules:     form.modules.map(({ collapsed: _c, ...m }) => ({
+            ...m,
+            lessons: m.lessons.map(({ expanded: _e, ...l }) => l),
+          })),
+        }),
+      });
 
-    console.log('New course (full):', JSON.stringify({ ...newCourse, modules: form.modules }, null, 2));
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setFormErrors([body.error ?? 'Failed to save course. Please try again.']);
+        return;
+      }
 
-    setCourses(prev => [newCourse, ...prev]);
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      setPageMode('list');
-      setForm(BLANK_FORM);
-    }, 1800);
+      const { course: saved } = await res.json();
+      setCourses((prev) => [saved, ...prev]);
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        setPageMode('list');
+        setForm(BLANK_FORM);
+      }, 1800);
+    } catch {
+      setFormErrors(['Network error — please check your connection and try again.']);
+    }
   };
 
   // ── Shared table columns ──────────────────────────────────────────────────
@@ -452,6 +497,16 @@ export default function CoursesPage() {
                                                   <div className="ml-5 pt-2 border-t border-gray-700 space-y-2">
                                                     {lesson.type === 'video' && (
                                                       <>
+                                                        <select
+                                                          value={(lesson.content as VideoContent).videoProvider ?? 'youtube'}
+                                                          onChange={e => updateVideoContent(mi, li, { videoProvider: e.target.value as VideoProvider })}
+                                                          className="w-full bg-gray-700 text-gray-300 outline-none rounded px-2 py-1 text-xs"
+                                                        >
+                                                          <option value="youtube">YouTube</option>
+                                                          <option value="gumlet">Gumlet</option>
+                                                          <option value="bunny">Bunny</option>
+                                                          <option value="gdrive">Google Drive</option>
+                                                        </select>
                                                         <input
                                                           value={(lesson.content as VideoContent).videoUrl}
                                                           onChange={e => updateVideoContent(mi, li, { videoUrl: e.target.value })}
@@ -563,6 +618,14 @@ export default function CoursesPage() {
   // ─────────────────────────────────────────────────────────────────────────
   // LIST MODE
   // ─────────────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-400 text-sm animate-pulse">Loading courses…</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

@@ -24,11 +24,28 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { checkCsrfHeader } from '@/lib/csrf';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   // ── CSRF: reject cross-site requests missing the custom header ───────────
   const csrfError = checkCsrfHeader(req);
   if (csrfError) return csrfError;
+
+  // ── Rate limit: 3 attempts per IP per minute ──────────────────────────────
+  // Prevents a hijacked session from hammering this endpoint.
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    req.headers.get('x-real-ip') ??
+    'unknown';
+  if (ip !== 'unknown') {
+    const { allowed } = checkRateLimit(`delete-account:${ip}`, 3, 60_000);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a minute.' },
+        { status: 429, headers: { 'Retry-After': '60' } },
+      );
+    }
+  }
 
   try {
     // ── Step 1: Read the authenticated user from the JWT in the cookie ──────

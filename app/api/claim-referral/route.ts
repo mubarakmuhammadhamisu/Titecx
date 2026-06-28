@@ -16,18 +16,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getAdminClient } from '@/lib/adminSupabase';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { checkCsrfHeader } from '@/lib/csrf';
 import { checkRateLimit } from '@/lib/rateLimit';
 
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 const REF_CODE_RE = /^[A-Z]{4}-[A-Z0-9]{4}$/i;
 

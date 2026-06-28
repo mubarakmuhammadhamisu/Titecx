@@ -4,19 +4,13 @@
 // → RPC atomically deducts balance + awards referral commission if eligible.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getAdminClient } from '@/lib/adminSupabase';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { verifyPaystackPayment, PaystackTransactionData } from '@/lib/verifyPaystackPayment';
 import { checkCsrfHeader } from '@/lib/csrf';
 import { checkRateLimit } from '@/lib/rateLimit';
 
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 export async function POST(req: NextRequest) {
   const csrfError = checkCsrfHeader(req);

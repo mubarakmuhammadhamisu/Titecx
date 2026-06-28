@@ -4,39 +4,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { getAdminClient, getAuthenticatedAdmin } from '@/lib/adminSupabase';
 import { checkCsrfHeader } from '@/lib/csrf';
 
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
-async function getAuthenticatedAdmin(req?: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_Publishable_KEY!,
-    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
-  );
-  const { data: { user }, error } = await sessionClient.auth.getUser();
-  if (error || !user) return null;
-
-  // Verify admin role via profiles table
-  const supabase = getAdminClient();
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'Admin') return null;
-  return user;
-}
 
 // ── Allowed setting keys — whitelist to prevent arbitrary key injection ────
 const ALLOWED_KEYS = new Set([
@@ -62,7 +33,7 @@ export async function POST(req: NextRequest) {
   const csrfError = checkCsrfHeader(req);
   if (csrfError) return csrfError;
 
-  const admin = await getAuthenticatedAdmin(req);
+  const admin = await getAuthenticatedAdmin();
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   let body: Record<string, string>;

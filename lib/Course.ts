@@ -7,11 +7,31 @@
 //   - Client components  → const { courses } = useAuth()
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type LessonType   = 'video' | 'reading' | 'quiz';
-export type LessonStatus = 'completed' | 'current' | 'locked';
-export type FilterStatus = 'all' | 'in-progress' | 'completed';
+export type LessonType    = 'video' | 'reading' | 'quiz';
+export type LessonStatus  = 'completed' | 'current' | 'locked';
+export type FilterStatus  = 'all' | 'in-progress' | 'completed';
 
-export interface VideoContent   { videoUrl: string; duration: string; topics?: string[]; }
+/**
+ * Identifies which video platform hosts a lesson's video.
+ *
+ * | Value     | videoUrl contains                               |
+ * |-----------|--------------------------------------------------|
+ * | 'youtube' | YouTube watch/embed URL (existing behaviour)    |
+ * | 'gumlet'  | Gumlet asset/video ID, e.g. "abc123"           |
+ * | 'bunny'   | "{libraryId}/{videoId}", e.g. "98765/abc-def"   |
+ * | 'gdrive'  | Google Drive file ID, e.g. "1BxiMV..."         |
+ *
+ * Omitting videoProvider (legacy rows) defaults to 'youtube'.
+ */
+export type VideoProvider = 'youtube' | 'gumlet' | 'bunny' | 'gdrive';
+
+export interface VideoContent {
+  videoUrl:      string;
+  duration:      string;
+  topics?:       string[];
+  /** Which platform hosts this video. Defaults to 'youtube' when absent. */
+  videoProvider?: VideoProvider;
+}
 export interface ReadingContent { markdownBody: string; topics?: string[]; }
 
 // ── QuizContent ───────────────────────────────────────────────────────────────

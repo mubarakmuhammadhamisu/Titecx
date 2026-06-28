@@ -174,9 +174,21 @@ export default function ProfilePage() {
                     ? <Image src={user.avatarUrl} alt="Avatar" fill sizes="64px" className="object-cover" />
                     : user.avatar}
                 </div>
+                {/* Hover overlay — visible on desktop */}
                 <button onClick={() => avatarInputRef.current?.click()} disabled={avatarLoading}
                   className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer">
                   {avatarLoading ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <Camera size={16} className="text-white" />}
+                </button>
+                {/* Persistent badge — always visible, especially for mobile where hover doesn't exist */}
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarLoading}
+                  aria-label="Upload profile picture"
+                  className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-indigo-600 border-2 border-gray-950 flex items-center justify-center shadow-md hover:bg-indigo-500 transition group-hover:opacity-0"
+                >
+                  {avatarLoading
+                    ? <div className="w-2.5 h-2.5 border border-white/40 border-t-white rounded-full animate-spin" />
+                    : <Camera size={9} className="text-white" />}
                 </button>
                 <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
               </div>
