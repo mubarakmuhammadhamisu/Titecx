@@ -21,12 +21,18 @@
 // -----------------------------------------------------------------------------
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminClient } from '@/lib/adminSupabase';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { checkCsrfHeader } from '@/lib/csrf';
 import { checkRateLimit } from '@/lib/rateLimit';
 
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export async function POST(req: NextRequest) {
   // ── CSRF ──────────────────────────────────────────────────────────────────
@@ -115,8 +121,8 @@ export async function POST(req: NextRequest) {
       .eq('slug', courseSlug)
       .maybeSingle(),
   ]);
-
-  let progress = 0;
+  
+  let progress = 0; // 1. Declare here so it's accessible outside the block
 
   if (courseData?.modules && Array.isArray(courseData.modules) && courseData.modules.length > 0) {
     const modules = courseData.modules as Array<{ lessons: Array<{ id: string }> }>;
@@ -125,35 +131,16 @@ export async function POST(req: NextRequest) {
     if (totalLessons > 0) {
       const completedIds = new Set((completions ?? []).map((c) => c.lesson_id));
       const completedCount = modules.flatMap((m) => m.lessons).filter((l) => completedIds.has(l.id)).length;
-
-      progress = Math.round((completedCount / totalLessons) * 100);
-
-      // Determine mystery box outcome before writing — needed for the DB update below.
-      const justCompleted = progress === 100;
-      const mysteryBoxOutcome =
-        justCompleted &&
-        enrollment.purchase_type === 'premium' &&
-        enrollment.mystery_box_status === 'pending'
-          ? (enrollment.premium_deadline && new Date(enrollment.premium_deadline) < new Date()
-              ? 'forfeited'
-              : 'earned')
-          : null;
-
-      const enrollmentUpdate: Record<string, unknown> = {
-        progress,
-        completed_at: justCompleted ? new Date().toISOString() : null,
-      };
-
-      // Write the mystery_box_status to the DB when it resolves.
-      // Previously computed client-side only and returned in the response,
-      // so a page reload would revert to 'pending' — the status never persisted.
-      if (mysteryBoxOutcome) {
-        enrollmentUpdate.mystery_box_status = mysteryBoxOutcome;
-      }
+      
+      progress = Math.round((completedCount / totalLessons) * 100); // 2. Update the variable (no 'const' here)
 
       const { error: progressError } = await supabase
         .from('enrollments')
-        .update(enrollmentUpdate)
+        .update({
+          progress,
+          completed_at: progress === 100 ? new Date().toISOString() : null,
+          // ... (rest of your update logic)
+        })
         .eq('user_id', user.id)
         .eq('course_slug', courseSlug);
 
@@ -161,14 +148,25 @@ export async function POST(req: NextRequest) {
         console.error('[mark-lesson-complete] enrollments update failed:', progressError.message);
         return NextResponse.json({ error: 'progress_failed' });
       }
-
-      return NextResponse.json({
-        success: true,
-        ...(justCompleted ? { courseCompleted: true } : {}),
-        ...(mysteryBoxOutcome ? { mysteryBoxStatus: mysteryBoxOutcome } : {}),
-      });
     }
   }
 
-  return NextResponse.json({ success: true });
+  // 3. Now line 169 can see 'progress'!
+ // const justCompleted = progress === 100;
+  // ... (rest of the response)
+
+  // ── Build response — include mystery box outcome if course just completed ─
+  const justCompleted = progress === 100;
+  const mysteryBoxOutcome =
+    justCompleted && enrollment.purchase_type === 'premium' && enrollment.mystery_box_status === 'pending'
+      ? (enrollment.premium_deadline && new Date(enrollment.premium_deadline) < new Date()
+          ? 'forfeited'
+          : 'earned')
+      : null;
+
+  return NextResponse.json({
+    success: true,
+    ...(justCompleted ? { courseCompleted: true } : {}),
+    ...(mysteryBoxOutcome ? { mysteryBoxStatus: mysteryBoxOutcome } : {}),
+  });
 }

@@ -19,10 +19,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminClient } from '@/lib/adminSupabase';
 import { createHmac } from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 import { validateCourseFromMetadata, ValidatedCourse } from '@/lib/verifyPaystackPayment';
 
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();

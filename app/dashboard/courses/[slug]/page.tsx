@@ -3,10 +3,10 @@
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import GlowCard from '@/components/AppShell/GlowCard';
-import { BookOpen, Play, ArrowRight, Lock, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { BookOpen, Play, ArrowRight, Lock, Home, ArrowLeft, ShieldAlert} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { motion } from 'framer-motion';
-import { isModuleLocked, isLessonLocked } from '@/lib/courseLocking';
+import type { Module } from '@/lib/Course';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -24,6 +24,23 @@ export default function CourseOverviewPage({ params }: PageProps) {
   const course = useMemo(() => {
     return courses.find((c) => c.slug === slug);
   }, [courses, slug]);
+
+  // ── Locking helpers (mirrors CurriculumSidebar exactly) ──────────────────
+  // Module gate: locked until the final lesson of the preceding module is done.
+  const isModuleLocked = (modules: Module[], moduleIdx: number): boolean => {
+    if (moduleIdx === 0) return false;
+    const prev = modules[moduleIdx - 1];
+    if (!prev || prev.lessons.length === 0) return false;
+    const lastLesson = prev.lessons[prev.lessons.length - 1];
+    return !completedLessonIds.has(lastLesson.id);
+  };
+
+  // Lesson gate: within an unlocked module, sequential locking applies.
+  const isLessonLocked = (modules: Module[], moduleIdx: number, lessonIdx: number): boolean => {
+    if (isModuleLocked(modules, moduleIdx)) return true;
+    if (lessonIdx === 0) return false;
+    return !completedLessonIds.has(modules[moduleIdx].lessons[lessonIdx - 1].id);
+  };
 
   // Task 4: show spinner while auth context is initialising — prevents the
   // "Course not found" card from flashing before courses[] is populated.
@@ -162,7 +179,7 @@ export default function CourseOverviewPage({ params }: PageProps) {
               mod.lessons.length > 0
                 ? Math.round((completedInModule / mod.lessons.length) * 100)
                 : 0;
-            const moduleLocked = isModuleLocked(course.modules, moduleIdx, completedLessonIds);
+            const moduleLocked = isModuleLocked(course.modules, moduleIdx);
 
             return (
               <motion.div
@@ -203,11 +220,11 @@ export default function CourseOverviewPage({ params }: PageProps) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                     {mod.lessons.map((lesson, lessonIdx) => {
                       const isCompleted = completedLessonIds.has(lesson.id);
-                      const isLocked    = isLessonLocked(course.modules, moduleIdx, lessonIdx, completedLessonIds);
+                      const isLocked    = isLessonLocked(course.modules, moduleIdx, lessonIdx);
                       // "Current" = first lesson that is unlocked and not yet done
                       const isCurrent   = !isCompleted && !isLocked &&
                         mod.lessons.slice(0, lessonIdx).every((l) => completedLessonIds.has(l.id)) &&
-                        !isModuleLocked(course.modules, moduleIdx, completedLessonIds);
+                        !isModuleLocked(course.modules, moduleIdx);
 
                       return (
                         <motion.div

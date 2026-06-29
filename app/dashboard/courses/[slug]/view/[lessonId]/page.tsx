@@ -11,9 +11,35 @@ import LessonNavigation from '@/components/CoursePlayer/LessonNavigation';
 import { useAuth } from '@/context/AuthContext';
 import { motion } from 'framer-motion';
 import { Lock } from 'lucide-react';
-import { isModuleLocked, isLessonLocked } from '@/lib/courseLocking';
+import type { Module } from '@/lib/Course';
 
 interface PageProps { params: Promise<{ slug: string; lessonId: string }> }
+
+// ── Locking helpers — identical logic to CurriculumSidebar and CourseOverview ─
+// Defined at module level (outside the component) so they are pure functions
+// with no hook dependencies and can be called anywhere during render.
+
+function isModuleLocked(
+  modules: Module[],
+  moduleIdx: number,
+  completedLessonIds: Set<string>,
+): boolean {
+  if (moduleIdx === 0) return false;
+  const prev = modules[moduleIdx - 1];
+  if (!prev || prev.lessons.length === 0) return false;
+  return !completedLessonIds.has(prev.lessons[prev.lessons.length - 1].id);
+}
+
+function isLessonLocked(
+  modules: Module[],
+  moduleIdx: number,
+  lessonIdx: number,
+  completedLessonIds: Set<string>,
+): boolean {
+  if (isModuleLocked(modules, moduleIdx, completedLessonIds)) return true;
+  if (lessonIdx === 0) return false;
+  return !completedLessonIds.has(modules[moduleIdx].lessons[lessonIdx - 1].id);
+}
 
 export default function CourseLessonPage({ params }: PageProps) {
   const { slug, lessonId } = React.use(params);

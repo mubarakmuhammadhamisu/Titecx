@@ -153,7 +153,13 @@ export default function EnrollmentsPage() {
     },
   ];
 
-  const handleMarkComplete = (enrollmentId: string) => {
+  const handleMarkComplete = async (enrollmentId: string) => {
+    const res = await fetch('/api/admin/enrollments', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enrollmentId }),
+    });
+    if (!res.ok) return;
     setEnrollments(prev => prev.map(e =>
       e.id === enrollmentId
         ? { ...e, status: 'completed', progress: 100, completionDate: new Date().toISOString().split('T')[0] }
@@ -161,8 +167,14 @@ export default function EnrollmentsPage() {
     ));
   };
 
-  const handleRemoveEnrollment = () => {
+  const handleRemoveEnrollment = async () => {
     if (!removeTarget) return;
+    const res = await fetch('/api/admin/enrollments', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enrollmentId: removeTarget.id }),
+    });
+    if (!res.ok) return;
     setEnrollments((prev) => prev.filter((e) => e.id !== removeTarget.id));
     setRemoveTarget(null);
   };

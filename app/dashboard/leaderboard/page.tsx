@@ -222,7 +222,7 @@ export default function LeaderboardPage() {
     setError('');
     try {
       const url = tab === 'credits'
-        ? `/api/admin/leaderboard?page=${p}&limit=${PAGE_SIZE}`
+        ? `/api/leaderboard/credits?page=${p}&limit=${PAGE_SIZE}`
         : `/api/leaderboard/learning?page=${p}&limit=${PAGE_SIZE}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('fetch failed');

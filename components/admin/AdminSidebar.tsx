@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import TitecxForgeLogo from '../ui/TitecxForgeLogo';
+import RoleSwitcherButton from './RoleSwitcherButton';
 
 const adminNavItems = [
   { href: '/admin',                  label: 'Overview',        icon: LayoutDashboard },
@@ -172,6 +173,7 @@ export default function AdminSidebar() {
               </div>
             </div>
           )}
+          {user && <RoleSwitcherButton user={user} />}
           <button
             onClick={logout}
             className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition text-sm font-medium"

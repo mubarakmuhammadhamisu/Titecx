@@ -5,10 +5,41 @@
 // The user-facing leaderboard is served by /api/leaderboard/learning instead.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminClient, getAuthenticatedAdmin } from '@/lib/adminSupabase';
+import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { checkRateLimit } from '@/lib/rateLimit';
 
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
+// ── Shared admin auth check ───────────────────────────────────────────────────
+// Verifies session AND confirms the user has role = 'Admin' in profiles.
+// Returns the user if both checks pass, null otherwise.
+async function getAuthenticatedAdmin() {
+  const cookieStore = await cookies();
+  const sessionClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_Publishable_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
+  );
+  const { data: { user }, error } = await sessionClient.auth.getUser();
+  if (error || !user) return null;
+
+  const supabase = getAdminClient();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || profile.role !== 'Admin') return null;
+  return user;
+}
 
 export async function GET(req: NextRequest) {
   // ── Auth: admin role required ─────────────────────────────────────────────

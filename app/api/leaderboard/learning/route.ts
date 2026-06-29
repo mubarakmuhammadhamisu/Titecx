@@ -13,7 +13,7 @@
 // Auth: any authenticated user. Rate limited.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminClient } from '@/lib/adminSupabase';
+import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { checkRateLimit } from '@/lib/rateLimit';
@@ -21,6 +21,12 @@ import { checkRateLimit } from '@/lib/rateLimit';
 const COMPLETED_PTS   = 800;
 const IN_PROGRESS_PTS = 200;
 
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export interface LearningLeaderboardEntry {
   id: string;

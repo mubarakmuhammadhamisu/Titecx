@@ -15,10 +15,16 @@
 // who validates but never pays doesn't consume a coupon slot.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminClient } from '@/lib/adminSupabase';
+import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { checkCsrfHeader } from '@/lib/csrf';
 
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export async function POST(req: NextRequest) {
   // ── CSRF: reject cross-site requests missing the custom header ───────────
