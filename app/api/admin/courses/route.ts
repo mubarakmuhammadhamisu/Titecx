@@ -52,7 +52,10 @@ export async function GET() {
   // ── 4. Count lessons from modules JSONB ─────────────────────────────────
   function countLessons(modules: unknown): number {
     if (!Array.isArray(modules)) return 0;
-    return modules.reduce((sum: number, m: any) => sum + (Array.isArray(m?.lessons) ? m.lessons.length : 0), 0);
+    return modules.reduce(
+      (sum: number, m: { lessons?: unknown[] }) => sum + (Array.isArray(m?.lessons) ? m.lessons.length : 0),
+      0,
+    );
   }
 
   // ── 5. Assemble ──────────────────────────────────────────────────────────

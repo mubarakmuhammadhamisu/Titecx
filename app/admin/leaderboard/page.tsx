@@ -15,6 +15,21 @@ interface ArchivedSnapshot {
   data: Leaderboard[];
 }
 
+interface LeaderboardApiRow {
+  id: string;
+  rank?: number;
+  position?: number;
+  name?: string;
+  studentName?: string;
+  lifetime_points?: number;
+  points?: number;
+  credit_balance?: number;
+  courses_completed?: number;
+  coursesCompleted?: number;
+  courses_in_progress?: number;
+  learning_points?: number;
+}
+
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab]             = useState<Tab>('credits');
   const [leaderboard, setLeaderboard]         = useState<Leaderboard[]>([]);
@@ -25,12 +40,11 @@ export default function LeaderboardPage() {
   const [viewingSnapshot, setViewingSnapshot] = useState<ArchivedSnapshot | null>(null);
 
   useEffect(() => {
-    setLoadingData(true);
     fetch('/api/admin/leaderboard?page=1&limit=100')
       .then((r) => r.json())
       .then((data) => {
         setLeaderboard(
-          (data.leaderboard ?? []).map((r: any) => ({
+          (data.leaderboard ?? []).map((r: LeaderboardApiRow) => ({
             id:                  r.id,
             position:            r.rank ?? r.position ?? 0,
             studentId:           r.id,

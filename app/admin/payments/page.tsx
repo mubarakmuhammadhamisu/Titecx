@@ -37,10 +37,10 @@ export default function PaymentsPage() {
       const matchesTo = !dateTo || paymentDate <= new Date(dateTo);
       return matchesSearch && matchesStatus && matchesFrom && matchesTo;
     });
-  }, [searchTerm, statusFilter, dateFrom, dateTo]);
+  }, [allPayments, searchTerm, statusFilter, dateFrom, dateTo]);
 
   const handleVerifyPayment = async (paymentId: string) => {
-    const payment = payments.find((p) => p.id === paymentId);
+    const payment = allPayments.find((p) => p.id === paymentId);
     if (!payment) return;
     setVerifying(paymentId);
     try {
