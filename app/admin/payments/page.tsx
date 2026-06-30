@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { FilterBar } from '@/components/admin/shared/FilterBar';
 import { Payment } from '@/components/admin/mock-data';
-import { CheckCircle, AlertCircle, X, GitBranch, Zap } from 'lucide-react';
+import { CheckCircle, X, GitBranch, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
@@ -37,15 +37,26 @@ export default function PaymentsPage() {
       const matchesTo = !dateTo || paymentDate <= new Date(dateTo);
       return matchesSearch && matchesStatus && matchesFrom && matchesTo;
     });
-  }, [searchTerm, statusFilter, dateFrom, dateTo]);
+  }, [allPayments, searchTerm, statusFilter, dateFrom, dateTo]);
 
-  const handleVerifyPayment = (paymentId: string) => {
+  const handleVerifyPayment = async (paymentId: string) => {
+    const payment = allPayments.find((p) => p.id === paymentId);
+    if (!payment) return;
     setVerifying(paymentId);
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/admin/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
+        body: JSON.stringify({ reference: payment.reference }),
+      });
+      const data = await res.json();
+      setVerifyResult({ id: paymentId, success: res.ok && data.verified === true });
+    } catch {
+      setVerifyResult({ id: paymentId, success: false });
+    } finally {
       setVerifying(null);
-      setVerifyResult({ id: paymentId, success: true });
       setTimeout(() => setVerifyResult(null), 3000);
-    }, 1500);
+    }
   };
 
   const paymentColumns: Column<Payment>[] = [
@@ -281,15 +292,6 @@ export default function PaymentsPage() {
           )) : (
             <div className="rounded-lg border border-gray-700 p-8 text-center"><p className="text-gray-400">No payments found</p></div>
           )}
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-        <div className="flex gap-3">
-          <AlertCircle size={18} className="text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-200">
-            The &quot;Verify&quot; button is a mock implementation. When backend is integrated, it will verify against the Paystack API.
-          </p>
         </div>
       </div>
 

@@ -3,8 +3,9 @@
 // Returns all payments joined with profile names and course titles.
 // Shape matches the Payment interface in components/admin/mock-data.ts exactly.
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient, getAuthenticatedAdmin } from '@/lib/adminSupabase';
+import { checkCsrfHeader } from '@/lib/csrf';
 
 export async function GET() {
   const admin = await getAuthenticatedAdmin();
@@ -59,4 +60,41 @@ export async function GET() {
   });
 
   return NextResponse.json({ payments: result });
+}
+
+// ── POST — verify a payment against Paystack ──────────────────────────────────
+// Body: { reference: string }
+// Calls Paystack's verify endpoint and returns the transaction status.
+export async function POST(req: NextRequest) {
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
+
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const { reference } = await req.json();
+  if (!reference) return NextResponse.json({ error: 'reference is required' }, { status: 400 });
+
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret) return NextResponse.json({ error: 'Payment verification not configured' }, { status: 500 });
+
+  const psRes = await fetch(
+    `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
+    { headers: { Authorization: `Bearer ${secret}` } },
+  );
+
+  if (!psRes.ok) {
+    return NextResponse.json({ error: `Paystack returned ${psRes.status}` }, { status: 502 });
+  }
+
+  const body = await psRes.json();
+  const tx   = body.data;
+
+  return NextResponse.json({
+    verified: body.status === true && tx?.status === 'success',
+    status:   tx?.status ?? 'unknown',
+    amount:   tx?.amount ? Math.round(tx.amount / 100) : 0,
+    currency: tx?.currency ?? 'NGN',
+    paidAt:   tx?.paid_at ?? null,
+  });
 }

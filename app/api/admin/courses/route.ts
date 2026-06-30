@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient, getAuthenticatedAdmin } from '@/lib/adminSupabase';
+import { checkCsrfHeader } from '@/lib/csrf';
 
 export async function GET() {
   const admin = await getAuthenticatedAdmin();
@@ -51,7 +52,10 @@ export async function GET() {
   // ── 4. Count lessons from modules JSONB ─────────────────────────────────
   function countLessons(modules: unknown): number {
     if (!Array.isArray(modules)) return 0;
-    return modules.reduce((sum: number, m: any) => sum + (Array.isArray(m?.lessons) ? m.lessons.length : 0), 0);
+    return modules.reduce(
+      (sum: number, m: { lessons?: unknown[] }) => sum + (Array.isArray(m?.lessons) ? m.lessons.length : 0),
+      0,
+    );
   }
 
   // ── 5. Assemble ──────────────────────────────────────────────────────────
@@ -76,6 +80,9 @@ export async function GET() {
 
 // ── POST — create new course ──────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
+
   const admin = await getAuthenticatedAdmin();
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -86,7 +93,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'title, description, instructor, price are required' }, { status: 400 });
   }
 
-  // Generate a slug from the title
   const slug = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -126,4 +132,50 @@ export async function POST(req: NextRequest) {
       completionRate: 0,
     },
   }, { status: 201 });
+}
+
+// ── PATCH — toggle is_published for a course ──────────────────────────────────
+// Body: { courseId: string; published: boolean }
+export async function PATCH(req: NextRequest) {
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
+
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const { courseId, published } = await req.json();
+  if (!courseId || typeof published !== 'boolean') {
+    return NextResponse.json({ error: 'courseId and published (boolean) are required' }, { status: 400 });
+  }
+
+  const supabase = getAdminClient();
+  const { error } = await supabase
+    .from('courses')
+    .update({ is_published: published })
+    .eq('id', courseId);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
+}
+
+// ── DELETE — remove a course ──────────────────────────────────────────────────
+// Body: { courseId: string }
+export async function DELETE(req: NextRequest) {
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
+
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const { courseId } = await req.json();
+  if (!courseId) return NextResponse.json({ error: 'courseId is required' }, { status: 400 });
+
+  const supabase = getAdminClient();
+  const { error } = await supabase
+    .from('courses')
+    .delete()
+    .eq('id', courseId);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
 }

@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient, getAuthenticatedAdmin } from '@/lib/adminSupabase';
+import { checkCsrfHeader } from '@/lib/csrf';
 
 export async function GET() {
   const admin = await getAuthenticatedAdmin();
@@ -89,6 +90,8 @@ export async function GET() {
 
 // ── POST — manual enroll ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
   const admin = await getAuthenticatedAdmin();
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -112,6 +115,8 @@ export async function POST(req: NextRequest) {
 // ── PATCH — mark an enrollment as completed ───────────────────────────────────
 // Body: { enrollmentId: string }
 export async function PATCH(req: NextRequest) {
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
   const admin = await getAuthenticatedAdmin();
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -135,6 +140,8 @@ export async function PATCH(req: NextRequest) {
 // ── DELETE — remove an enrollment entirely ────────────────────────────────────
 // Body: { enrollmentId: string }
 export async function DELETE(req: NextRequest) {
+  const csrfError = checkCsrfHeader(req);
+  if (csrfError) return csrfError;
   const admin = await getAuthenticatedAdmin();
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 

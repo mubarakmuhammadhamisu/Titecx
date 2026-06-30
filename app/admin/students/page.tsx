@@ -134,7 +134,7 @@ export default function StudentsPage() {
 
   const handleDeleteStudent = async () => {
     if (!deleteTarget) return;
-    await fetch(`/api/admin/students?id=${deleteTarget.id}`, { method: 'DELETE' });
+    await fetch(`/api/admin/students?id=${deleteTarget.id}`, { method: 'DELETE', headers: { 'x-csrf-protection': '1' } });
     setStudents((prev) => prev.filter((s) => s.id !== deleteTarget.id));
     setDeleteTarget(null);
   };
@@ -143,7 +143,7 @@ export default function StudentsPage() {
     if (!banTarget) return;
     await fetch('/api/admin/students', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
       body: JSON.stringify({ id: banTarget.id, isBanned: !banTarget.isBanned }),
     });
     setStudents((prev) =>

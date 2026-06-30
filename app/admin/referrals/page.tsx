@@ -233,7 +233,7 @@ export default function ReferralsPage() {
     // Persist to backend
     await fetch('/api/admin/referrals', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
       body: JSON.stringify({ id, reason }),
     });
 

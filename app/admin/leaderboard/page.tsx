@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { mockLeaderboard, Leaderboard } from '@/components/admin/mock-data';
+import React, { useState, useEffect } from 'react';
+import { Leaderboard } from '@/components/admin/mock-data';
 import { AdminTable, Column } from '@/components/admin/shared/AdminTable';
 import { Trophy, Zap, BookOpen, Archive } from 'lucide-react';
 import { Modal } from '@/components/admin/shared/Modal';
@@ -15,13 +15,53 @@ interface ArchivedSnapshot {
   data: Leaderboard[];
 }
 
+interface LeaderboardApiRow {
+  id: string;
+  rank?: number;
+  position?: number;
+  name?: string;
+  studentName?: string;
+  lifetime_points?: number;
+  points?: number;
+  credit_balance?: number;
+  courses_completed?: number;
+  coursesCompleted?: number;
+  courses_in_progress?: number;
+  learning_points?: number;
+}
+
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab]             = useState<Tab>('credits');
-  const [leaderboard, setLeaderboard]         = useState<Leaderboard[]>(mockLeaderboard);
+  const [leaderboard, setLeaderboard]         = useState<Leaderboard[]>([]);
+  const [loadingData, setLoadingData]         = useState(true);
   const [archives, setArchives]               = useState<ArchivedSnapshot[]>([]);
   const [showArchives, setShowArchives]       = useState(false);
   const [archiveConfirm, setArchiveConfirm]   = useState(false);
   const [viewingSnapshot, setViewingSnapshot] = useState<ArchivedSnapshot | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/leaderboard?page=1&limit=100')
+      .then((r) => r.json())
+      .then((data) => {
+        setLeaderboard(
+          (data.leaderboard ?? []).map((r: LeaderboardApiRow) => ({
+            id:                  r.id,
+            position:            r.rank ?? r.position ?? 0,
+            studentId:           r.id,
+            studentName:         r.name ?? r.studentName ?? 'Unknown',
+            lifetime_points:     r.lifetime_points ?? r.points ?? 0,
+            credit_balance:      r.credit_balance ?? 0,
+            courses_completed:   r.courses_completed ?? r.coursesCompleted ?? 0,
+            courses_in_progress: r.courses_in_progress ?? 0,
+            learning_points:     r.learning_points ?? 0,
+            points:              r.lifetime_points ?? r.points ?? 0,
+            coursesCompleted:    r.courses_completed ?? r.coursesCompleted ?? 0,
+          }))
+        );
+      })
+      .catch(() => {})
+      .finally(() => setLoadingData(false));
+  }, []);
 
   const handleArchiveAndReset = () => {
     const snapshot: ArchivedSnapshot = {
@@ -152,7 +192,11 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Table */}
-      {leaderboard.length > 0 ? (
+      {loadingData ? (
+        <div className="flex items-center justify-center min-h-[200px]">
+          <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+        </div>
+      ) : leaderboard.length > 0 ? (
         <AdminTable
           columns={activeTab === 'credits' ? creditsColumns : learningColumns}
           data={displayData}
@@ -160,7 +204,7 @@ export default function LeaderboardPage() {
       ) : (
         <div className="rounded-2xl border border-indigo-500/20 bg-gray-900/60 p-12 text-center space-y-2">
           <Trophy size={36} className="mx-auto opacity-30 text-yellow-400" />
-          <p className="text-gray-400">Leaderboard has been reset. Data archived.</p>
+          <p className="text-gray-400">No leaderboard data yet.</p>
         </div>
       )}
 

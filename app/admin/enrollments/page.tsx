@@ -156,7 +156,7 @@ export default function EnrollmentsPage() {
   const handleMarkComplete = async (enrollmentId: string) => {
     const res = await fetch('/api/admin/enrollments', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
       body: JSON.stringify({ enrollmentId }),
     });
     if (!res.ok) return;
@@ -171,7 +171,7 @@ export default function EnrollmentsPage() {
     if (!removeTarget) return;
     const res = await fetch('/api/admin/enrollments', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
       body: JSON.stringify({ enrollmentId: removeTarget.id }),
     });
     if (!res.ok) return;
@@ -184,7 +184,7 @@ export default function EnrollmentsPage() {
     // Post to API — the backend creates the enrollment row
     const res = await fetch('/api/admin/enrollments', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
       body: JSON.stringify({ studentId: enrollForm.studentId, courseId: enrollForm.courseId }),
     });
     if (!res.ok) return;
