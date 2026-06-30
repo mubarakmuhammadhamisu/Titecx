@@ -92,7 +92,7 @@ export default function MysteryBoxPage() {
     // Persist
     await fetch('/api/admin/mystery-box', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
       body: JSON.stringify({ id: selected.id, status: nextStatus, trackingNumber: trackingInput || selected.trackingNumber, notes: notesInput }),
     });
   };
@@ -106,7 +106,7 @@ export default function MysteryBoxPage() {
     // Persist
     await fetch('/api/admin/mystery-box', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
       body: JSON.stringify({ id: selected.id, trackingNumber: trackingInput || selected.trackingNumber, notes: notesInput }),
     });
   };

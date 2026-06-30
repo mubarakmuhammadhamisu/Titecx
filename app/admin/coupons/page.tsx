@@ -39,14 +39,14 @@ export default function CouponsPage() {
     setToggledCoupons((prev) => ({ ...prev, [couponId]: newActive }));
     await fetch('/api/admin/coupons', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
       body: JSON.stringify({ id: couponId, active: newActive }),
     });
   };
 
   const handleDeleteCoupon = async () => {
     if (!deleteTarget) return;
-    await fetch(`/api/admin/coupons?id=${deleteTarget.id}`, { method: 'DELETE' });
+    await fetch(`/api/admin/coupons?id=${deleteTarget.id}`, { method: 'DELETE', headers: { 'x-csrf-protection': '1' } });
     setCoupons((prev) => prev.filter((c) => c.id !== deleteTarget.id));
     setDeleteTarget(null);
   };
@@ -63,7 +63,7 @@ export default function CouponsPage() {
         // EDIT MODE
         const res = await fetch('/api/admin/coupons', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
           body: JSON.stringify({
             id: editTarget.id,
             code: formData.code,
@@ -83,7 +83,7 @@ export default function CouponsPage() {
         // CREATE MODE
         const res = await fetch('/api/admin/coupons', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
           body: JSON.stringify({
             code: formData.code,
             discountPercentage: Number(formData.discount),

@@ -125,11 +125,28 @@ export default function CoursesPage() {
     });
   }, [courses, searchTerm, publishedFilter, toggledCourses]);
 
-  const handleToggle = (courseId: string) =>
-    setToggledCourses(prev => ({ ...prev, [courseId]: !(prev[courseId] ?? courses.find(c => c.id === courseId)?.published) }));
+  const handleToggle = async (courseId: string) => {
+    const current = toggledCourses[courseId] ?? courses.find(c => c.id === courseId)?.published ?? false;
+    const next = !current;
+    // Optimistic UI update
+    setToggledCourses(prev => ({ ...prev, [courseId]: next }));
+    const res = await fetch('/api/admin/courses', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
+      body: JSON.stringify({ courseId, published: next }),
+    });
+    // Revert on failure
+    if (!res.ok) setToggledCourses(prev => ({ ...prev, [courseId]: current }));
+  };
 
-  const handleDeleteCourse = () => {
+  const handleDeleteCourse = async () => {
     if (!deleteTarget) return;
+    const res = await fetch('/api/admin/courses', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
+      body: JSON.stringify({ courseId: deleteTarget.id }),
+    });
+    if (!res.ok) return;
     setCourses(prev => prev.filter(c => c.id !== deleteTarget.id));
     setDeleteTarget(null);
   };
@@ -251,7 +268,7 @@ export default function CoursesPage() {
     try {
       const res = await fetch('/api/admin/courses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
         body: JSON.stringify({
           title:       form.title,
           description: form.description,
@@ -303,7 +320,7 @@ export default function CoursesPage() {
       ),
     },
     {
-      key: 'id', label: 'Status',
+      key: 'published', label: 'Status',
       render: (_, course) => {
         const isPublished = toggledCourses[course.id] ?? course.published;
         return (
@@ -410,8 +427,14 @@ export default function CoursesPage() {
               <p className="text-gray-400 text-sm">No modules yet. Add one to get started.</p>
             </div>
           ) : (
-            <DragDropContext onDragEnd={onModuleDragEnd}>
-              <Droppable droppableId="modules">
+            <DragDropContext onDragEnd={(result) => {
+              if (!result.destination) return;
+              if (result.type === 'MODULE') { onModuleDragEnd(result); return; }
+              // Lesson drag — droppableId is 'lessons-{moduleId}'
+              const mi = form.modules.findIndex(m => `lessons-${m.id}` === result.destination!.droppableId);
+              if (mi !== -1) onLessonDragEnd(mi, result);
+            }}>
+              <Droppable droppableId="modules" type="MODULE">
                 {(provided) => (
                   <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
                     {form.modules.map((module, mi) => (
@@ -449,8 +472,7 @@ export default function CoursesPage() {
                             {/* Module lessons */}
                             {!module.collapsed && (
                               <div className="border-t border-gray-700 p-4 space-y-3 bg-gray-900/50">
-                                <DragDropContext onDragEnd={(result) => onLessonDragEnd(mi, result)}>
-                                  <Droppable droppableId={`lessons-${module.id}`}>
+                                <Droppable droppableId={`lessons-${module.id}`}>
                                     {(provided) => (
                                       <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
                                         {module.lessons.map((lesson, li) => (
@@ -591,7 +613,6 @@ export default function CoursesPage() {
                                       </div>
                                     )}
                                   </Droppable>
-                                </DragDropContext>
                                 <button
                                   onClick={() => addLesson(mi)}
                                   className="w-full px-3 py-2 text-xs text-indigo-400 border border-indigo-500/30 rounded hover:bg-indigo-500/10 transition"

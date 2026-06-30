@@ -247,7 +247,7 @@ export default function PointsPage() {
     // Persist to backend
     await fetch('/api/admin/points', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
       body: JSON.stringify({ studentId, amount: txn.amount, reason: txn.description }),
     });
   };
