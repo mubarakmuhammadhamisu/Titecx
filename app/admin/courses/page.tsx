@@ -331,7 +331,7 @@ export default function CoursesPage() {
       },
     },
     {
-      key: 'id', label: 'Actions',
+      key: 'slug', label: 'Actions',
       render: (_, course) => (
         <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(course); }} className="flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-red-500/30 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 transition">
           <Trash2 size={13} /> Delete

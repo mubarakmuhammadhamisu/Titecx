@@ -24,13 +24,15 @@ export default function CourseDetailPage() {
       fetch('/api/admin/courses').then((r) => r.json()),
       fetch('/api/admin/enrollments').then((r) => r.json()),
     ]).then(([coursesData, enrollmentsData]) => {
-      // courseId may be the DB uuid OR the slug — check both
+      // courseId param may be the DB uuid OR the slug — check both
       const course =
         (coursesData.courses ?? []).find((c: Course) => c.id === courseId) ??
-        (coursesData.courses ?? []).find((c: Course & { slug?: string }) => c.slug === courseId) ??
+        (coursesData.courses ?? []).find((c: Course) => c.slug === courseId) ??
         null;
+      // Enrollments are keyed by course slug (e.courseId === course_slug),
+      // never by the course UUID — match against course.slug, not course.id.
       const enrollments = (enrollmentsData.enrollments ?? []).filter(
-        (e: Enrollment) => e.courseId === courseId || e.courseId === course?.id
+        (e: Enrollment) => e.courseId === course?.slug
       );
       if (course) setData({ course, enrollments });
       setLoading(false);
