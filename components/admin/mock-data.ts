@@ -25,6 +25,7 @@ export interface Student {
 
 export interface Course {
   id: string;
+  slug: string;
   title: string;
   description: string;
   price: number;
@@ -177,12 +178,12 @@ export const mockStudents: Student[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const mockCourses: Course[] = [
-  { id: '1', title: 'Introduction to Web Development',        description: 'Learn the basics of HTML, CSS, and JavaScript',    price: 15000, enrolledCount: 234, totalRevenue: 3510000, published: true,  lessonsCount: 24, completionRate: 78 },
-  { id: '2', title: 'Advanced React.js Mastery',              description: 'Master advanced React patterns and optimization',   price: 25000, enrolledCount: 156, totalRevenue: 3900000, published: true,  lessonsCount: 32, completionRate: 82 },
-  { id: '3', title: 'Full-Stack Web Development with Next.js',description: 'Build modern full-stack applications',              price: 30000, enrolledCount: 89,  totalRevenue: 2670000, published: true,  lessonsCount: 40, completionRate: 71 },
-  { id: '4', title: 'Mobile App Development with React Native',description: 'Create cross-platform mobile applications',        price: 28000, enrolledCount: 67,  totalRevenue: 1876000, published: true,  lessonsCount: 36, completionRate: 65 },
-  { id: '5', title: 'Data Science with Python',               description: 'Learn data analysis and machine learning basics',   price: 35000, enrolledCount: 45,  totalRevenue: 1575000, published: true,  lessonsCount: 28, completionRate: 58 },
-  { id: '6', title: 'DevOps and Cloud Deployment',            description: 'Master Docker, Kubernetes, and AWS',               price: 32000, enrolledCount: 34,  totalRevenue: 1088000, published: false, lessonsCount: 30, completionRate: 0 },
+  { id: '1', slug: 'intro-web-development',     title: 'Introduction to Web Development',        description: 'Learn the basics of HTML, CSS, and JavaScript',    price: 15000, enrolledCount: 234, totalRevenue: 3510000, published: true,  lessonsCount: 24, completionRate: 78 },
+  { id: '2', slug: 'advanced-react-mastery',     title: 'Advanced React.js Mastery',              description: 'Master advanced React patterns and optimization',   price: 25000, enrolledCount: 156, totalRevenue: 3900000, published: true,  lessonsCount: 32, completionRate: 82 },
+  { id: '3', slug: 'fullstack-nextjs',           title: 'Full-Stack Web Development with Next.js',description: 'Build modern full-stack applications',              price: 30000, enrolledCount: 89,  totalRevenue: 2670000, published: true,  lessonsCount: 40, completionRate: 71 },
+  { id: '4', slug: 'mobile-react-native',        title: 'Mobile App Development with React Native',description: 'Create cross-platform mobile applications',        price: 28000, enrolledCount: 67,  totalRevenue: 1876000, published: true,  lessonsCount: 36, completionRate: 65 },
+  { id: '5', slug: 'data-science-python',        title: 'Data Science with Python',               description: 'Learn data analysis and machine learning basics',   price: 35000, enrolledCount: 45,  totalRevenue: 1575000, published: true,  lessonsCount: 28, completionRate: 58 },
+  { id: '6', slug: 'devops-cloud-deployment',    title: 'DevOps and Cloud Deployment',            description: 'Master Docker, Kubernetes, and AWS',               price: 32000, enrolledCount: 34,  totalRevenue: 1088000, published: false, lessonsCount: 30, completionRate: 0 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────

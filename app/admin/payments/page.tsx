@@ -298,7 +298,7 @@ export default function PaymentsPage() {
       {verifyResult && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shadow-xl backdrop-blur-md">
           <CheckCircle size={18} />
-          <span className="text-sm font-medium">Payment verified successfully (mock)</span>
+          <span className="text-sm font-medium">Payment verified successfully</span>
         </div>
       )}
     </div>

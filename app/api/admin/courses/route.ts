@@ -64,6 +64,7 @@ export async function GET() {
     const completed = completedMap[c.slug]    ?? 0;
     return {
       id:             c.id,
+      slug:           c.slug,
       title:          c.title,
       description:    c.description ?? '',
       price:          c.price ? Math.round(Number(c.price)) : 0,
@@ -122,6 +123,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     course: {
       id:             data.id,
+      slug:           data.slug,
       title:          data.title,
       description:    data.description ?? '',
       price:          data.price ? Math.round(Number(data.price)) : 0,
