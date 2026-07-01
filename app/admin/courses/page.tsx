@@ -100,12 +100,66 @@ export default function CoursesPage() {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [toggledCourses, setToggledCourses] = useState<Record<string, boolean>>({});
   const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('[CoursesPage] Fetching /api/admin/courses…');
     fetch('/api/admin/courses')
-      .then((r) => r.json())
-      .then((data) => { setCourses(data.courses ?? []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((r) => {
+        console.log('[CoursesPage] Response status:', r.status, r.statusText);
+        if (!r.ok) {
+          return r.json().then((body) => {
+            console.error('[CoursesPage] API returned error body:', body);
+            throw new Error(body?.error ?? `Request failed with status ${r.status}`);
+          }).catch((parseErr) => {
+            console.error('[CoursesPage] Could not parse error response as JSON:', parseErr);
+            throw new Error(`Request failed with status ${r.status}`);
+          });
+        }
+        return r.json();
+      })
+      .then((data) => {
+        console.log('[CoursesPage] Raw API payload:', data);
+        const rawCourses = Array.isArray(data?.courses) ? data.courses : [];
+        if (!Array.isArray(data?.courses)) {
+          console.warn('[CoursesPage] data.courses was not an array — defaulting to []. Payload was:', data);
+        }
+        // Defensive normalisation — guarantees every field the UI reads from
+        // (price, totalRevenue, enrolledCount, completionRate, etc.) is always
+        // a safe primitive, even if the API ever returns a malformed/partial row.
+        const safeCourses: Course[] = rawCourses.map((c: Partial<Course>, idx: number) => {
+          if (c == null || typeof c !== 'object') {
+            console.error(`[CoursesPage] courses[${idx}] is not an object:`, c);
+          }
+          if (typeof c?.price !== 'number') {
+            console.warn(`[CoursesPage] courses[${idx}].price is not a number ("${c?.id ?? 'unknown id'}"):`, c?.price);
+          }
+          if (typeof c?.id !== 'string') {
+            console.error(`[CoursesPage] courses[${idx}].id is missing or not a string:`, c);
+          }
+          return {
+            id:             typeof c?.id === 'string' ? c.id : `unknown-${idx}`,
+            slug:           typeof c?.slug === 'string' ? c.slug : '',
+            title:          typeof c?.title === 'string' ? c.title : 'Untitled course',
+            description:    typeof c?.description === 'string' ? c.description : '',
+            price:          typeof c?.price === 'number' && !Number.isNaN(c.price) ? c.price : 0,
+            enrolledCount:  typeof c?.enrolledCount === 'number' ? c.enrolledCount : 0,
+            totalRevenue:   typeof c?.totalRevenue === 'number' ? c.totalRevenue : 0,
+            published:      typeof c?.published === 'boolean' ? c.published : false,
+            lessonsCount:   typeof c?.lessonsCount === 'number' ? c.lessonsCount : 0,
+            completionRate: typeof c?.completionRate === 'number' ? c.completionRate : 0,
+          };
+        });
+        console.log('[CoursesPage] Normalised courses ready for render:', safeCourses);
+        setCourses(safeCourses);
+        setFetchError(null);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('[CoursesPage] Fetch failed:', err);
+        setFetchError(err instanceof Error ? err.message : 'Failed to load courses.');
+        setLoading(false);
+      });
   }, []);
 
   // ── Create-mode state ─────────────────────────────────────────────────────
@@ -128,27 +182,56 @@ export default function CoursesPage() {
   const handleToggle = async (courseId: string) => {
     const current = toggledCourses[courseId] ?? courses.find(c => c.id === courseId)?.published ?? false;
     const next = !current;
+    console.log('[CoursesPage] handleToggle:', { courseId, current, next });
     // Optimistic UI update
     setToggledCourses(prev => ({ ...prev, [courseId]: next }));
-    const res = await fetch('/api/admin/courses', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
-      body: JSON.stringify({ courseId, published: next }),
-    });
-    // Revert on failure
-    if (!res.ok) setToggledCourses(prev => ({ ...prev, [courseId]: current }));
+    try {
+      const res = await fetch('/api/admin/courses', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
+        body: JSON.stringify({ courseId, published: next }),
+      });
+      console.log('[CoursesPage] handleToggle response status:', res.status);
+      if (!res.ok) {
+        const body = await res.json().catch((e) => {
+          console.error('[CoursesPage] handleToggle: could not parse error body:', e);
+          return {};
+        });
+        console.error('[CoursesPage] handleToggle failed:', body);
+        setToggledCourses(prev => ({ ...prev, [courseId]: current }));
+      }
+    } catch (err) {
+      console.error('[CoursesPage] handleToggle network error:', err);
+      setToggledCourses(prev => ({ ...prev, [courseId]: current }));
+    }
   };
 
   const handleDeleteCourse = async () => {
-    if (!deleteTarget) return;
-    const res = await fetch('/api/admin/courses', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
-      body: JSON.stringify({ courseId: deleteTarget.id }),
-    });
-    if (!res.ok) return;
-    setCourses(prev => prev.filter(c => c.id !== deleteTarget.id));
-    setDeleteTarget(null);
+    if (!deleteTarget) {
+      console.warn('[CoursesPage] handleDeleteCourse called with no deleteTarget set.');
+      return;
+    }
+    console.log('[CoursesPage] handleDeleteCourse:', deleteTarget.id, deleteTarget.title);
+    try {
+      const res = await fetch('/api/admin/courses', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-protection': '1' },
+        body: JSON.stringify({ courseId: deleteTarget.id }),
+      });
+      console.log('[CoursesPage] handleDeleteCourse response status:', res.status);
+      if (!res.ok) {
+        const body = await res.json().catch((e) => {
+          console.error('[CoursesPage] handleDeleteCourse: could not parse error body:', e);
+          return {};
+        });
+        console.error('[CoursesPage] handleDeleteCourse failed:', body);
+        return;
+      }
+      setCourses(prev => prev.filter(c => c.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error('[CoursesPage] handleDeleteCourse network error:', err);
+    }
   };
 
   const handleRowClick = (course: Course) => router.push(`/admin/courses/${course.id}`);
@@ -262,8 +345,15 @@ export default function CoursesPage() {
     if (!form.price.trim())        errors.push('Price is required.');
     if (form.modules.length === 0) errors.push('Add at least one module.');
 
-    if (errors.length > 0) { setFormErrors(errors); return; }
+    if (errors.length > 0) {
+      console.warn('[CoursesPage] handleSaveCourse validation failed:', errors);
+      setFormErrors(errors);
+      return;
+    }
     setFormErrors([]);
+
+    const parsedPrice = Number(form.price.replace(/[^0-9]/g, '')) || 0;
+    console.log('[CoursesPage] handleSaveCourse: submitting with parsedPrice =', parsedPrice, 'from raw form.price =', form.price);
 
     try {
       const res = await fetch('/api/admin/courses', {
@@ -274,7 +364,7 @@ export default function CoursesPage() {
           description: form.description,
           instructor:  form.instructor,
           level:       form.level,
-          price:       Number(form.price.replace(/[^0-9]/g, '')) || 0,
+          price:       parsedPrice,
           published:   form.published,
           modules:     form.modules.map(({ collapsed: _c, ...m }) => ({
             ...m,
@@ -283,13 +373,27 @@ export default function CoursesPage() {
         }),
       });
 
+      console.log('[CoursesPage] handleSaveCourse response status:', res.status);
+
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+        const body = await res.json().catch((e) => {
+          console.error('[CoursesPage] handleSaveCourse: could not parse error body:', e);
+          return {};
+        });
+        console.error('[CoursesPage] handleSaveCourse failed:', body);
         setFormErrors([body.error ?? 'Failed to save course. Please try again.']);
         return;
       }
 
-      const { course: saved } = await res.json();
+      const responseBody = await res.json();
+      console.log('[CoursesPage] handleSaveCourse response body:', responseBody);
+      const saved = responseBody?.course;
+      if (!saved || typeof saved.id !== 'string') {
+        console.error('[CoursesPage] handleSaveCourse: response missing valid course object:', responseBody);
+        setFormErrors(['Course was created but the response was malformed. Please refresh the page.']);
+        return;
+      }
+
       setCourses((prev) => [saved, ...prev]);
       setSaveSuccess(true);
       setTimeout(() => {
@@ -297,7 +401,8 @@ export default function CoursesPage() {
         setPageMode('list');
         setForm(BLANK_FORM);
       }, 1800);
-    } catch {
+    } catch (err) {
+      console.error('[CoursesPage] handleSaveCourse network error:', err);
       setFormErrors(['Network error — please check your connection and try again.']);
     }
   };
@@ -305,9 +410,27 @@ export default function CoursesPage() {
   // ── Shared table columns ──────────────────────────────────────────────────
   const courseColumns: Column<Course>[] = [
     { key: 'title', label: 'Course Title', sortable: true },
-    { key: 'price', label: 'Price', sortable: true, render: (v) => `₦${v.toLocaleString()}` },
+    {
+      key: 'price', label: 'Price', sortable: true,
+      render: (v) => {
+        if (typeof v !== 'number' || Number.isNaN(v)) {
+          console.error('[CoursesPage] price column received a non-numeric value:', v);
+          return '₦0';
+        }
+        return `₦${v.toLocaleString()}`;
+      },
+    },
     { key: 'enrolledCount', label: 'Enrolled', sortable: true },
-    { key: 'totalRevenue', label: 'Revenue', sortable: true, render: (v) => `₦${v.toLocaleString()}` },
+    {
+      key: 'totalRevenue', label: 'Revenue', sortable: true,
+      render: (v) => {
+        if (typeof v !== 'number' || Number.isNaN(v)) {
+          console.error('[CoursesPage] totalRevenue column received a non-numeric value:', v);
+          return '₦0';
+        }
+        return `₦${v.toLocaleString()}`;
+      },
+    },
     {
       key: 'completionRate', label: 'Completion', sortable: true,
       render: (v) => (
@@ -647,6 +770,21 @@ export default function CoursesPage() {
     );
   }
 
+  if (fetchError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <p className="text-red-400 text-sm font-medium">Failed to load courses</p>
+        <p className="text-gray-400 text-xs max-w-md text-center">{fetchError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 px-4 py-2 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-sm hover:bg-indigo-500/30 transition"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -763,7 +901,7 @@ export default function CoursesPage() {
                     <div className="flex justify-between items-center p-2 rounded-lg bg-gray-800/30">
                       <span className="text-gray-400">Price</span>
                       <span className="font-semibold text-indigo-400">
-                        ₦{course.price.toLocaleString()}
+                        ₦{typeof course.price === 'number' && !Number.isNaN(course.price) ? course.price.toLocaleString() : '0'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center p-2 rounded-lg bg-gray-800/30">
