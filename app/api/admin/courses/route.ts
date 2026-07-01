@@ -9,7 +9,10 @@ import { checkCsrfHeader } from '@/lib/csrf';
 
 export async function GET() {
   const admin = await getAuthenticatedAdmin();
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!admin) {
+    console.warn('[GET /api/admin/courses] Rejected — no authenticated admin');
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const supabase = getAdminClient();
 
@@ -19,16 +22,28 @@ export async function GET() {
     .select('id, slug, title, description, price, is_published, modules')
     .order('created_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!courses || courses.length === 0) return NextResponse.json({ courses: [] });
+  if (error) {
+    console.error('[GET /api/admin/courses] Supabase error fetching courses:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (!courses || courses.length === 0) {
+    console.log('[GET /api/admin/courses] No courses found — returning empty array');
+    return NextResponse.json({ courses: [] });
+  }
+
+  console.log(`[GET /api/admin/courses] Fetched ${courses.length} course(s)`);
 
   const slugs = courses.map((c) => c.slug);
 
   // ── 2. Enrollment counts + completion rates per course ───────────────────
-  const { data: enrollments } = await supabase
+  const { data: enrollments, error: enrollError } = await supabase
     .from('enrollments')
     .select('course_slug, progress')
     .in('course_slug', slugs);
+
+  if (enrollError) {
+    console.error('[GET /api/admin/courses] Supabase error fetching enrollments (non-fatal, continuing with 0 counts):', enrollError);
+  }
 
   const enrollCountMap:  Record<string, number> = {};
   const completedMap:    Record<string, number> = {};
@@ -38,11 +53,15 @@ export async function GET() {
   }
 
   // ── 3. Total revenue per course ──────────────────────────────────────────
-  const { data: payments } = await supabase
+  const { data: payments, error: paymentError } = await supabase
     .from('payments')
     .select('course_slug, amount_kobo')
     .eq('status', 'success')
     .in('course_slug', slugs);
+
+  if (paymentError) {
+    console.error('[GET /api/admin/courses] Supabase error fetching payments (non-fatal, continuing with 0 revenue):', paymentError);
+  }
 
   const revenueMap: Record<string, number> = {};
   for (const p of payments ?? []) {
@@ -85,12 +104,22 @@ export async function POST(req: NextRequest) {
   if (csrfError) return csrfError;
 
   const admin = await getAuthenticatedAdmin();
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!admin) {
+    console.warn('[POST /api/admin/courses] Rejected — no authenticated admin');
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
-  const body = await req.json();
+  const body = await req.json().catch((e) => {
+    console.error('[POST /api/admin/courses] Failed to parse request body as JSON:', e);
+    return null;
+  });
+  if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+
   const { title, description, instructor, level, price, published, modules } = body;
+  console.log('[POST /api/admin/courses] Incoming payload:', { title, instructor, level, price, published, moduleCount: Array.isArray(modules) ? modules.length : 'not an array' });
 
   if (!title || !description || !instructor || price === undefined) {
+    console.warn('[POST /api/admin/courses] Validation failed — missing required field(s)');
     return NextResponse.json({ error: 'title, description, instructor, price are required' }, { status: 400 });
   }
 
@@ -118,7 +147,17 @@ export async function POST(req: NextRequest) {
     .select('id, slug, title, description, price, is_published, modules')
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[POST /api/admin/courses] Supabase insert error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (!data) {
+    console.error('[POST /api/admin/courses] Insert succeeded but no data returned');
+    return NextResponse.json({ error: 'Course created but no data returned' }, { status: 500 });
+  }
+
+  console.log('[POST /api/admin/courses] Course created successfully:', data.id, data.slug);
 
   return NextResponse.json({
     course: {
@@ -126,7 +165,7 @@ export async function POST(req: NextRequest) {
       slug:           data.slug,
       title:          data.title,
       description:    data.description ?? '',
-      price:          data.price ? Math.round(Number(data.price)) : 0,
+      price:          data.price && !Number.isNaN(Number(data.price)) ? Math.round(Number(data.price)) : 0,
       enrolledCount:  0,
       totalRevenue:   0,
       published:      data.is_published ?? false,
@@ -143,10 +182,22 @@ export async function PATCH(req: NextRequest) {
   if (csrfError) return csrfError;
 
   const admin = await getAuthenticatedAdmin();
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!admin) {
+    console.warn('[PATCH /api/admin/courses] Rejected — no authenticated admin');
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
-  const { courseId, published } = await req.json();
+  const body = await req.json().catch((e) => {
+    console.error('[PATCH /api/admin/courses] Failed to parse request body as JSON:', e);
+    return null;
+  });
+  if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+
+  const { courseId, published } = body;
+  console.log('[PATCH /api/admin/courses] Toggling publish state:', { courseId, published });
+
   if (!courseId || typeof published !== 'boolean') {
+    console.warn('[PATCH /api/admin/courses] Validation failed:', { courseId, published });
     return NextResponse.json({ error: 'courseId and published (boolean) are required' }, { status: 400 });
   }
 
@@ -156,7 +207,11 @@ export async function PATCH(req: NextRequest) {
     .update({ is_published: published })
     .eq('id', courseId);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[PATCH /api/admin/courses] Supabase update error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  console.log('[PATCH /api/admin/courses] Updated successfully:', courseId);
   return NextResponse.json({ success: true });
 }
 
@@ -167,10 +222,24 @@ export async function DELETE(req: NextRequest) {
   if (csrfError) return csrfError;
 
   const admin = await getAuthenticatedAdmin();
-  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!admin) {
+    console.warn('[DELETE /api/admin/courses] Rejected — no authenticated admin');
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
-  const { courseId } = await req.json();
-  if (!courseId) return NextResponse.json({ error: 'courseId is required' }, { status: 400 });
+  const body = await req.json().catch((e) => {
+    console.error('[DELETE /api/admin/courses] Failed to parse request body as JSON:', e);
+    return null;
+  });
+  if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+
+  const { courseId } = body;
+  console.log('[DELETE /api/admin/courses] Deleting course:', courseId);
+
+  if (!courseId) {
+    console.warn('[DELETE /api/admin/courses] Validation failed — missing courseId');
+    return NextResponse.json({ error: 'courseId is required' }, { status: 400 });
+  }
 
   const supabase = getAdminClient();
   const { error } = await supabase
@@ -178,6 +247,10 @@ export async function DELETE(req: NextRequest) {
     .delete()
     .eq('id', courseId);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[DELETE /api/admin/courses] Supabase delete error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  console.log('[DELETE /api/admin/courses] Deleted successfully:', courseId);
   return NextResponse.json({ success: true });
 }
