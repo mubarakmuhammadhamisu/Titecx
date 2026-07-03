@@ -167,7 +167,7 @@ export default function GumletPlayer({ videoUrl, title, onEnd }: GumletPlayerPro
       {/* Mobile: generic thumbnail + tap-to-expand */}
       <div className="absolute inset-0 sm:hidden">
         {/* Generic gradient placeholder — Gumlet doesn't expose a public thumbnail URL */}
-        <div className="w-full h-full bg-gradient-to-br from-indigo-900/60 to-gray-900" />
+        <div className="w-full h-full bg-linear-to-br from-indigo-900/60 to-gray-900" />
         <div className="absolute inset-0 bg-black/30 flex items-center justify-center flex-col gap-3">
           <button
             onClick={() => setModalOpen(true)}

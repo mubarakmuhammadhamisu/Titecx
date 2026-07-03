@@ -177,7 +177,7 @@ export default function ReferralDashboard() {
             icon: <CheckCircle2 size={18} className="text-yellow-400" />,
           },
         ].map(({ label, value, sub, color, icon }) => (
-          <div key={label} className="rounded-2xl bg-gradient-to-br from-gray-900/80 to-gray-800/40 border border-indigo-500/20 p-4 space-y-1">
+          <div key={label} className="rounded-2xl bg-linear-to-br from-gray-900/80 to-gray-800/40 border border-indigo-500/20 p-4 space-y-1">
             <div className="flex items-center gap-2">{icon}<span className="text-xs text-gray-500">{label}</span></div>
             <p className={`text-2xl font-extrabold ${color}`}>{value}</p>
             <p className="text-xs text-gray-600">{sub}</p>
@@ -186,7 +186,7 @@ export default function ReferralDashboard() {
       </div>
 
       {/* Referral Link Card */}
-      <div className="rounded-2xl bg-gradient-to-br from-gray-900/80 to-gray-800/40 border border-indigo-500/20 p-6 shadow-[0_0_40px_rgba(99,102,241,0.08)] space-y-4">
+      <div className="rounded-2xl bg-linear-to-br from-gray-900/80 to-gray-800/40 border border-indigo-500/20 p-6 shadow-[0_0_40px_rgba(99,102,241,0.08)] space-y-4">
         <div>
           <h2 className="text-base font-bold text-white flex items-center gap-2">
             <Users size={16} className="text-indigo-400" /> Your Referral Link
@@ -234,7 +234,7 @@ export default function ReferralDashboard() {
       )}
 
       {/* Referral History */}
-      <div className="rounded-2xl bg-gradient-to-br from-gray-900/80 to-gray-800/40 border border-indigo-500/20 overflow-hidden">
+      <div className="rounded-2xl bg-linear-to-br from-gray-900/80 to-gray-800/40 border border-indigo-500/20 overflow-hidden">
         <div className="px-5 py-4 border-b border-indigo-500/10 flex items-center justify-between">
           <h2 className="font-bold text-white text-base flex items-center gap-2">
             <Users size={16} className="text-indigo-400" /> Referral History
@@ -252,7 +252,7 @@ export default function ReferralDashboard() {
             {(data?.referrals ?? []).map((ref) => (
               <div key={ref.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-indigo-500/5 transition">
                 {/* Avatar placeholder */}
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center text-sm font-bold text-gray-300 shrink-0">
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-gray-700 to-gray-600 flex items-center justify-center text-sm font-bold text-gray-300 shrink-0">
                   {ref.referee_name.slice(0, 1).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -275,7 +275,7 @@ export default function ReferralDashboard() {
       </div>
 
       {/* Transaction History (collapsible) */}
-      <div className="rounded-2xl bg-gradient-to-br from-gray-900/80 to-gray-800/40 border border-indigo-500/20 overflow-hidden">
+      <div className="rounded-2xl bg-linear-to-br from-gray-900/80 to-gray-800/40 border border-indigo-500/20 overflow-hidden">
         <button
           onClick={() => setTxExpanded(!txExpanded)}
           className="w-full px-5 py-4 flex items-center justify-between hover:bg-indigo-500/5 transition"
@@ -312,7 +312,7 @@ export default function ReferralDashboard() {
       </div>
 
       {/* How it works */}
-      <div className="rounded-2xl bg-gradient-to-br from-gray-900/40 to-gray-800/20 border border-indigo-500/10 p-6 space-y-4">
+      <div className="rounded-2xl bg-linear-to-br from-gray-900/40 to-gray-800/20 border border-indigo-500/10 p-6 space-y-4">
         <h3 className="font-bold text-gray-300 text-sm uppercase tracking-widest">How It Works</h3>
         <div className="grid sm:grid-cols-3 gap-4">
           {[

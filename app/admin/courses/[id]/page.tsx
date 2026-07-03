@@ -107,7 +107,7 @@ export default function CourseDetailPage() {
       </button>
 
       {/* Course Header */}
-      <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-8 backdrop-blur-md shadow-lg shadow-indigo-500/10">
+      <div className="rounded-xl border border-indigo-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-8 backdrop-blur-md shadow-lg shadow-indigo-500/10">
         <div className="space-y-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
@@ -124,15 +124,15 @@ export default function CourseDetailPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 border border-indigo-500/20 p-5">
+            <div className="rounded-xl bg-linear-to-br from-indigo-500/10 to-indigo-600/5 border border-indigo-500/20 p-5">
               <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Price</p>
               <p className="mt-2 text-3xl font-bold text-indigo-400">₦{course.price.toLocaleString()}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 p-5">
+            <div className="rounded-xl bg-linear-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 p-5">
               <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 font-semibold"><Users size={14} />Enrolled</p>
               <p className="mt-2 text-3xl font-bold text-purple-400">{course.enrolledCount}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 p-5">
+            <div className="rounded-xl bg-linear-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 p-5">
               <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 font-semibold"><TrendingUp size={14} />Revenue</p>
               <p className="mt-2 text-3xl font-bold text-emerald-400">
                 {course.totalRevenue >= 1_000_000
@@ -140,20 +140,20 @@ export default function CourseDetailPage() {
                   : `₦${course.totalRevenue.toLocaleString()}`}
               </p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 p-5">
+            <div className="rounded-xl bg-linear-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 p-5">
               <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 font-semibold"><BookOpen size={14} />Lessons</p>
               <p className="mt-2 text-3xl font-bold text-blue-400">{course.lessonsCount}</p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <div className="rounded-lg bg-gradient-to-r from-blue-500/20 to-blue-600/10 border border-blue-500/30 px-4 py-2">
+            <div className="rounded-lg bg-linear-to-r from-blue-500/20 to-blue-600/10 border border-blue-500/30 px-4 py-2">
               <p className="text-sm text-blue-300 font-medium"><span className="font-bold text-lg">{completedCount}</span> Completed</p>
             </div>
-            <div className="rounded-lg bg-gradient-to-r from-indigo-500/20 to-indigo-600/10 border border-indigo-500/30 px-4 py-2">
+            <div className="rounded-lg bg-linear-to-r from-indigo-500/20 to-indigo-600/10 border border-indigo-500/30 px-4 py-2">
               <p className="text-sm text-indigo-300 font-medium"><span className="font-bold text-lg">{inProgressCount}</span> In Progress</p>
             </div>
-            <div className="rounded-lg bg-gradient-to-r from-purple-500/20 to-purple-600/10 border border-purple-500/30 px-4 py-2">
+            <div className="rounded-lg bg-linear-to-r from-purple-500/20 to-purple-600/10 border border-purple-500/30 px-4 py-2">
               <p className="text-sm text-purple-300 font-medium"><span className="font-bold text-lg">{course.completionRate}%</span> Completion Rate</p>
             </div>
           </div>

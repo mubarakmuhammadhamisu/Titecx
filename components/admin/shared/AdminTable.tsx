@@ -54,7 +54,7 @@ export function AdminTable<T extends { id?: string }>({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 backdrop-blur-md shadow-lg shadow-indigo-500/10">
+    <div className="overflow-x-auto rounded-xl border border-indigo-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 backdrop-blur-md shadow-lg shadow-indigo-500/10">
       <table className="w-full">
         <thead>
           <tr className="border-b border-indigo-500/20 bg-gray-900/60 backdrop-blur-sm">

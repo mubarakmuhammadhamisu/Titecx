@@ -158,7 +158,7 @@ export default function AdminOverview() {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Bar Chart */}
-        <div className="rounded-xl border border-pink-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-[0_0_28px_rgba(244,114,182,0.12)]">
+        <div className="rounded-xl border border-pink-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-[0_0_28px_rgba(244,114,182,0.12)]">
           <h2 className="mb-6 text-lg font-bold text-white">Daily Revenue (Last 15 Days)</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={revenueData}>
@@ -182,7 +182,7 @@ export default function AdminOverview() {
         </div>
 
         {/* Revenue Trend Line Chart */}
-        <div className="rounded-xl border border-green-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-[0_0_28px_rgba(74,222,128,0.10)]">
+        <div className="rounded-xl border border-green-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-[0_0_28px_rgba(74,222,128,0.10)]">
           <h2 className="mb-6 text-lg font-bold text-white">Revenue Trend</h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={revenueData}>
@@ -207,7 +207,7 @@ export default function AdminOverview() {
         </div>
 
         {/* Referral Conversions Chart */}
-        <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-[0_0_28px_rgba(52,211,153,0.08)]">
+        <div className="rounded-xl border border-emerald-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-[0_0_28px_rgba(52,211,153,0.08)]">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <GitBranch size={18} className="text-emerald-400" /> Referral Conversions (Last 7 Days)

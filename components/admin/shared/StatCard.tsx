@@ -23,7 +23,7 @@ export function StatCard({ title, value, icon: Icon, trend, sparkData, sparkColo
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`relative rounded-xl border bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md transition-all duration-300 ${
+      className={`relative rounded-xl border bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md transition-all duration-300 ${
         isHovered
           ? 'border-indigo-400/60 shadow-lg shadow-indigo-500/20'
           : 'border-indigo-500/20'
@@ -31,7 +31,7 @@ export function StatCard({ title, value, icon: Icon, trend, sparkData, sparkColo
     >
       {/* Glow effect on hover */}
       {isHovered && (
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500/10 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 rounded-xl bg-linear-to-br from-indigo-500/10 to-transparent pointer-events-none" />
       )}
 
       <div className="relative z-10 flex items-start justify-between">
@@ -73,7 +73,7 @@ export function StatCard({ title, value, icon: Icon, trend, sparkData, sparkColo
             </div>
           )}
         </div>
-        <div className={`rounded-lg bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 p-3 transition-transform duration-300 ${
+        <div className={`rounded-lg bg-linear-to-br from-indigo-500/20 to-indigo-600/10 p-3 transition-transform duration-300 ${
           isHovered ? 'scale-110' : 'scale-100'
         }`}>
           <Icon className={`h-6 w-6 transition-colors duration-300 ${
