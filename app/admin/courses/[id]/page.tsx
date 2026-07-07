@@ -100,6 +100,12 @@ export default function CourseDetailPage() {
   const completedCount  = courseEnrollments.filter((e) => e.status === 'completed').length;
   const inProgressCount = courseEnrollments.filter((e) => e.status === 'in-progress').length;
 
+   const safePrice = typeof course.price === 'number' && !Number.isNaN(course.price) ? course.price : 0;
+  if (safePrice !== course.price) console.error('[CourseDetailPage] price received a non-numeric value:', course.price);
+
+  const safeTotalRevenue = typeof course.totalRevenue === 'number' && !Number.isNaN(course.totalRevenue) ? course.totalRevenue : 0;
+  if (safeTotalRevenue !== course.totalRevenue) console.error('[CourseDetailPage] totalRevenue received a non-numeric value:', course.totalRevenue);
+
   return (
     <div className="space-y-8">
       <button onClick={() => router.back()} className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition">
@@ -126,7 +132,7 @@ export default function CourseDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 border border-indigo-500/20 p-5">
               <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Price</p>
-              <p className="mt-2 text-3xl font-bold text-indigo-400">₦{course.price.toLocaleString()}</p>
+              <p className="mt-2 text-3xl font-bold text-indigo-400">₦{safePrice.toLocaleString()}</p>
             </div>
             <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 p-5">
               <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 font-semibold"><Users size={14} />Enrolled</p>
@@ -135,9 +141,9 @@ export default function CourseDetailPage() {
             <div className="rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 p-5">
               <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 font-semibold"><TrendingUp size={14} />Revenue</p>
               <p className="mt-2 text-3xl font-bold text-emerald-400">
-                {course.totalRevenue >= 1_000_000
-                  ? `₦${(course.totalRevenue / 1_000_000).toFixed(1)}M`
-                  : `₦${course.totalRevenue.toLocaleString()}`}
+                {safeTotalRevenue >= 1_000_000
+                  ? `₦${(safeTotalRevenue / 1_000_000).toFixed(1)}M`
+                  : `₦${safeTotalRevenue.toLocaleString()}`}
               </p>
             </div>
             <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 p-5">
