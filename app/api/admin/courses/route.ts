@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient, getAuthenticatedAdmin } from '@/lib/adminSupabase';
 import { checkCsrfHeader } from '@/lib/csrf';
+import { parsePrice } from '@/lib/parsePrice';
 
 export async function GET() {
   const admin = await getAuthenticatedAdmin();
@@ -86,7 +87,7 @@ export async function GET() {
       slug:           c.slug,
       title:          c.title,
       description:    c.description ?? '',
-      price:          c.price ? Math.round(Number(c.price)) : 0,
+      price:          parsePrice(c.price),
       enrolledCount:  enrolled,
       totalRevenue:   revenueMap[c.slug] ?? 0,
       published:      c.is_published ?? false,

@@ -97,7 +97,7 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [publishedFilter, setPublishedFilter] = useState('');
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
   const [toggledCourses, setToggledCourses] = useState<Record<string, boolean>>({});
   const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -481,7 +481,7 @@ export default function CoursesPage() {
             >
               {form.published ? <><Eye size={14} /> Published</> : <><EyeOff size={14} /> Draft</>}
             </button>
-            <button onClick={handleSaveCourse} className="flex items-center gap-2 px-5 py-2 rounded-lg bg-linear-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-medium text-sm transition shadow-lg shadow-indigo-500/30">
+            <button onClick={handleSaveCourse} className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-medium text-sm transition shadow-lg shadow-indigo-500/30">
               <Save size={16} /> {form.published ? 'Publish Course' : 'Save Draft'}
             </button>
           </div>
@@ -503,7 +503,7 @@ export default function CoursesPage() {
         )}
 
         {/* ── SECTION 1: Basic Info ── */}
-        <div className="rounded-xl border border-indigo-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md space-y-4">
+        <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md space-y-4">
           <h2 className="text-lg font-bold text-white">Basic Information</h2>
           <div>
             <label className="block text-xs text-gray-400 mb-1.5">Course Title *</label>
@@ -534,13 +534,13 @@ export default function CoursesPage() {
         </div>
 
         {/* ── SECTION 2: Modules & Lessons ── */}
-        <div className="rounded-xl border border-indigo-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md space-y-4">
+        <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-white">Course Content</h2>
               <p className="text-xs text-gray-400 mt-1">{totalLessons} lesson{totalLessons !== 1 ? 's' : ''} total</p>
             </div>
-            <button onClick={addModule} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-linear-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-sm font-medium transition">
+            <button onClick={addModule} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-sm font-medium transition">
               <Plus size={16} /> Add Module
             </button>
           </div>
@@ -794,7 +794,7 @@ export default function CoursesPage() {
         </div>
         <button
           onClick={() => setPageMode('create')}
-          className="flex items-center gap-2 px-5 py-2 rounded-lg bg-linear-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-medium text-sm transition shadow-lg shadow-indigo-500/30"
+          className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-medium text-sm transition shadow-lg shadow-indigo-500/30"
         >
           <Plus size={16} /> New Course
         </button>
@@ -863,10 +863,10 @@ export default function CoursesPage() {
                 <div
                   key={course.id}
                   onClick={() => handleRowClick(course)}
-                  className="group rounded-xl border border-indigo-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md cursor-pointer transition-all duration-300 hover:border-indigo-400/60 hover:shadow-lg hover:shadow-indigo-500/20"
+                  className="group rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md cursor-pointer transition-all duration-300 hover:border-indigo-400/60 hover:shadow-lg hover:shadow-indigo-500/20"
                 >
                   <div className="flex items-start justify-between mb-4">
-                    <div className="h-12 w-12 rounded-lg bg-linear-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center border border-indigo-500/30 group-hover:scale-110 transition-transform duration-300">
+                    <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center border border-indigo-500/30 group-hover:scale-110 transition-transform duration-300">
                       <BookOpen size={24} className="text-indigo-400" />
                     </div>
                     <button
@@ -905,6 +905,12 @@ export default function CoursesPage() {
                       </span>
                     </div>
                     <div className="flex justify-between items-center p-2 rounded-lg bg-gray-800/30">
+                      <span className="text-gray-400">Revenue</span>
+                      <span className="font-semibold text-emerald-400">
+                        ₦{typeof course.totalRevenue === 'number' && !Number.isNaN(course.totalRevenue) ? course.totalRevenue.toLocaleString() : '0'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-800/30">
                       <span className="text-gray-400">Enrolled</span>
                       <span className="font-semibold text-emerald-400">
                         {course.enrolledCount}
@@ -919,7 +925,7 @@ export default function CoursesPage() {
                       </div>
                       <div className="w-full h-2 rounded-full bg-gray-700">
                         <div
-                          className="h-full rounded-full bg-linear-to-r from-indigo-500 to-purple-500"
+                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
                           style={{ width: `${course.completionRate}%` }}
                         />
                       </div>
