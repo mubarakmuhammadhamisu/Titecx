@@ -100,14 +100,14 @@ export default async function CertificatePage({ params }: PageProps) {
         }`}>
 
           {/* Top accent bar */}
-          <div className={`h-2 ${isPremium ? 'bg-gradient-to-r from-pink-500 via-fuchsia-500 to-pink-500' : 'bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-500'}`} />
+          <div className={`h-2 ${isPremium ? 'bg-linear-to-r from-pink-500 via-fuchsia-500 to-pink-500' : 'bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-500'}`} />
 
           <div className="px-8 py-12 text-center space-y-6">
 
             {/* Premium exclusive badge */}
             {isPremium && (
               <div className="flex items-center justify-center gap-2">
-                <span className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500/20 to-fuchsia-500/20 border border-pink-500/40 text-pink-300 text-xs font-bold px-4 py-1.5 rounded-full">
+                <span className="inline-flex items-center gap-2 bg-linear-to-r from-pink-500/20 to-fuchsia-500/20 border border-pink-500/40 text-pink-300 text-xs font-bold px-4 py-1.5 rounded-full">
                   <Trophy size={12} />
                   Premium Completion — Challenge Completed
                 </span>
@@ -194,7 +194,7 @@ export default async function CertificatePage({ params }: PageProps) {
           </div>
 
           {/* Bottom accent bar */}
-          <div className={`h-1 ${isPremium ? 'bg-gradient-to-r from-pink-500/0 via-pink-500/40 to-pink-500/0' : 'bg-linear-to-r from-indigo-500/0 via-indigo-500/40 to-indigo-500/0'}`} />
+          <div className={`h-1 ${isPremium ? 'bg-linear-to-r from-pink-500/0 via-pink-500/40 to-pink-500/0' : 'bg-linear-to-r from-indigo-500/0 via-indigo-500/40 to-indigo-500/0'}`} />
         </div>
 
         {/* Actions */}

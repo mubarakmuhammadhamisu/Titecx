@@ -28,7 +28,7 @@ const ACCOUNT_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#06b6d4', '#10b981'];
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 backdrop-blur-md p-5 ${className}`}>
+    <div className={`rounded-xl border border-indigo-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 backdrop-blur-md p-5 ${className}`}>
       {children}
     </div>
   );
@@ -51,7 +51,7 @@ function StatCard({
     emerald: 'text-emerald-400', blue: 'text-blue-400', orange: 'text-orange-400',
   };
   return (
-    <div className={`rounded-xl bg-gradient-to-br ${ring[color]} border p-4`}>
+    <div className={`rounded-xl bg-linear-to-br ${ring[color]} border p-4`}>
       <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">{label}</p>
       <p className={`mt-2 text-2xl font-bold ${text[color]}`}>{value}</p>
       {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}

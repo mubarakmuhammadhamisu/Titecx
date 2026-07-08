@@ -263,16 +263,16 @@ export default function ReferralsPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-5">
+        <div className="rounded-xl border border-emerald-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-5">
           <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Converted</p>
           <p className="mt-2 text-3xl font-bold text-emerald-400">{totalConverted}</p>
         </div>
-        <div className="rounded-xl border border-amber-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-5">
+        <div className="rounded-xl border border-amber-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-5">
           <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Pending</p>
           <p className="mt-2 text-3xl font-bold text-amber-400">{totalPending}</p>
           <p className="text-xs text-gray-500 mt-1">registered but not purchased</p>
         </div>
-        <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-5">
+        <div className="rounded-xl border border-indigo-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-5">
           <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Total Commission Issued</p>
           <p className="mt-2 text-3xl font-bold text-indigo-400">₦{totalCommission.toLocaleString()}</p>
           <p className="text-xs text-gray-500 mt-1">in credits across all referrers</p>

@@ -182,7 +182,7 @@ export default function MyCoursesPage() {
                       )}
                       {/* Premium badge on thumbnail */}
                       {course.purchaseType === 'premium' && course.progress < 100 && (
-                        <div className="absolute top-2 left-2 bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
+                        <div className="absolute top-2 left-2 bg-linear-to-r from-pink-500 to-fuchsia-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
                           🎁 Premium
                         </div>
                       )}
@@ -247,7 +247,7 @@ export default function MyCoursesPage() {
                             course.progress === 100
                               ? 'bg-emerald-500'
                               : course.purchaseType === 'premium'
-                              ? 'bg-gradient-to-r from-pink-500 to-fuchsia-500'
+                              ? 'bg-linear-to-r from-pink-500 to-fuchsia-500'
                               : 'bg-linear-to-r from-indigo-500 to-purple-500'
                           }`}
                           style={{ width: `${course.progress}%` }}

@@ -211,7 +211,7 @@ All pages with student data now include:
 
 **Implementation Pattern**:
 ```tsx
-<div className="h-10 w-10 rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center border border-indigo-500/20">
+<div className="h-10 w-10 rounded-lg bg-linear-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center border border-indigo-500/20">
   <User size={20} className="text-indigo-400" />
 </div>
 ```

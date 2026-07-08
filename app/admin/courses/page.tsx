@@ -97,7 +97,7 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [publishedFilter, setPublishedFilter] = useState('');
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
   const [toggledCourses, setToggledCourses] = useState<Record<string, boolean>>({});
   const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -902,6 +902,12 @@ export default function CoursesPage() {
                       <span className="text-gray-400">Price</span>
                       <span className="font-semibold text-indigo-400">
                         ₦{typeof course.price === 'number' && !Number.isNaN(course.price) ? course.price.toLocaleString() : '0'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-800/30">
+                      <span className="text-gray-400">Revenue</span>
+                      <span className="font-semibold text-emerald-400">
+                        ₦{typeof course.totalRevenue === 'number' && !Number.isNaN(course.totalRevenue) ? course.totalRevenue.toLocaleString() : '0'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center p-2 rounded-lg bg-gray-800/30">

@@ -251,7 +251,7 @@ export default function MysteryBoxPage() {
               {canAdvance && (
                 <button
                   onClick={handleAdvanceStatus}
-                  className="flex-1 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 px-4 py-2 text-white text-sm font-medium transition"
+                  className="flex-1 rounded-lg bg-linear-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 px-4 py-2 text-white text-sm font-medium transition"
                 >
                   Mark as {STATUS_CONFIG[STATUS_ORDER[STATUS_ORDER.indexOf(selected.status as BoxStatus) + 1]]?.label}
                 </button>

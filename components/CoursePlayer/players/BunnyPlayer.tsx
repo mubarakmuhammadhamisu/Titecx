@@ -178,7 +178,7 @@ export default function BunnyPlayer({ videoUrl, title, onEnd }: BunnyPlayerProps
 
       {/* Mobile: generic placeholder + tap-to-expand */}
       <div className="absolute inset-0 sm:hidden">
-        <div className="w-full h-full bg-gradient-to-br from-orange-900/60 to-gray-900" />
+        <div className="w-full h-full bg-linear-to-br from-orange-900/60 to-gray-900" />
         <div className="absolute inset-0 bg-black/30 flex items-center justify-center flex-col gap-3">
           <button
             onClick={() => setModalOpen(true)}

@@ -174,22 +174,22 @@ export default function PaymentsPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-indigo-500/10">
+        <div className="rounded-xl border border-indigo-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-indigo-500/10">
           <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Total Revenue (Filtered)</p>
           <p className="mt-3 text-3xl font-bold text-indigo-400">₦{totalRevenue.toLocaleString()}</p>
           <p className="text-xs text-gray-500 mt-1">{filteredPayments.length} transaction{filteredPayments.length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-emerald-500/10">
+        <div className="rounded-xl border border-emerald-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-emerald-500/10">
           <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Successful</p>
           <p className="mt-3 text-3xl font-bold text-emerald-400">{successPayments.length}</p>
           <p className="text-xs text-gray-500 mt-1">transactions completed</p>
         </div>
-        <div className="rounded-xl border border-amber-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-amber-500/10">
+        <div className="rounded-xl border border-amber-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-amber-500/10">
           <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Credits Redeemed</p>
           <p className="mt-3 text-3xl font-bold text-amber-400">₦{creditsRedeemed.toLocaleString()}</p>
           <p className="text-xs text-gray-500 mt-1">applied as discounts</p>
         </div>
-        <div className="rounded-xl border border-purple-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-purple-500/10">
+        <div className="rounded-xl border border-purple-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-purple-500/10">
           <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Referral Commissions Triggered</p>
           <p className="mt-3 text-3xl font-bold text-purple-400">{referralTriggers}</p>
           <p className="text-xs text-gray-500 mt-1">payments that paid commission</p>

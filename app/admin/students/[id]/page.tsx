@@ -149,12 +149,12 @@ export default function StudentDetailPage() {
       </button>
 
       {/* Student Header */}
-      <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-8 backdrop-blur-md shadow-lg shadow-indigo-500/10">
+      <div className="rounded-xl border border-indigo-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-8 backdrop-blur-md shadow-lg shadow-indigo-500/10">
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row gap-8 items-start">
             <div className="relative h-32 w-32 shrink-0">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-pink-500/50 to-indigo-500/40 blur-[12px] opacity-60" />
-              <div className="relative h-32 w-32 rounded-full bg-gradient-to-br from-indigo-500/40 to-purple-500/30 flex items-center justify-center border-2 border-pink-400/40 ring-2 ring-pink-500/20">
+              <div className="absolute inset-0 rounded-full bg-linear-to-br from-pink-500/50 to-indigo-500/40 blur-[12px] opacity-60" />
+              <div className="relative h-32 w-32 rounded-full bg-linear-to-br from-indigo-500/40 to-purple-500/30 flex items-center justify-center border-2 border-pink-400/40 ring-2 ring-pink-500/20">
                 <span className="text-4xl font-bold text-white">
                   {student.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                 </span>
@@ -194,15 +194,15 @@ export default function StudentDetailPage() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 border border-indigo-500/20 p-4">
+            <div className="rounded-xl bg-linear-to-br from-indigo-500/10 to-indigo-600/5 border border-indigo-500/20 p-4">
               <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Total Spent</p>
               <p className="mt-2 text-3xl font-bold text-indigo-400">₦{totalSpent.toLocaleString()}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 p-4">
+            <div className="rounded-xl bg-linear-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 p-4">
               <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Active Enrollments</p>
               <p className="mt-2 text-3xl font-bold text-purple-400">{studentEnrollments.filter((e) => e.status === 'in-progress').length}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 p-4">
+            <div className="rounded-xl bg-linear-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 p-4">
               <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Referrals</p>
               <p className="mt-2 text-3xl font-bold text-emerald-400">{student.referralCount}</p>
             </div>
@@ -211,12 +211,12 @@ export default function StudentDetailPage() {
       </div>
 
       {/* Points & Referrals Panel */}
-      <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-indigo-500/10">
+      <div className="rounded-xl border border-indigo-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-6 backdrop-blur-md shadow-lg shadow-indigo-500/10">
         <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
           <Coins size={18} className="text-indigo-400" /> Points &amp; Referrals
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 p-4 space-y-3">
+          <div className="rounded-xl bg-linear-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 p-4 space-y-3">
             <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-1.5"><Zap size={12} className="text-yellow-400" /> Credits</p>
             <div>
               <p className="text-xs text-gray-500">Spendable Balance</p>
@@ -228,7 +228,7 @@ export default function StudentDetailPage() {
             </div>
             <Link href="/admin/points" className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition">View full transaction log →</Link>
           </div>
-          <div className="rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 p-4 space-y-3">
+          <div className="rounded-xl bg-linear-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 p-4 space-y-3">
             <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-1.5"><BookOpen size={12} className="text-emerald-400" /> Learning</p>
             <div>
               <p className="text-xs text-gray-500">Learning Points (derived)</p>
@@ -242,7 +242,7 @@ export default function StudentDetailPage() {
               {studentEnrollments.filter((e) => e.progress > 0 && e.progress < 100).length} in-progress × 200
             </p>
           </div>
-          <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 p-4 space-y-3">
+          <div className="rounded-xl bg-linear-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 p-4 space-y-3">
             <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-1.5"><GitBranch size={12} className="text-purple-400" /> Referrals</p>
             <div className="space-y-1.5">
               <div className="flex justify-between text-sm"><span className="text-gray-500">Sent</span><span className="text-white font-semibold">{student.referrals_sent}</span></div>

@@ -178,7 +178,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-gray-900/80 to-gray-800/40 p-8 backdrop-blur-md shadow-lg shadow-indigo-500/10 space-y-8">
+      <div className="rounded-xl border border-indigo-500/20 bg-linear-to-br from-gray-900/80 to-gray-800/40 p-8 backdrop-blur-md shadow-lg shadow-indigo-500/10 space-y-8">
 
         {/* LIVE — Points System */}
         <Section title="Points System" description="Controls whether the credit and learning-points engine is active.">
@@ -305,7 +305,7 @@ export default function SettingsPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 shadow-lg shadow-indigo-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 rounded-lg bg-linear-to-r from-indigo-500 to-indigo-600 px-6 py-3 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 shadow-lg shadow-indigo-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
           {saving ? 'Saving…' : 'Save Live Settings'}

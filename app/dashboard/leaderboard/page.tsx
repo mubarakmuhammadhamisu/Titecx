@@ -56,7 +56,7 @@ function AvatarCircle({
   const dims = size === 'lg' ? 'w-20 h-20 text-2xl' : size === 'md' ? 'w-11 h-11 text-sm' : 'w-9 h-9 text-xs';
   const border = highlight ? 'border-2 border-yellow-400/60' : 'border-2 border-indigo-500/30';
   return (
-    <div className={`${dims} ${border} rounded-full overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center font-bold text-white shrink-0`}>
+    <div className={`${dims} ${border} rounded-full overflow-hidden bg-linear-to-br from-indigo-600 to-purple-700 flex items-center justify-center font-bold text-white shrink-0`}>
       {entry.avatar_url
         ? <img src={entry.avatar_url} alt={entry.name} className="w-full h-full object-cover" />
         : <span>{entry.avatar || entry.name.slice(0, 2).toUpperCase()}</span>
@@ -85,7 +85,7 @@ function PodiumCard({
   tab: Tab;
 }) {
   return (
-    <div className={`flex-1 rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800/60 border ${borderColor} p-5 flex flex-col items-center gap-3 text-center`}>
+    <div className={`flex-1 rounded-2xl bg-linear-to-br from-gray-900 to-gray-800/60 border ${borderColor} p-5 flex flex-col items-center gap-3 text-center`}>
       <AvatarCircle entry={entry} size="lg" highlight={entry.rank === 1} />
       <p className="font-bold text-white text-sm leading-tight truncate w-full">{entry.name}</p>
       <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${medalColor}`}>
@@ -292,7 +292,7 @@ export default function LeaderboardPage() {
         </div>
         <Link
           href={activeTab === 'credits' ? '/dashboard/referral' : '/courses'}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-semibold transition shrink-0 shadow-lg shadow-indigo-500/20"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-semibold transition shrink-0 shadow-lg shadow-indigo-500/20"
         >
           {activeTab === 'credits'
             ? <><Zap size={14} /> Earn Credits</>

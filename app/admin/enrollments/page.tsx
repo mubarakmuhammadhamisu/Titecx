@@ -281,14 +281,14 @@ export default function EnrollmentsPage() {
         <div className="flex gap-3">
           <button
             onClick={() => setIsEnrollModalOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 text-sm font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 shadow-lg shadow-indigo-500/30"
+            className="flex items-center gap-2 rounded-lg bg-linear-to-r from-indigo-500 to-indigo-600 px-4 py-2 text-sm font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 shadow-lg shadow-indigo-500/30"
           >
             <UserPlus size={16} />
             Enroll Student
           </button>
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 px-4 py-2 text-sm font-medium text-indigo-300 hover:border-indigo-500/70 hover:from-indigo-500/30 hover:to-indigo-600/20 transition-all duration-300"
+            className="flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-linear-to-br from-indigo-500/20 to-indigo-600/10 px-4 py-2 text-sm font-medium text-indigo-300 hover:border-indigo-500/70 hover:from-indigo-500/30 hover:to-indigo-600/20 transition-all duration-300"
           >
             <Download size={16} />
             Export CSV
@@ -408,7 +408,7 @@ export default function EnrollmentsPage() {
             <button
               onClick={handleManualEnroll}
               disabled={!enrollForm.studentId || !enrollForm.courseId}
-              className="flex-1 rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 rounded-lg bg-linear-to-r from-indigo-500 to-indigo-600 px-4 py-2 font-medium text-white hover:from-indigo-600 hover:to-indigo-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Enroll
             </button>
